@@ -1,0 +1,39 @@
+# Configuração do Automateum. Tokens ficam no .env, nunca aqui.
+
+[painel]
+host = "127.0.0.1"
+porta = 8765
+
+[obsidian]
+cofre = 'C:\Users\mateu\Documents\Pixaflow'
+pasta_diario = "Diário"
+# Única pasta (além dos blocos no diário) em que as rotinas escrevem.
+pasta_automateum = "Automateum/Saídas"
+# Pastas que a busca de tasks ignora: nome solto ou caminho a partir da raiz do cofre.
+ignorar = [".obsidian", ".trash", "Automateum/Saídas"]
+# Pastas cujas notas mais recentes entram como contexto no briefing do dia.
+pastas_contexto = ["FH/Meets"]
+
+[claude]
+# Modelo usado nos resumos ("" = padrão do Claude Code).
+modelo = "sonnet"
+timeout_segundos = 240
+
+[slack]
+# Vazio = todas as conversas em que você está. Ou liste nomes: ["geral", "dev"].
+canais = []
+tipos = ["public_channel", "private_channel", "im", "mpim"]
+max_conversas = 60
+
+[gmail]
+consulta = "in:inbox is:unread newer_than:2d"
+max_emails = 40
+
+[github]
+# Vazio = tudo que estiver atribuído a você. Ou restrinja: ["org/repo"].
+repositorios = []
+
+# Sobrescreve o horário de uma rotina, ou desliga com "nunca".
+[horarios]
+# resumo_mensagens = "cron: 0 9-18 * * 1-5"
+# meu_dia = "nunca"

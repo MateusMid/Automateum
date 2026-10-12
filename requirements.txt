@@ -1,0 +1,8 @@
+fastapi>=0.115
+uvicorn>=0.30
+apscheduler>=3.10,<4
+psutil>=6
+slack_sdk>=3.30
+google-api-python-client>=2.140
+google-auth-oauthlib>=1.2
+pytest>=8
