@@ -145,9 +145,22 @@ def rodar(ctx):
 
 ---
 
+## 📚 Documentação Completa
+
+A documentação detalhada de escopo, arquitetura e rotinas está disponível na pasta [`docs/`](docs/README.md):
+
+- [Escopo](docs/Escopo.md) — Objetivos, o que entra, limites e regras de segurança.
+- [Arquitetura](docs/Arquitetura.md) — As 5 colunas do mapa, estrutura do código e ciclo de vida.
+- [Rotinas](docs/Rotinas.md) — Catálogo de rotinas, horários e formato dos briefings.
+- [Painel](docs/Painel.md) — Referência visual e guia de navegação no mapa.
+- [Roadmap](docs/Roadmap.md) — Etapas, setup de credenciais (Slack, Gmail, GitHub) e backlog.
+
+---
+
 ## 🔒 O que as Rotinas Podem Escrever
 
 No cofre, só em `Automateum/Saídas/` e em blocos `%% automateum:<nome>:inicio %%` … `%% automateum:<nome>:fim %%`
 na nota do diário do dia. O que estiver fora do bloco nunca é alterado.
 
 Slack, Gmail e GitHub são só leitura.
+
