@@ -157,3 +157,46 @@ def test_rotina_sem_credencial_nao_roda(config, tmp_path):
     assert "GITHUB_TOKEN" in ag.motivo_parada(ROTINAS["tasks_github"])
     ag.executar("tasks_github")
     assert e.execucoes("tasks_github") == []
+
+
+def test_carregar_config_local_sobreposicao(tmp_path, monkeypatch):
+    from automateum import config as mod_config
+
+    base_toml = tmp_path / "config.toml"
+    base_toml.write_text(
+        '[obsidian]\n'
+        'cofre = ""\n'
+        'pasta_diario = "Diário"\n'
+        'pastas_contexto = ["Geral"]\n'
+        '\n'
+        '[painel]\n'
+        'porta = 8765\n',
+        encoding="utf-8"
+    )
+
+    local_toml = tmp_path / "config.local.toml"
+    local_toml.write_text(
+        '[obsidian]\n'
+        'cofre = "/caminho/meu/cofre"\n'
+        'pastas_contexto = ["Meets"]\n',
+        encoding="utf-8"
+    )
+
+    monkeypatch.setenv("AUTOMATEUM_CONFIG", str(base_toml))
+    monkeypatch.setenv("AUTOMATEUM_CONFIG_LOCAL", str(local_toml))
+    monkeypatch.setenv("AUTOMATEUM_DADOS", str(tmp_path / "dados"))
+
+    cfg = mod_config.carregar()
+    assert str(cfg.cofre).replace("\\", "/") == "/caminho/meu/cofre"
+    assert cfg.secao("obsidian")["pasta_diario"] == "Diário"
+    assert cfg.secao("obsidian")["pastas_contexto"] == ["Meets"]
+    assert cfg.secao("painel")["porta"] == 8765
+
+
+def test_obsidian_sem_cofre_avisa_motivo(tmp_path):
+    cfg_vazia = Config(dados={"obsidian": {"cofre": ""}}, pasta_dados=tmp_path)
+    assert obsidian.configurado(cfg_vazia) == "defina obsidian.cofre no config.toml"
+
+    cfg_invalida = Config(dados={"obsidian": {"cofre": str(tmp_path / "nao_existe")}}, pasta_dados=tmp_path)
+    assert "cofre não encontrado" in obsidian.configurado(cfg_invalida)
+
