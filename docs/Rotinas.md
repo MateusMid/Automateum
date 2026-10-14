@@ -44,7 +44,8 @@ Parte da [Documentação](README.md). Os horários e frequências podem ser pers
 
 ## Ideias e Próximos Passos
 
-- Notificação no celular para falhas críticas de rotinas
+- Visualização do painel no celular direto pelo navegador (HTML responsivo / rede local)
 - Preparação de pautas automatizadas para reuniões a partir de notas de reuniões recentes
 - Sinalização visual no cofre para tasks com mais de N dias sem movimentação
 - Resumo executivo semanal
+
