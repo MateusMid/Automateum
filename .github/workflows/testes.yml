@@ -25,4 +25,4 @@ jobs:
 
       - name: Executar testes com pytest
         run: |
-          pytest -q tests
+          python -m pytest -q tests
