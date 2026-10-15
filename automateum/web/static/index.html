@@ -3,35 +3,1659 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Automateum</title>
-<link rel="icon" href="data:,">
-<link rel="stylesheet" href="/static/painel.css">
+<title>Mapa</title>
+<!--
+  O mapa vivo como editor de fluxo: as camadas ficam em colunas na vertical, da causa ao sintoma,
+  e o mapa corre largo na horizontal. Cada fio e uma dependencia que esta no dados/estado.js:
+  a ligacao de uma frente com um servico, a rotina com a frente dela, o passo de uma rotina que
+  usa um servico, a maquina que roda cada frente e o que esta esperando voce. Nenhum fio e
+  desenhado para encher. Seis estilos (teclas 1 a 6). So front: rele dados/estado.js a cada 30 s.
+
+  Dois ritmos de impulso. No vivo, a densidade vem do dado de agora e cada execucao nova que o
+  Agendador registra solta um trem pelo caminho da rotina. No espelho, cada impulso e uma rodada
+  marcada na agenda real (a 'agenda' de cada rotina no estado.js), num relogio de 10 a 500 vezes
+  mais rapido que o de verdade.
+-->
+<style>
+:root {
+  --bg: #0c0c0b; --texto: #ecebe6; --mudo: #8d8b84; --linha: rgba(255,248,235,.08); --acc: #74b08f;
+  --painel: #151514; --painel2: #1f1f1d;
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --fontT: Bahnschrift, "Segoe UI", sans-serif;
+  --raio: 10px; --caixa: uppercase; --esp: .12em;
+  --ficha-bg: rgba(22,22,21,.95); --ficha-borda: rgba(255,248,235,.14); --ficha-sombra: 0 24px 60px rgba(0,0,0,.6);
+  --card: #151514; --card-borda: rgba(255,248,235,.09); --card-raio: 10px; --card-sombra: none; --sel-sombra: 0 28px 64px rgba(0,0,0,.7);
+  --porta: #8d8b84; --cab: #7d7b74;
+  --bom: #74b08f; --atencao: #d9a440; --ruim: #e5534b; --duvida: #63a6d8; --dele: #a593f2; --desligado: #6d6b65; --construcao: #5f5d57;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--texto); font: 13px/1.45 var(--font);
+  display: grid; grid-template-rows: auto auto minmax(0, 1fr); overflow: hidden;
+  -webkit-font-smoothing: antialiased; transition: background-color .35s, color .35s;
+}
+button { font: inherit; color: inherit; }
+
+.topo { display: flex; align-items: center; gap: 18px; padding: 10px 20px; border-bottom: 1px solid var(--linha); min-width: 0; }
+.marca { flex: none; }
+.marca b { display: block; font: 600 15px/1.15 var(--font); letter-spacing: -.005em; }
+.marca small { display: block; margin-top: 4px; font: 500 9.5px/1 var(--fontT); letter-spacing: var(--esp); text-transform: uppercase; color: var(--mudo); }
+.abas, .demos, .ritmo { display: flex; gap: 2px; padding: 3px; min-width: 0; background: var(--painel); border: 1px solid var(--linha); border-radius: var(--raio); }
+.abas { overflow-x: auto; scrollbar-width: none; }
+.abas button, .demos a, .ritmo button {
+  display: flex; align-items: baseline; gap: 7px; flex: none; padding: 5px 11px 5px 10px; border: 0; border-radius: max(0px, calc(var(--raio) - 3px));
+  background: none; color: var(--mudo); cursor: pointer; white-space: nowrap; text-decoration: none; transition: background .15s, color .15s;
+}
+.abas button:hover, .demos a:hover, .ritmo button:hover { color: var(--texto); }
+.abas .k { font: 500 10px/1 var(--fontT); opacity: .75; }
+.abas button[aria-selected="true"], .demos a[aria-current], .ritmo button[aria-pressed="true"] { background: var(--painel2); color: var(--texto); box-shadow: inset 0 0 0 1px var(--linha); }
+.demos { margin-left: auto; flex: none; }
+.demos a { font-size: 12px; padding: 5px 10px; }
+/* o ritmo dos impulsos: o de agora, ou o espelho da agenda real acelerado */
+.ritmo { flex: none; align-items: center; }
+.ritmo .rk { padding: 0 5px 0 7px; font: 500 9.5px/1 var(--fontT); letter-spacing: var(--esp); text-transform: var(--caixa); color: var(--mudo); white-space: nowrap; }
+.ritmo button { font-size: 12px; padding: 5px 8px; font-variant-numeric: tabular-nums; }
+.vivo { flex: none; display: inline-flex; align-items: center; gap: 8px; color: var(--mudo); font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vivo i { width: 7px; height: 7px; border-radius: 50%; background: var(--acc); animation: vivo 2.4s ease-out infinite; }
+@keyframes vivo { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--acc) 55%, transparent); } 100% { box-shadow: 0 0 0 9px transparent; } }
+
+.barra { display: flex; align-items: center; gap: 20px; padding: 8px 20px; border-bottom: 1px solid var(--linha); min-width: 0; }
+.barra .orgs { flex: none; }
+.orgs button { font-size: 12px; padding: 4px 9px; }
+.barra p { margin: 0; min-width: 0; font-size: 12.5px; color: color-mix(in srgb, var(--texto) 84%, var(--bg)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.barra small { margin-left: 12px; font-size: 11.5px; color: var(--mudo); }
+.barra p.curta small { display: none; }
+.leg { margin-left: auto; flex: none; display: flex; gap: 4px 14px; color: var(--mudo); font-size: 11.5px; }
+.leg span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.leg i { width: 7px; height: 7px; border-radius: 50%; }
+.leg .tr { width: 16px; border-top: 1.5px dashed var(--atencao); }
+.leg .rzl { padding: 1px 5px; border-radius: 4px; font: 600 8.5px/1.4 var(--fontT); letter-spacing: .08em; text-transform: uppercase; color: var(--bg); background: var(--mudo); }
+
+.palco { position: relative; overflow: hidden; min-height: 0; touch-action: none; cursor: grab; }
+.palco.arrastando { cursor: grabbing; }
+#fios, #sobre { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#sobre { z-index: 3; pointer-events: none; }
+.mundo { position: absolute; left: 0; top: 0; z-index: 2; transform-origin: 0 0; }
+.vazio { margin: 40px 20px; color: var(--mudo); }
+
+/* cabecalho de cada camada */
+.col { position: absolute; display: flex; align-items: baseline; gap: 8px; font: 500 10.5px/1 var(--fontT); letter-spacing: .14em; text-transform: uppercase; color: var(--cab); white-space: nowrap; pointer-events: none; }
+.col i { font-style: normal; letter-spacing: 0; color: var(--mudo); opacity: .75; }
+/* onde a leitura comeca e onde termina: a primeira e a ultima faixa dizem isso por escrito */
+.col u { position: absolute; left: 0; bottom: calc(100% + 7px); padding: 2px 6px; border-radius: 4px; font: 600 8.5px/1.3 var(--fontT); letter-spacing: .08em; text-decoration: none; color: var(--bg); background: var(--cab); }
+
+/* os cartoes */
+.no {
+  position: absolute; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 5px 11px 5px 12px; min-width: 0;
+  background: var(--card); border: 1px solid var(--card-borda); border-radius: var(--card-raio); box-shadow: var(--card-sombra);
+  color: var(--texto); cursor: pointer; user-select: none; outline: none; transform-origin: 50% 50%;
+  transition: opacity .4s ease, filter .4s ease, border-color .2s, background-color .35s;
+  --c: var(--bom); --f: 0;
+}
+.no::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; box-shadow: 0 0 16px 1px var(--c); opacity: calc(var(--f) * .7); }
+.no:hover { border-color: color-mix(in srgb, var(--texto) 36%, transparent); }
+.no:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.no .l1 { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.no .gl { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+.no b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 12.5px/1.25 var(--font); }
+.no .tg { margin-left: auto; flex: none; padding-left: 4px; font: 500 10px/1 var(--fontT); letter-spacing: .02em; color: var(--mudo); }
+.no .tg.n { letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.no .kk { font: 500 9.5px/1 var(--fontT); letter-spacing: var(--esp); text-transform: var(--caixa); color: var(--mudo); margin-bottom: 3px; }
+.no .s { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; line-height: 1.3; color: var(--mudo); }
+.no .dois, .no .tres { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.no .tres { -webkit-line-clamp: 3; }
+.no .dois.mais { -webkit-line-clamp: 4; }
+.no .tres.mais { -webkit-line-clamp: 5; }
+.no .rz { display: inline-block; margin-right: 5px; vertical-align: 1px; padding: 0 5px; border-radius: 4px; font: 600 8.5px/1.4 var(--fontT); letter-spacing: .08em; text-transform: uppercase; color: var(--bg); background: var(--c); }
+.no.prob { border-color: color-mix(in srgb, var(--c) 62%, transparent); }
+.no.prob .s { color: var(--c); }
+.no.e-desligado b { color: var(--mudo); font-weight: 500; }
+.no.e-desligado .gl { background: none; box-shadow: inset 0 0 0 1.5px var(--c); }
+.no.k-maquina b { font-size: 15px; }
+.no.k-rotina { gap: 1px; padding: 0 10px; }
+.no.k-rotina b { font-size: 12px; font-weight: 500; }
+.no.k-rotina .s { font-size: 10.5px; }
+.no.k-rotina .tg { font-size: 9.5px; }
+/* quando um nome de rotina nao cabe ao lado da hora, a hora desce para a linha de baixo em todos os cartoes do estilo */
+.hora-sub .no.k-rotina .l1 .tg { display: none; }
+.hora-sub .no.k-rotina .s[data-t]::before { content: attr(data-t); }
+.no.k-voce b.dois, .no.k-voce b.tres { font-size: 12px; line-height: 1.3; }
+/* as lojas de dentro do cartao: um tracinho por loja, para nao parecer porta de fio */
+.no .mic { display: flex; gap: 2px; margin-top: 4px; }
+.no .mic i { flex: 1 1 0; max-width: 12px; height: 3px; border-radius: 2px; background: var(--c); }
+.no .mic i.e-desligado { background: none; box-shadow: inset 0 0 0 1px var(--c); }
+.pt { position: absolute; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: var(--card); border: 1.4px solid var(--porta); pointer-events: none; }
+.pt.p { border-color: var(--c); }
+.no.apagado { opacity: .13; filter: saturate(.3); }
+.no.sel { z-index: 5; box-shadow: var(--sel-sombra); transition: opacity .4s ease, filter .4s ease; }
+.no.sel::after { opacity: .55; }
+.e-bom { --c: var(--bom); } .e-atencao { --c: var(--atencao); } .e-ruim { --c: var(--ruim); } .e-duvida { --c: var(--duvida); }
+.e-dele { --c: var(--dele); } .e-desligado { --c: var(--desligado); } .e-construcao { --c: var(--construcao); }
+
+/* a orbita: o que o no clicado tem dentro, aberto em volta dele */
+.orb { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.pil {
+  position: absolute; left: 0; top: 0; display: flex; align-items: flex-start; gap: 7px; max-width: 330px; padding: 4px 10px 4px 9px;
+  background: var(--painel2); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); border-radius: min(12px, var(--card-raio));
+  color: var(--texto); font-size: 11.5px; line-height: 1.3; box-shadow: 0 8px 22px rgba(0,0,0,.28);
+  opacity: 0; pointer-events: auto; will-change: transform, opacity; transform-origin: 0 0;
+}
+button.pil { cursor: pointer; }
+button.pil:hover { border-color: var(--c); }
+.pil i { flex: none; width: 6px; height: 6px; margin-top: 4.5px; border-radius: 50%; background: var(--c); }
+/* o rotulo fica inteiro; o valor quebra em ate tres linhas em vez de sumir na reticencia */
+.pil b { flex: none; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.pil span { min-width: 0; overflow: hidden; color: var(--mudo); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.pil.prob b { color: var(--c); }
+
+/* a ficha do que foi clicado */
+.ficha {
+  position: absolute; right: 18px; bottom: 16px; z-index: 6; width: 330px; padding: 14px 16px 13px;
+  background: var(--ficha-bg); border: 1px solid var(--ficha-borda); border-radius: var(--raio); box-shadow: var(--ficha-sombra);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); cursor: default;
+  opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity .25s, transform .35s cubic-bezier(.2, .8, .2, 1);
+}
+.ficha.on { opacity: 1; transform: none; pointer-events: auto; }
+.ficha.esq { right: auto; left: 18px; bottom: 58px; }
+.ficha.cima { bottom: auto; top: 14px; }
+.ficha .k { margin: 0; padding-right: 26px; font: 500 10px/1.2 var(--fontT); letter-spacing: var(--esp); text-transform: var(--caixa); color: var(--mudo); }
+.ficha h2 { margin: 6px 0 0; font: 600 17px/1.25 var(--font); }
+.ficha .st { display: flex; align-items: center; gap: 7px; margin: 6px 0 0; font-size: 12px; color: var(--mudo); }
+.ficha .st i { width: 8px; height: 8px; border-radius: 50%; }
+.ficha .fr { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; }
+.ficha dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 10px 0 0; padding-top: 9px; border-top: 1px solid var(--linha); font-size: 12px; }
+.ficha dt { color: var(--mudo); }
+.ficha dd { margin: 0; min-width: 0; }
+.ficha .x { position: absolute; top: 8px; right: 9px; width: 26px; height: 26px; border: 0; border-radius: 6px; background: none; color: var(--mudo); cursor: pointer; font-size: 17px; line-height: 1; }
+.ficha .x:hover { color: var(--texto); background: var(--painel2); }
+
+/* zoom e mapa pequeno */
+.zoom { position: absolute; left: 16px; bottom: 14px; z-index: 6; display: flex; gap: 2px; padding: 3px; background: var(--painel); border: 1px solid var(--linha); border-radius: var(--raio); cursor: default; }
+.zoom button { min-width: 28px; height: 26px; padding: 0 9px; border: 0; border-radius: max(0px, calc(var(--raio) - 3px)); background: none; color: var(--mudo); cursor: pointer; font-size: 12px; }
+.zoom button:hover { color: var(--texto); background: var(--painel2); }
+.zoom .dica { align-self: center; padding: 0 8px 0 7px; font-size: 11px; color: var(--mudo); white-space: nowrap; }
+.mini { position: absolute; left: 16px; bottom: 56px; z-index: 6; border: 1px solid var(--linha); border-radius: var(--raio); background: var(--painel); opacity: 0; pointer-events: none; transition: opacity .25s; cursor: pointer; }
+.mini.on { opacity: .96; pointer-events: auto; }
+
+/* Estudio: a borda acende na cor do tipo, como no editor de fluxo */
+.t-estudio .no { --tipo: #38bdf8; border: 1.5px solid color-mix(in srgb, var(--tipo) 68%, transparent); box-shadow: 0 0 16px color-mix(in srgb, var(--tipo) 20%, transparent), inset 0 1px 0 rgba(255,255,255,.04); }
+.t-estudio .no.k-frente, .t-estudio .no.k-rotina { --tipo: #a78bfa; }
+.t-estudio .no.k-voce { --tipo: #34d399; }
+.t-estudio .no.prob { --tipo: var(--c); }
+.t-estudio .no.e-desligado { --tipo: #5b616e; box-shadow: none; }
+.t-estudio .no.sel { box-shadow: var(--sel-sombra), 0 0 22px color-mix(in srgb, var(--tipo) 40%, transparent); }
+/* Malha: o icone de estado no lugar do ponto, com o certo e o alerta */
+.t-malha .no:not(.k-rotina) .gl { position: relative; width: 13px; height: 13px; }
+.t-malha .no:not(.k-rotina) .gl::after { content: ""; position: absolute; left: 4.6px; top: 2.4px; width: 3px; height: 6px; border: solid #0a0f1c; border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); }
+.t-malha .no.prob:not(.k-rotina) .gl::after { content: "!"; left: 0; top: 0; width: 13px; height: 13px; border: 0; transform: none; text-align: center; font: 800 9.5px/13px var(--font); color: #0a0f1c; }
+.t-malha .no.e-desligado .gl::after { display: none; }
+/* Neon */
+.t-neon .no::before { content: ""; position: absolute; left: -1px; top: -1px; bottom: -1px; width: 2px; background: #ff2bd6; box-shadow: 0 0 8px #ff2bd6; }
+.t-neon .no.prob::before { background: var(--c); box-shadow: 0 0 8px var(--c); }
+.t-neon .no b { letter-spacing: .02em; }
+.t-neon .no.prob b { animation: falha 3.4s steps(1) infinite; }
+.t-neon .col { text-shadow: 0 0 10px rgba(255,43,214,.55); }
+.t-neon .marca b { text-transform: uppercase; letter-spacing: .06em; }
+@keyframes falha { 0%, 87%, 100% { text-shadow: none; transform: none; } 89% { text-shadow: -2px 0 #00f0ff, 2px 0 #ff2bd6; transform: translateX(1px); } 92% { text-shadow: 2px 0 #00f0ff, -2px 0 #ff2bd6; transform: translateX(-1px); } }
+/* Holograma: cantoneiras no lugar da borda inteira */
+.t-holograma .no::before {
+  content: ""; position: absolute; inset: -3px; pointer-events: none; --k: color-mix(in srgb, var(--c) 85%, transparent);
+  background:
+    linear-gradient(var(--k), var(--k)) 0 0 / 8px 1.5px, linear-gradient(var(--k), var(--k)) 0 0 / 1.5px 8px,
+    linear-gradient(var(--k), var(--k)) 100% 0 / 8px 1.5px, linear-gradient(var(--k), var(--k)) 100% 0 / 1.5px 8px,
+    linear-gradient(var(--k), var(--k)) 0 100% / 8px 1.5px, linear-gradient(var(--k), var(--k)) 0 100% / 1.5px 8px,
+    linear-gradient(var(--k), var(--k)) 100% 100% / 8px 1.5px, linear-gradient(var(--k), var(--k)) 100% 100% / 1.5px 8px;
+  background-repeat: no-repeat;
+}
+.t-holograma .no b { font-size: 11px; font-weight: 500; }
+.t-holograma .no.k-maquina b { font-size: 14px; }
+.t-holograma .no.k-rotina b { font-size: 11px; }
+.t-holograma .no .s { font-size: 10px; }
+.t-holograma .col { letter-spacing: .05em; }
+.t-holograma .col::before { content: "[" attr(data-n) "]"; margin-right: 2px; }
+/* Claro */
+.t-claro .no.prob { background: color-mix(in srgb, var(--c) 6%, #ffffff); }
+.t-claro .pil { box-shadow: 0 6px 18px rgba(40,34,20,.12); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ficha, .no, .mini { transition: none; }
+  .vivo i, .t-neon .no.prob b { animation: none; }
+}
+</style>
 </head>
 <body>
-<header id="topo">
-  <h1>AUTOMATEUM</h1>
-  <span id="conexao" class="estado-espera">conectando…</span>
-  <span id="contagem"></span>
+<header class="topo">
+  <div class="marca"><b>Automateum</b><small>seis estilos, cinco organizações</small></div>
+  <nav class="abas" id="abas" role="tablist" aria-label="Estilos"></nav>
+  <div class="ritmo" id="ritmo" role="group" aria-label="Ritmo dos impulsos"><span class="rk">impulsos</span></div>
+  <span class="vivo" id="vivo"><i></i>dados de agora</span>
+  <button type="button" class="gv-chip" data-gv-saude title="O mapa está certo? Clique para conferir."></button>
 </header>
-
-<main id="palco" aria-label="Mapa das rotinas">
-  <div id="mundo">
-    <svg id="fios" aria-hidden="true"></svg>
-  </div>
+<div class="barra"><nav class="abas orgs" id="orgs" role="tablist" aria-label="Organização"></nav><p id="desc"></p><div class="leg" id="leg"></div></div>
+<main class="palco" id="palco">
+  <canvas id="fios" aria-hidden="true"></canvas>
+  <div class="mundo" id="mundo"></div>
+  <canvas id="sobre" aria-hidden="true"></canvas>
+  <div class="orb" id="orb"></div>
+  <aside class="ficha" id="ficha" aria-live="polite"></aside>
+  <canvas class="mini" id="mini" aria-hidden="true"></canvas>
+  <div class="zoom" id="zoom"><span class="dica">arraste para mover · a roda aproxima</span><button type="button" data-z="-" aria-label="Afastar">−</button><button type="button" data-z="fit">Encaixar</button><button type="button" data-z="+" aria-label="Aproximar">+</button></div>
 </main>
+<script src="/dados/estado.js"></script>
+<script src="/static/gaveta.js"></script>
+<script>
+(function () {
+  'use strict';
+  function $(s) { return document.querySelector(s); }
+  var palco = $('#palco'), fios = $('#fios'), ctx = fios.getContext('2d'), sobre = $('#sobre'), ctx2 = sobre.getContext('2d');
+  var mundo = $('#mundo'), orb = $('#orb'), ficha = $('#ficha'), abas = $('#abas'), mini = $('#mini'), mctx = mini.getContext('2d');
+  var reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var TAU = Math.PI * 2;
+  var NOME = {ruim: 'quebrado', duvida: 'dúvida', atencao: 'atenção', dele: 'com você', bom: 'em dia', desligado: 'desligado', construcao: 'em construção'};
+  var PROB = {ruim: 1, duvida: 1, atencao: 1, dele: 1};
+  var GRAV = {ruim: 5, duvida: 4, atencao: 3, dele: 2, bom: 1, desligado: 0, construcao: 0};
 
-<nav id="controles" aria-label="Zoom">
-  <span>arraste para mover · a roda aproxima</span>
-  <button id="menos" aria-label="Afastar">−</button>
-  <button id="encaixar">Encaixar</button>
-  <button id="mais" aria-label="Aproximar">+</button>
-</nav>
+  function est(e) { return NOME[e] ? e : 'construcao'; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function hm(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function curto(iso) {
+    if (!iso) return '';
+    var d = new Date(iso), h = new Date();
+    var k = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(h.getFullYear(), h.getMonth(), h.getDate())) / 864e5);
+    if (k === 0) return hm(d);
+    if (k === -1) return 'ontem ' + hm(d);
+    if (k === 1) return 'amanhã ' + hm(d);
+    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ' ' + hm(d);
+  }
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+  function sai(t) { t = clamp(t, 0, 1); return 1 - Math.pow(1 - t, 3); }
+  function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967295; }
+  function rgba(hex, a) { var n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + clamp(a, 0, 1).toFixed(3) + ')'; }
+  function lista(l) { return l.length > 6 ? l.slice(0, 6).join(', ') + ' e mais ' + (l.length - 6) : l.length > 1 ? l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1] : l.join(''); }
+  function unicos(l) { return l.filter(function (v, i) { return l.indexOf(v) === i; }); }
+  function minuscula(s) { return s ? s.charAt(0).toLowerCase() + s.slice(1) : s; }
+  function agendaTxt(x) { var m = /^(.*?)(?::\s|\.\s|\.$|$)/.exec(x.oque || ''); return m ? m[1] : ''; }
 
-<aside id="gaveta" hidden aria-label="Detalhes">
-  <button id="fechar" aria-label="Fechar">×</button>
-  <div id="gaveta-corpo"></div>
-</aside>
+  // ------------------------------------------------------------- estilos --
+  var SANS = '"Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif';
+  var DISP = '"Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif';
+  var DIN = 'Bahnschrift, "Segoe UI", sans-serif';
+  var MONO = '"Cascadia Mono", Consolas, monospace';
 
-<script src="/static/painel.js"></script>
+  var TEMAS = [
+    {id: 'estudio', nome: 'Estúdio', escuro: true, soma: false,
+      desc: 'Editor de fluxo: borda acesa, grade de pontos e fios em degradê.',
+      css: {bg: '#0f1013', texto: '#eef1f6', mudo: '#8b93a3', linha: 'rgba(255,255,255,.08)', acc: '#38bdf8', painel: '#15171c', painel2: '#1f2229',
+        font: SANS, fontT: SANS, raio: '8px', caixa: 'uppercase', esp: '.1em',
+        'ficha-bg': 'rgba(22,24,30,.96)', 'ficha-borda': 'rgba(56,189,248,.4)', 'ficha-sombra': '0 24px 60px rgba(0,0,0,.6)',
+        card: '#17191f', 'card-borda': 'rgba(255,255,255,.1)', 'card-raio': '10px', 'card-sombra': 'none', 'sel-sombra': '0 28px 70px rgba(0,0,0,.75)', porta: '#aab3c4', cab: '#a3acbd'},
+      cor: {bom: '#34d399', atencao: '#fbbf24', ruim: '#f87171', duvida: '#60a5fa', dele: '#c084fc', desligado: '#5b616e', construcao: '#5b616e'},
+      fundo: 'pontos', grade: {passo: 22, cor: 'rgba(255,255,255,.075)'},
+      fio: {modo: 'degrade', tipo: {maquina: '#38bdf8', rede: '#38bdf8', servico: '#38bdf8', frente: '#a78bfa', rotina: '#a78bfa', voce: '#34d399'}, a: .5, larg: 1.5, bus: .12},
+      pulso: {forma: 'ponto', r: 1.7, halo: 7, cor: '#ffffff', vel: 135}},
+
+    {id: 'malha', nome: 'Malha', escuro: true, soma: true,
+      desc: 'Cada fio na cor de onde vem; o que tem problema corre tracejado.',
+      css: {bg: '#0a0f1c', texto: '#e6edf7', mudo: '#7f8ba3', linha: 'rgba(148,170,210,.12)', acc: '#22d3ee', painel: '#0e1626', painel2: '#16213a',
+        font: SANS, fontT: SANS, raio: '7px', caixa: 'none', esp: '.02em',
+        'ficha-bg': 'rgba(14,22,38,.96)', 'ficha-borda': 'rgba(148,170,210,.28)', 'ficha-sombra': '0 24px 60px rgba(0,0,0,.6)',
+        card: '#0f1729', 'card-borda': '#22304d', 'card-raio': '7px', 'card-sombra': 'inset 0 1px 0 rgba(255,255,255,.03)', 'sel-sombra': '0 26px 60px rgba(0,0,0,.7)', porta: '#6b7a99', cab: '#8fa0c2'},
+      cor: {bom: '#4ade80', atencao: '#facc15', ruim: '#fb7185', duvida: '#60a5fa', dele: '#f472b6', desligado: '#475569', construcao: '#475569'},
+      fundo: 'malha', vinheta: .5,
+      fio: {modo: 'ident', a: .42, larg: 1.3, bus: .2},
+      pulso: {forma: 'cometa', len: 18, halo: 6, vel: 150}},
+
+    {id: 'grafite', nome: 'Grafite', escuro: true, soma: false,
+      desc: 'A paleta do mapa de hoje: fio fino e cinza; só o problema ganha cor.',
+      css: {bg: '#0c0c0b', texto: '#ecebe6', mudo: '#8d8b84', linha: 'rgba(255,248,235,.08)', acc: '#74b08f', painel: '#151514', painel2: '#1f1f1d', font: SANS, fontT: DIN,
+        raio: '10px', caixa: 'uppercase', esp: '.12em', 'ficha-bg': 'rgba(22,22,21,.95)', 'ficha-borda': 'rgba(255,248,235,.14)', 'ficha-sombra': '0 24px 60px rgba(0,0,0,.6)',
+        card: '#151514', 'card-borda': 'rgba(255,248,235,.09)', 'card-raio': '10px', 'card-sombra': 'none', 'sel-sombra': '0 28px 64px rgba(0,0,0,.7)', porta: '#8d8b84', cab: '#7d7b74'},
+      cor: {bom: '#74b08f', atencao: '#d9a440', ruim: '#e5534b', duvida: '#63a6d8', dele: '#a593f2', desligado: '#6d6b65', construcao: '#5f5d57'},
+      fundo: 'liso', vinheta: .5, fio: {modo: 'liso', cor: '#ece9e0', a: .17, larg: 1, bus: .06},
+      pulso: {forma: 'ponto', r: 1.5, halo: 6, cor: '#f4efe2', vel: 110}},
+
+    {id: 'neon', nome: 'Neon', escuro: true, soma: true,
+      desc: 'Cyberpunk: fios em ciano e magenta; o que tem problema falha na tela.',
+      css: {bg: '#0a0613', texto: '#f7e9ff', mudo: '#a184bd', linha: 'rgba(255,43,214,.2)', acc: '#ff2bd6', painel: '#140a22', painel2: '#24103c', font: DIN, fontT: DIN,
+        raio: '0px', caixa: 'uppercase', esp: '.16em', 'ficha-bg': 'rgba(18,8,32,.95)', 'ficha-borda': 'rgba(0,240,255,.55)', 'ficha-sombra': '0 0 30px rgba(255,43,214,.25)',
+        card: '#120a20', 'card-borda': 'rgba(0,240,255,.38)', 'card-raio': '0px', 'card-sombra': '0 0 14px rgba(0,240,255,.1), inset 0 0 16px rgba(255,43,214,.07)', 'sel-sombra': '0 0 44px rgba(255,43,214,.45)', porta: '#00f0ff', cab: '#ff2bd6'},
+      cor: {bom: '#00f0ff', atencao: '#ffe600', ruim: '#ff2a6d', duvida: '#8a6bff', dele: '#ff4dff', desligado: '#4a3a60', construcao: '#4a3a60'},
+      fundo: 'neon', grade: {passo: 44, cor: 'rgba(255,43,214,.07)', linhas: true},
+      fio: {modo: 'alterna', cores: ['#00f0ff', '#ff2bd6'], a: .3, larg: 1.15, bus: .1},
+      pulso: {forma: 'cometa', len: 28, halo: 8, cor: '#ffe600', vel: 175}},
+
+    {id: 'holograma', nome: 'Holograma', escuro: true, soma: true,
+      desc: 'Ficção científica: ciano sobre preto e uma varredura.',
+      css: {bg: '#02070c', texto: '#d8f6ff', mudo: '#5f93a5', linha: 'rgba(90,220,255,.14)', acc: '#4de8ff', painel: '#061019', painel2: '#0c1d2a', font: MONO, fontT: MONO,
+        raio: '2px', caixa: 'uppercase', esp: '.14em', 'ficha-bg': 'rgba(4,14,22,.94)', 'ficha-borda': 'rgba(77,232,255,.45)', 'ficha-sombra': '0 0 40px rgba(77,232,255,.12)',
+        card: 'rgba(6,24,36,.86)', 'card-borda': 'rgba(77,232,255,.16)', 'card-raio': '0px', 'card-sombra': 'none', 'sel-sombra': '0 0 36px rgba(77,232,255,.3)', porta: '#4de8ff', cab: '#4fb6cf'},
+      cor: {bom: '#4de8ff', atencao: '#ffc857', ruim: '#ff4d6d', duvida: '#8fb3ff', dele: '#c38bff', desligado: '#2f5566', construcao: '#2f5566'},
+      fundo: 'holo', grade: {passo: 32, cor: 'rgba(90,220,255,.05)', linhas: true},
+      fio: {modo: 'liso', cor: '#5adcff', a: .2, larg: .9, bus: .08},
+      pulso: {forma: 'traco', len: 12, halo: 6, cor: '#a8f6ff', vel: 155}},
+
+    {id: 'claro', nome: 'Claro', escuro: false, soma: false,
+      desc: 'Para ler de dia: papel claro, fios em grafite; só o problema tem cor.',
+      css: {bg: '#f4f3ef', texto: '#1d1c19', mudo: '#77736a', linha: 'rgba(29,28,25,.1)', acc: '#2f8a5b', painel: '#ebe9e3', painel2: '#ffffff', font: DISP, fontT: SANS,
+        raio: '8px', caixa: 'uppercase', esp: '.1em', 'ficha-bg': 'rgba(255,255,255,.97)', 'ficha-borda': 'rgba(29,28,25,.12)', 'ficha-sombra': '0 18px 44px rgba(40,34,20,.16)',
+        card: '#ffffff', 'card-borda': 'rgba(29,28,25,.11)', 'card-raio': '10px', 'card-sombra': '0 1px 2px rgba(40,34,20,.06), 0 6px 16px rgba(40,34,20,.05)', 'sel-sombra': '0 22px 50px rgba(40,34,20,.22)', porta: '#a29e94', cab: '#8a867c'},
+      cor: {bom: '#2f8a5b', atencao: '#c27c0e', ruim: '#c8382c', duvida: '#2f6fa3', dele: '#6b4fbb', desligado: '#aaa59a', construcao: '#aaa59a'},
+      fundo: 'pontos', vinheta: 0, grade: {passo: 22, cor: 'rgba(29,28,25,.1)'},
+      fio: {modo: 'liso', cor: '#3b3830', a: .22, larg: 1, bus: .07},
+      pulso: {forma: 'tinta', r: 1.9, cor: '#1d1c19', vel: 105}}
+  ];
+
+  // as cores de identidade da Malha ficam nos tons frios: o quente e reservado para o problema
+  var IDENT = ['#22d3ee', '#a78bfa', '#38bdf8', '#2dd4bf', '#818cf8', '#67e8f9', '#c4b5fd', '#5eead4', '#7dd3fc'];
+  // os lados em que as frentes se dividem vem do catalogo, pelo que o motor grava em dominios:
+  // a pagina nao sabe o nome de nenhum. A cor de cada um sai da ordem em que aparecem la.
+  var DOMS = (window.MAPA && window.MAPA.dominios) || {}, DOMK = Object.keys(DOMS);
+  var DOMPAL = ['#22d3ee', '#a78bfa', '#2dd4bf', '#38bdf8', '#818cf8', '#67e8f9'];
+  var DOMCOR = {};
+  DOMK.forEach(function (k, i) { DOMCOR[k] = DOMPAL[i % DOMPAL.length]; });
+  // a faixa de quem nao tem lado: aqui sao os parados por decisao; em outro catalogo, as rotinas sem ficha
+  var SEMLADO = ((window.MAPA && window.MAPA.nos) || []).some(function (x) { return x.id === 'parados'; }) ? 'Parados' : 'Sem lado';
+  function nomesDom(ks) {
+    var n = ks.map(function (k) { return DOMS[k]; });
+    return n.length > 1 ? n.slice(0, -1).join(', ') + ' e ' + n[n.length - 1] : n[0] || '';
+  }
+  var MAQCOR = '#cbd5e1';
+
+  var COLS = [
+    {nome: 'Máquina', w: 140}, {nome: 'Rede', w: 132}, {nome: 'Serviços de fora', w: 152}, {nome: 'Frentes', w: 188},
+    {nome: DOMK.length > 1 ? 'Rotinas · ' + DOMS[DOMK[0]] : 'Rotinas', w: 204},
+    {nome: DOMK.length > 1 ? 'Rotinas · ' + nomesDom(DOMK.slice(1)) : 'Rotinas', w: 204}, {nome: 'Com você', w: 176}
+  ];
+  var PESO = [1, 1.3, 1.65, 1.5, .45, 1.1];
+  var FOLGA = [64, 40, 20, 14, 10, 10, 40];
+
+  // ------------------------------------------------------- organizacoes --
+  // As mesmas ligacoes, arrumadas em faixas de cinco jeitos. Nenhuma inventa fio: o grafo sai de
+  // montar() igual para as cinco, e so a faixa de cada cartao muda. Teclas Q, W, E, R e T.
+  var ESTADO_FAIXA = {ruim: 0, duvida: 1, atencao: 2, dele: 3, bom: 4, desligado: 5, construcao: 5};
+  function horaDe(n) {
+    var x = n.x;
+    if (x.repete_min && x.repete_min <= 60) return 0;
+    var h = x.proxima ? parseInt(String(x.proxima).slice(11, 13), 10) : NaN;
+    if (isNaN(h)) return 4;
+    return h < 12 ? 1 : h < 18 ? 2 : 3;
+  }
+  function dominioDe(n, g) {
+    var f = n.tipo === 'frente' ? n : n.tipo === 'rotina' ? g.por[n.x.pai] : null;
+    var d = f && f.x.dominio;
+    var i = DOMK.indexOf(d);
+    return i >= 0 ? 2 + i : f ? 2 + DOMK.length : -1;
+  }
+  function profundidade(g) {
+    // passos desde a raiz do grafo (quem nao depende de ninguem), sem contar o barramento
+    var prof = {}, mud = true, volta = 0;
+    g.nos.forEach(function (n) { prof[n.id] = 0; });
+    while (mud && volta++ < 40) {
+      mud = false;
+      g.arestas.forEach(function (e) {
+        if (e.tipo === 'bus' || e.tipo === 'lan') return;
+        var p = prof[e.a.id] + 1;
+        if (p > prof[e.b.id] && p < 12) { prof[e.b.id] = p; mud = true; }
+      });
+    }
+    return prof;
+  }
+  var ORGS = [
+    {id: 'tipo', nome: 'Por tipo', desc: 'da causa ao sintoma: máquina, rede, serviços, frentes, rotinas e o que espera você'},
+    {id: 'frente', nome: 'Por frente', desc: 'cada frente na faixa do lado dela (' + nomesDom(DOMK) + '), com as rotinas embaixo',
+      cols: [{nome: 'Máquina e rede', w: 150}, {nome: 'Serviços de fora', w: 152}]
+        .concat(DOMK.map(function (k) { return {nome: DOMS[k], w: 204}; }))
+        .concat([{nome: SEMLADO, w: 176}, {nome: 'Com você', w: 176}]),
+      faixa: function (n, g) {
+        if (n.tipo === 'maquina' || n.tipo === 'rede') return 0;
+        if (n.tipo === 'servico') return 1;
+        if (n.tipo === 'voce') return 3 + DOMK.length;
+        var d = dominioDe(n, g);
+        return d < 0 ? 2 + DOMK.length : d;
+      }},
+    {id: 'hora', nome: 'Por horário', desc: 'as rotinas na faixa da hora em que rodam de novo; a base e as frentes ficam à esquerda',
+      cols: [{nome: 'Base', w: 150}, {nome: 'Frentes', w: 188}, {nome: 'O tempo todo', w: 196}, {nome: 'Manhã', w: 196},
+        {nome: 'Tarde', w: 196}, {nome: 'Noite', w: 196}, {nome: 'No boot ou sem hora', w: 180}, {nome: 'Com você', w: 176}],
+      faixa: function (n) {
+        if (n.tipo === 'maquina' || n.tipo === 'rede' || n.tipo === 'servico') return 0;
+        if (n.tipo === 'frente') return 1;
+        if (n.tipo === 'voce') return 7;
+        return 2 + horaDe(n);
+      }},
+    {id: 'estado', nome: 'Por estado', desc: 'triagem: o que quebrou à esquerda, o que está em dia à direita; os fios mostram quem derrubou quem',
+      cols: [{nome: 'Quebrado', w: 196}, {nome: 'Dúvida', w: 196}, {nome: 'Atenção', w: 196}, {nome: 'Com você', w: 196},
+        {nome: 'Em dia', w: 196}, {nome: 'Desligado', w: 176}],
+      faixa: function (n) { return n.tipo === 'voce' ? 3 : ESTADO_FAIXA[n.estado] == null ? 5 : ESTADO_FAIXA[n.estado]; }},
+    {id: 'profundidade', nome: 'Por profundidade', desc: 'como uma rede neural: cada faixa é um passo a mais a partir da raiz, e o sinal corre da esquerda para a direita',
+      faixa: function (n, g) { return g.prof[n.id]; }}
+  ];
+  var org = 0;
+  function organizar(g) {
+    var O = ORGS[org];
+    g.nos.forEach(function (n, i) { if (n.camada == null) n.camada = n.col; n.ordem0 = i; });
+    if (O.id === 'tipo') {
+      g.COLS = COLS; g.PESO = PESO; g.FOLGA = FOLGA;
+      g.cols = COLS.map(function () { return []; });
+      g.nos.forEach(function (n) { n.col = n.camada; g.cols[n.col].push(n); });
+      return g;
+    }
+    var cols = O.cols;
+    if (O.id === 'profundidade') {
+      g.prof = profundidade(g);
+      var max = 0;
+      g.nos.forEach(function (n) { max = Math.max(max, g.prof[n.id]); });
+      cols = [];
+      for (var k = 0; k <= max; k++) cols.push({nome: k === 0 ? 'Raiz' : k + (k === 1 ? ' passo' : ' passos'), w: 188});
+    }
+    var baldes = cols.map(function () { return []; });
+    g.nos.forEach(function (n) {
+      var k = O.faixa(n, g);
+      baldes[k == null || k < 0 || k >= baldes.length ? baldes.length - 1 : k].push(n);
+    });
+    // faixa vazia sai: coluna sem cartao so ocupa largura
+    g.COLS = []; g.cols = [];
+    baldes.forEach(function (b, k) {
+      if (!b.length) return;
+      b.sort(function (u, v) { return u.camada - v.camada || u.ordem0 - v.ordem0; });
+      var i = g.cols.length;
+      b.forEach(function (n) { n.col = i; });
+      g.COLS.push(cols[k]); g.cols.push(b);
+    });
+    g.PESO = g.COLS.slice(1).map(function () { return 1; });
+    g.FOLGA = g.COLS.map(function () { return 18; });
+    return g;
+  }
+  var MINW = 1320;
+  var TIPO = {maquina: 'máquina', rede: 'rede', servico: 'serviço de fora', frente: 'frente', rotina: 'rotina', voce: 'com você'};
+  var PREF = [];     // ids de frente que devem vir primeiro; vazio = a ordem do catalogo
+  // as rotinas ocupam duas colunas: as frentes do primeiro lado numa, as dos outros lados na outra.
+  // Com um lado so, metade das frentes vai para cada coluna.
+  var R1 = {};
+  (function () {
+    var gs = ((window.MAPA && window.MAPA.nos) || []).filter(function (x) { return x.tipo === 'grupo'; })
+      .sort(function (a, b) { return (a.ordem || 0) - (b.ordem || 0); });
+    if (DOMK.length > 1) gs.forEach(function (x) { if (x.dominio === DOMK[0]) R1[x.id] = 1; });
+    else gs.slice(0, Math.ceil(gs.length / 2)).forEach(function (x) { R1[x.id] = 1; });
+  })();
+  var POP = .24;
+
+  var T = TEMAS[0], atual = 0, M = window.MAPA, G = null;
+  var W = 0, H = 0, WW = 0, HH = 0, dpr = 1;
+  var cam = {s: 1, tx: 0, ty: 0}, camAlvo = null, camTxt = '', encaixado = true;
+  var sel = null, aceso = null, foco = 0, focoAlvo = 0, hover = null, pilulas = [];
+  var pulsos = [], ult = 0, fundoCache = null, padrao = null, SPR = {};
+  // ritmo 0 e o vivo; N e o espelho da agenda real, com o relogio N vezes mais rapido
+  var RITMOS = [0, 10, 50, 100, 200, 500], ritmo = 0, relogio = 0, fimAgenda = 0, fila = [], vivoTxt = '', contado = 0;
+  // teto de impulsos na tela: o do ambiente, o dos trens de execucao nova e o do espelho
+  var TETO = {amb: 420, trem: 520, espelho: 900};
+
+  // -------------------------------------------------------------- a rede --
+  function montar(M) {
+    var no = {}, filhos = {}, lig = {};
+    M.nos.forEach(function (x) { no[x.id] = x; if (x.pai) (filhos[x.pai] = filhos[x.pai] || []).push(x); });
+    (M.ligacoes || []).forEach(function (l) { lig[l.id] = l; });
+    var raiz = {};
+    (M.raizes || []).forEach(function (r) { raiz[r.id] = 1; });
+    var g = {nos: [], por: {}, arestas: [], cols: [[], [], [], [], [], [], []]};
+    // altura minima de cada tipo; a altura de verdade sai do texto, medida no DOM em dispor()
+    var ALT = {maquina: 112, rede: 50, servico: 42, frente: 42, rotina: 34, voce: 56};
+    function add(x, col, tipo) {
+      if (!x || g.por[x.id]) return null;
+      var n = {id: x.id, x: x, col: col, tipo: tipo, rot: x.rotulo || x.id, estado: est(x.estado), raiz: !!raiz[x.id],
+        h: ALT[tipo], w: COLS[col].w, x0: 0, y0: 0, sc: 1, dx: 0, dy: 0, flash: 0, fv: 0, sai: [], chega: [], el: null};
+      if (x.partes && x.partes.length) { n.partes = x.partes; n.h = 60; }
+      if (x.id === 'internet') n.h = 76;
+      g.nos.push(n); g.por[n.id] = n; g.cols[col].push(n);
+      return n;
+    }
+    // as maquinas: a mesa primeiro, e embaixo dela qualquer outro computador que o catalogo marque como maquina
+    add(no.mesa, 0, 'maquina');
+    M.nos.forEach(function (x) { if (x.tipo === 'zona' && x.maquina) add(x, 0, 'maquina'); });
+    M.nos.forEach(function (x) { if (x.tipo === 'zona' && x.id !== 'mesa' && x.id !== 'celular') add(x, 1, 'rede'); });
+    g.cols[1].sort(function (a, b) { return (a.id === 'internet' ? 0 : 1) - (b.id === 'internet' ? 0 : 1); });
+    M.nos.filter(function (x) { return x.tipo === 'grupo'; })
+      .sort(function (a, b) { var ia = PREF.indexOf(a.id), ib = PREF.indexOf(b.id); return (ia < 0 ? 98 : ia) - (ib < 0 ? 98 : ib) || (a.ordem || 0) - (b.ordem || 0); })
+      .forEach(function (x) { add(x, 3, 'frente'); });
+    g.cols[3].forEach(function (f) { (filhos[f.id] || []).forEach(function (r) { if (r.tipo === 'rotina') add(r, R1[f.id] ? 4 : 5, 'rotina'); }); });
+    g.cols[0].concat(g.cols[1]).forEach(function (z) { (filhos[z.id] || []).forEach(function (r) { if (r.tipo === 'rotina') add(r, 5, 'rotina'); }); });
+    M.nos.forEach(function (x) { if (x.tipo === 'rotina') add(x, 5, 'rotina'); });
+    M.nos.forEach(function (x) { if (x.tipo === 'externo') add(x, 2, 'servico'); });
+    add(no.celular, 6, 'voce');
+    (M.esperando || []).forEach(function (e, i) {
+      var n = add({id: 'esp-' + i, rotulo: e.texto, estado: 'dele', frase: e.prazo || e.feito_quando || ''}, 6, 'voce');
+      if (n) { n.esp = e; n.h = 60; }
+    });
+    g.nos.forEach(function (n) { n.hMin = n.h; });
+    var parados = g.por.parados;
+    if (parados) parados.sub = lista((filhos.parados || []).map(function (x) { return x.rotulo; })) + ', parados por decisão sua';
+
+    // os fios vao da causa para o efeito: se a ponta de cima cai, a de baixo sente
+    function ar(a, b, estado, tipo, frase, lid) {
+      var A = g.por[a], B = g.por[b];
+      if (!A || !B || A === B) return null;
+      for (var i = 0; i < A.sai.length; i++) if (A.sai[i].b === B) return null;
+      var e = {a: A, b: B, estado: est(estado), tipo: tipo, frase: frase || '', raiz: !!(lid && raiz[lid]), seed: hash(a + '>' + b),
+        prox: Math.random() * 2, P: null, L: null, len: 0, pa: null, pb: null, ident: MAQCOR};
+      g.arestas.push(e); A.sai.push(e); B.chega.push(e);
+      return e;
+    }
+    (M.ligacoes || []).forEach(function (l) {
+      var a = no[l.de], b = no[l.para];
+      if (!a || !b) return;
+      if (l.de === 'celular') ar(l.para, l.de, l.estado, 'dep', l.rotulo, l.id);
+      // duas maquinas na mesma coluna: o fio da rede de casa desce de uma para a outra
+      else if (a.tipo === 'zona' && b.tipo === 'zona') ar(l.de, l.para, l.estado, g.por[l.de] && g.por[l.para] && g.por[l.de].col === g.por[l.para].col ? 'lan' : 'dep', l.rotulo, l.id);
+      else if (b.tipo === 'externo') ar(l.para, l.de, l.estado, 'dep', l.rotulo, l.id);
+      else if (a.tipo === 'grupo' && b.tipo === 'grupo') ar(l.para, l.de, l.estado, 'arco', l.rotulo, l.id);
+    });
+    var saida = lig['mesa~internet'];
+    g.cols[2].forEach(function (s) { ar('internet', s.id, saida ? saida.estado : 'bom', 'dep', 'pela saída da internet'); });
+    g.cols[4].concat(g.cols[5]).forEach(function (r) { if (r.x.pai) ar(r.x.pai, r.id, r.x.estado, 'dep'); });
+    // o passo de uma rotina que usa um servico: o fio vai direto, por cima da frente
+    g.cols[4].concat(g.cols[5]).forEach(function (r) {
+      var q = r.x.quebra;
+      if (!q) return;
+      Object.keys(q).forEach(function (passo) {
+        var l = lig[q[passo]];
+        if (!l) return;
+        var ponta = no[l.para] && no[l.para].tipo === 'externo' ? l.para : no[l.para] && no[l.para].tipo === 'zona' ? l.para : null;
+        if (ponta) ar(ponta, r.id, l.estado, 'passo', 'o passo ' + passo + ' usa ' + (l.rotulo || l.id), l.id);
+      });
+    });
+    // tudo roda nesta maquina: o barramento sai da mesa e chega em cada frente
+    g.cols[3].forEach(function (f) { if (f.id !== 'parados') ar('mesa', f.id, 'bom', 'bus', 'roda nesta máquina'); });
+    g.cols[6].forEach(function (v) {
+      if (!v.esp) return;
+      var de = v.esp.de, l = lig[de];
+      ar(l ? l.de : de, v.id, v.esp.estado || 'bom', 'esp', 'espera você');
+    });
+    g.rotinas = g.nos.filter(function (n) { return n.tipo === 'rotina'; });
+    return organizar(g);
+  }
+
+  // ------------------------------------------------------------ a posicao --
+  function cy(n) { return n.y0 + n.h / 2; }
+  function media(n, lado) {
+    var L = lado === 'sai' ? n.sai : n.chega, s = 0, k = 0;
+    L.forEach(function (e) { if (e.tipo === 'bus') return; var o = lado === 'sai' ? e.b : e.a; if (o.posto) { s += cy(o); k++; } });
+    return k ? s / k : 1e6;
+  }
+  function mediaTodos(n) {
+    var s = 0, k = 0;
+    n.sai.concat(n.chega).forEach(function (e) {
+      if (e.tipo === 'bus') return;
+      var o = e.a === n ? e.b : e.a;
+      if (o.posto && o !== n) { s += cy(o); k++; }
+    });
+    return k ? s / k : cy(n);
+  }
+  function dispor() {
+    WW = Math.max(W, MINW);
+    var marg = 24, soma = 0, pesos = 0, x = marg, top = 52, bot = 16, alto = 0;
+    var CO = G.COLS, PE = G.PESO, FO = G.FOLGA;
+    CO.forEach(function (c) { soma += c.w; });
+    PE.forEach(function (p) { pesos += p; });
+    var uni = Math.max(30, (WW - 2 * marg - soma) / Math.max(pesos, .01)), colX = [];
+    CO.forEach(function (c, k) { colX[k] = x; x += c.w + (PE[k] || 0) * uni; });
+    WW = Math.max(WW, Math.round(x - (PE[CO.length - 1] || 0) * uni + marg));
+    var util = Math.max(H, 420) - top - bot;
+    G.nos.forEach(function (n) { n.posto = false; });
+    // a altura sai do texto: o cartao toma a largura da coluna e cresce o que o texto pedir, nunca abaixo do minimo do tipo
+    mundo.classList.remove('hora-sub');
+    G.nos.forEach(function (n) { var s = n.el.style; s.width = CO[n.col].w + 'px'; s.height = 'auto'; });
+    // se algum nome de rotina nao cabe ao lado da hora, a hora desce para a linha de baixo em todas
+    var corta = G.nos.some(function (n) { if (n.tipo !== 'rotina') return false; var b = n.el.querySelector('b'); return b && b.scrollWidth > b.clientWidth + 1; });
+    if (corta) mundo.classList.add('hora-sub');
+    // frase que nao cabe nas 2 ou 3 linhas do cartao ganha mais duas, em vez de parar no meio:
+    // primeiro todas as leituras, depois todas as escritas, para o navegador medir uma vez so
+    G.nos.forEach(function (n) { n.el.querySelectorAll('.mais').forEach(function (el) { el.classList.remove('mais'); }); });
+    var mais = [];
+    G.nos.forEach(function (n) { n.el.querySelectorAll('.dois, .tres').forEach(function (el) { if (el.scrollHeight > el.clientHeight + 2) mais.push(el); }); });
+    mais.forEach(function (el) { el.classList.add('mais'); });
+    G.nos.forEach(function (n) { n.h = Math.max(n.hMin, Math.ceil(n.el.offsetHeight)); });
+    function colocar(k) {
+      var c = G.cols[k], n = c.length;
+      if (!n) return;
+      var soma = 0;
+      c.forEach(function (nd) { soma += nd.h; });
+      var gap = n > 1 ? clamp((util - soma) / (n - 1), 5, FO[k]) : 0, tot = soma + gap * (n - 1), y = top + Math.max(0, (util - tot) / 2);
+      c.forEach(function (nd) { nd.x0 = colX[k]; nd.w = CO[k].w; nd.y0 = Math.round(y); nd.posto = true; y += nd.h + gap; });
+      alto = Math.max(alto, top + tot + bot);
+    }
+    if (ORGS[org].id === 'tipo') {
+      colocar(3); colocar(4); colocar(5);
+      G.cols[6].sort(function (a, b) { return media(a, 'chega') - media(b, 'chega'); });
+      colocar(6);
+      G.cols[2].sort(function (a, b) { return media(a, 'sai') - media(b, 'sai'); });
+      colocar(2); colocar(1); colocar(0);
+    } else {
+      // primeiro na ordem natural; depois duas passadas de baricentro, cada cartao perto de quem ele liga
+      G.cols.forEach(function (c, k) { colocar(k); });
+      for (var passada = 0; passada < 2; passada++) {
+        G.cols.forEach(function (c, k) {
+          c.forEach(function (nd) { nd.bari = mediaTodos(nd); });
+          c.sort(function (a, b) { return a.bari - b.bari || a.camada - b.camada || a.ordem0 - b.ordem0; });
+          colocar(k);
+        });
+      }
+    }
+    G.nos.filter(function (n) { return n.tipo === 'servico'; }).sort(function (a, b) { return a.y0 - b.y0 || a.x0 - b.x0; })
+      .forEach(function (s, i) { s.ident = IDENT[i % IDENT.length]; });
+    HH = Math.max(H, Math.round(alto));
+    // a cor de identidade de cada fio: de onde ele vem
+    G.arestas.forEach(function (e) {
+      var a = e.a;
+      e.ident = a.tipo === 'servico' ? a.ident : a.id === 'internet' && e.b.ident ? e.b.ident : a.tipo === 'frente' ? DOMCOR[a.x.dominio] || MAQCOR
+        : a.tipo === 'rotina' && G.por[a.x.pai] ? DOMCOR[G.por[a.x.pai].x.dominio] || MAQCOR : MAQCOR;
+    });
+    portas();
+    G.colEls.forEach(function (el, k) { el.style.left = colX[k] + 'px'; el.style.top = '22px'; });
+    G.nos.forEach(function (n) {
+      var s = n.el.style;
+      s.left = n.x0 + 'px'; s.top = n.y0 + 'px'; s.width = n.w + 'px'; s.height = n.h + 'px';
+    });
+    mundo.style.width = WW + 'px'; mundo.style.height = HH + 'px';
+  }
+
+  // cada fio chega numa porta propria na borda do cartao, na ordem de onde ele vem, como no editor
+  function portas() {
+    G.nos.forEach(function (n) { n.esq = []; n.dir = []; n.vert = []; });
+    G.arestas.forEach(function (e) {
+      if (e.tipo === 'lan' && e.a.col === e.b.col) {
+        // as duas maquinas ficam uma embaixo da outra: o fio sai pela borda de baixo de uma e entra pela de cima da outra
+        var desce = e.a.y0 < e.b.y0;
+        e.pa = {side: desce ? 'b' : 't', ox: e.a.w / 2};
+        e.pb = {side: desce ? 't' : 'b', ox: e.b.w / 2};
+        e.a.vert.push({e: e, p: e.pa}); e.b.vert.push({e: e, p: e.pb});
+        return;
+      }
+      // o fio sai pelo lado que olha para a outra ponta; na mesma coluna, faz um arco por fora
+      var ca = e.a.col, cb = e.b.col, la, lb;
+      if (ca < cb) { la = 'dir'; lb = 'esq'; }
+      else if (ca > cb) { la = 'esq'; lb = 'dir'; }
+      else if (e.tipo === 'arco') { la = 'esq'; lb = 'esq'; }
+      else { la = 'dir'; lb = 'dir'; }
+      e.a[la].push({e: e, ponta: 'a'});
+      e.b[lb].push({e: e, ponta: 'b'});
+    });
+    G.nos.forEach(function (n) {
+      [].slice.call(n.el.querySelectorAll('.pt')).forEach(function (p) { p.remove(); });
+      var feitas = {};
+      [['esq', 'l'], ['dir', 'r']].forEach(function (q) {
+        var L = n[q[0]], k = L.length;
+        if (!k) return;
+        L.sort(function (u, v) { var a = u.ponta === 'a' ? u.e.b : u.e.a, b = v.ponta === 'a' ? v.e.b : v.e.a; return cy(a) - cy(b) || a.x0 - b.x0; });
+        var cabe = Math.floor((n.h - 10) / 6) + 1, gap = k > 1 ? Math.min(7, (n.h - 10) / (k - 1)) : 0, junto = k > cabe;
+        L.forEach(function (p, i) {
+          var oy = junto ? n.h / 2 : n.h / 2 + (i - (k - 1) / 2) * gap, pt = {side: q[1], oy: oy};
+          if (p.ponta === 'a') p.e.pa = pt; else p.e.pb = pt;
+          var chave = q[1] + Math.round(oy * 2), pior = feitas[chave];
+          if (!pior || GRAV[p.e.estado] > GRAV[pior.estado]) feitas[chave] = {oy: oy, side: q[1], estado: p.e.estado};
+        });
+      });
+      n.vert.forEach(function (v) {
+        var chave = v.p.side + Math.round(v.p.ox * 2), pior = feitas[chave];
+        if (!pior || GRAV[v.e.estado] > GRAV[pior.estado]) feitas[chave] = {ox: v.p.ox, side: v.p.side, estado: v.e.estado};
+      });
+      Object.keys(feitas).forEach(function (k) {
+        var f = feitas[k], i = document.createElement('i');
+        i.className = 'pt' + (PROB[f.estado] ? ' p e-' + f.estado : '');
+        if (f.side === 't' || f.side === 'b') { i.style.left = f.ox.toFixed(1) + 'px'; i.style.top = f.side === 't' ? '0' : '100%'; }
+        else { i.style.left = f.side === 'l' ? '0' : '100%'; i.style.top = f.oy.toFixed(1) + 'px'; }
+        n.el.appendChild(i);
+      });
+    });
+  }
+
+  // ------------------------------------------------------------- o cartao --
+  function subDe(n) {
+    var x = n.x;
+    if (n.sub) return n.sub;
+    if (n.tipo === 'servico' && !PROB[n.estado]) {
+      var u = unicos(n.sai.filter(function (e) { return e.b.tipo === 'frente' || e.b.tipo === 'voce'; }).map(function (e) { return e.b.rot; }));
+      if (u.length) return u.join(' · ');
+    }
+    return x.frase || '';
+  }
+  function semHora(s) { return String(s || '').replace(/\s*\([^)]*\)\s*$/, ''); }
+  function cartao(n) {
+    var el = document.createElement('div'), x = n.x, rz = n.raiz ? '<span class="rz">raiz</span>' : '', h, sub;
+    el.className = 'no k-' + n.tipo + ' e-' + n.estado + (PROB[n.estado] ? ' prob' : '');
+    el.dataset.id = n.id; el.tabIndex = 0; el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', n.rot + ', ' + NOME[n.estado]);
+    if (n.tipo === 'rotina') {
+      // o nome com a ultima vez a direita; embaixo quando ela roda, ou o problema, se houver um
+      var ult = x.rodando ? 'rodando' : x.ultima ? curto(x.ultima) : '';
+      sub = PROB[n.estado] ? semHora(x.codigo_frase) || x.frase || agendaTxt(x) : agendaTxt(x);
+      // data-t leva a hora para a linha de baixo quando o estilo pede (.hora-sub)
+      h = '<span class="l1"><i class="gl"></i><b>' + esc(n.rot) + '</b>' + (ult ? '<span class="tg n">' + esc(ult) + '</span>' : '') + '</span>' +
+        '<span class="s dois"' + (ult ? ' data-t="' + esc(ult + (sub ? ' · ' : '')) + '"' : '') + '>' + rz + esc(sub) + '</span>';
+    } else if (n.tipo === 'maquina') {
+      // so a maquina que roda as frentes conta frente; a outra mostra o que ela e e o que a sonda viu
+      var nb = n.sai.filter(function (e) { return e.tipo === 'bus'; }).length;
+      sub = [x.sub, x.frase].filter(Boolean).join('\n');
+      h = '<span class="kk">máquina</span><span class="l1"><i class="gl"></i><b>' + esc(n.rot) + '</b></span>' +
+        (x.sub ? '<span class="s dois">' + esc(x.sub) + '</span>' : '') +
+        (x.frase || rz ? '<span class="s tres">' + rz + esc(x.frase || '') + '</span>' : '') +
+        (nb ? '<span class="s">roda ' + nb + (nb > 1 ? ' frentes' : ' frente') + '</span>' : '');
+    } else if (n.tipo === 'voce') {
+      sub = n.esp ? n.esp.prazo || n.esp.feito_quando || '' : x.frase || '';
+      h = '<span class="kk">' + (n.esp ? 'esperando você' : 'avisos no celular') + '</span>' +
+        '<span class="l1"><i class="gl"></i><b' + (n.esp ? ' class="tres"' : '') + '>' + esc(n.rot) + '</b></span>' +
+        '<span class="s dois">' + esc(sub) + '</span>';
+    } else {
+      var tag = n.tipo === 'frente' ? '<span class="tg">' + esc(M.dominios && M.dominios[x.dominio] || '') + '</span>'
+        : x.ms != null ? '<span class="tg n">' + x.ms + ' ms</span>' : '';
+      // servico, rede e o que tem problema contam em ate tres linhas; a frente em dia, em duas
+      var linhas = n.tipo === 'servico' || n.tipo === 'rede' || PROB[n.estado] ? ' tres' : ' dois';
+      sub = subDe(n);
+      h = '<span class="l1"><i class="gl"></i><b>' + esc(n.rot) + '</b>' + tag + '</span>' +
+        '<span class="s' + linhas + '">' + rz + esc(sub) + '</span>';
+      if (n.partes) h += '<span class="mic">' + n.partes.map(function (p) {
+        var e = est(p.estado);
+        return '<i class="e-' + e + '" title="' + esc(p.rotulo + ': ' + (p.frase || NOME[e])) + '"></i>';
+      }).join('') + '</span>';
+    }
+    el.innerHTML = h;
+    el.title = n.rot + (sub ? '\n' + sub : '');
+    return el;
+  }
+  function construir() {
+    mundo.innerHTML = '';
+    G.colEls = G.COLS.map(function (c, k) {
+      var el = document.createElement('div');
+      el.className = 'col'; el.dataset.n = '0' + (k + 1);
+      // nas organizacoes em que a esquerda sustenta a direita, as pontas dizem onde a leitura comeca e acaba
+      var sentido = ORGS[org].id !== 'estado', ult = k === G.COLS.length - 1;
+      el.innerHTML = (sentido && k === 0 ? '<u>começa aqui</u>' : '') + esc(ORGS[org].id === 'tipo' && k === 0 && G.cols[0].length > 1 ? 'Máquinas' : c.nome) +
+        ' <i>' + G.cols[k].length + '</i>' + (sentido && ult ? '<u>termina aqui</u>' : '');
+      mundo.appendChild(el);
+      return el;
+    });
+    G.nos.forEach(function (n) { n.el = cartao(n); mundo.appendChild(n.el); });
+  }
+
+  // ------------------------------------------------------------ geometria --
+  function porta(n, p) {
+    var sc = n.sc, cx = n.x0 + n.w / 2 + n.dx, cyy = n.y0 + n.h / 2 + n.dy;
+    if (p.side === 't' || p.side === 'b') return [cx + (p.ox - n.w / 2) * sc, cyy + (p.side === 't' ? -n.h / 2 : n.h / 2) * sc];
+    return [cx + ((p.side === 'l' ? 0 : n.w) - n.w / 2) * sc, cyy + (p.oy - n.h / 2) * sc];
+  }
+  function bez(P, x0, y0, c1x, c1y, c2x, c2y, x1, y1) {
+    for (var i = 0; i <= 24; i++) {
+      var t = i / 24, u = 1 - t;
+      P.push([u * u * u * x0 + 3 * u * u * t * c1x + 3 * u * t * t * c2x + t * t * t * x1, u * u * u * y0 + 3 * u * u * t * c1y + 3 * u * t * t * c2y + t * t * t * y1]);
+    }
+  }
+  function geom(e) {
+    var p0 = porta(e.a, e.pa), p1 = porta(e.b, e.pb), P = [];
+    if (e.tipo === 'lan') {
+      var sg = p1[1] >= p0[1] ? 1 : -1, kv = clamp(Math.abs(p1[1] - p0[1]) * .45, 14, 120);
+      bez(P, p0[0], p0[1], p0[0], p0[1] + sg * kv, p1[0], p1[1] - sg * kv, p1[0], p1[1]);
+    } else if (e.pa.side === e.pb.side) {
+      // as duas pontas do mesmo lado: arco por fora da coluna
+      var bo = (24 + Math.abs(p1[1] - p0[1]) * .16) * (e.pa.side === 'l' ? -1 : 1);
+      bez(P, p0[0], p0[1], p0[0] + bo, p0[1], p1[0] + bo, p1[1], p1[0], p1[1]);
+    } else if (e.pa.side === 'l') {
+      var kv = clamp((p0[0] - p1[0]) * .45, 26, 230);
+      bez(P, p0[0], p0[1], p0[0] - kv, p0[1], p1[0] + kv, p1[1], p1[0], p1[1]);
+    } else {
+      var k = clamp((p1[0] - p0[0]) * .45, 26, 230);
+      bez(P, p0[0], p0[1], p0[0] + k, p0[1], p1[0] - k, p1[1], p1[0], p1[1]);
+    }
+    var L = [0];
+    for (var i = 1; i < P.length; i++) L.push(L[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
+    e.P = P; e.L = L; e.len = L[L.length - 1];
+  }
+  function ponto(e, d) {
+    var P = e.P, L = e.L;
+    if (d <= 0) return P[0];
+    if (d >= e.len) return P[P.length - 1];
+    var i = 1;
+    while (L[i] < d) i++;
+    var k = (d - L[i - 1]) / ((L[i] - L[i - 1]) || 1);
+    return [P[i - 1][0] + (P[i][0] - P[i - 1][0]) * k, P[i - 1][1] + (P[i][1] - P[i - 1][1]) * k];
+  }
+
+  // --------------------------------------------------------- os impulsos --
+  // O ritmo vem do dado: rotina de 5 em 5 min pulsa mais que a de uma vez por dia, a que esta
+  // rodando dispara, servico rapido leva o impulso mais depressa e fio com problema arrasta.
+  function taxa(e) {
+    if (e.estado === 'desligado' || e.estado === 'construcao') return 0;
+    var x = e.b.x, r;
+    if (e.tipo === 'bus') r = .1;
+    else if (e.tipo === 'esp') r = .14;
+    else if (e.b.tipo === 'rotina') r = x.rodando ? 2.2 : x.repete_min ? Math.min(.85, 2.2 / Math.sqrt(x.repete_min)) : .18;
+    else r = e.tipo === 'arco' ? .26 : .32;
+    if (PROB[e.estado]) r *= .7;
+    if (aceso) r *= aceso.a.has(e) ? 1 + 2.4 * foco : 1 - .8 * foco;
+    return r * (reduz ? .3 : 1);
+  }
+  function velBase(e) {
+    var v = T.pulso.vel, s = e.a.tipo === 'servico' ? e.a : e.b.tipo === 'servico' ? e.b : null;
+    if (s && s.x.ms != null) v *= 1.25 - Math.min(300, s.x.ms) / 600;
+    if (PROB[e.estado]) v *= .62;
+    return v;
+  }
+  // a variacao pequena e so para os impulsos do mesmo fio nao andarem em fila
+  function velDe(e) { return velBase(e) * (.85 + Math.random() * .3); }
+
+  // O caminho de uma rotina: da maquina que a roda ate ela, fio a fio. Anda para tras pelos fios
+  // de dependencia ate achar uma maquina; o passo, o arco entre frentes e o que espera voce ficam
+  // de fora, porque nao sao o caminho por onde a execucao chega
+  function caminhoAte(n) {
+    var vindo = new Map([[n, null]]), aberta = [n];
+    while (aberta.length) {
+      var x = aberta.shift();
+      if (x.tipo === 'maquina' && x !== n) {
+        var out = [];
+        while (x !== n) { var e = vindo.get(x); out.push(e); x = e.b; }
+        return out;
+      }
+      x.chega.forEach(function (e) {
+        if (e.tipo === 'esp' || e.tipo === 'passo' || e.tipo === 'arco' || vindo.has(e.a)) return;
+        vindo.set(e.a, e); aberta.push(e.a);
+      });
+    }
+    return [];
+  }
+  // as rotas de uma execucao: maquina, frente, rotina e o que ela deixa esperando voce; cada
+  // servico que um passo usa; e, no mapa vivo, cada coisa que a rodada dele mede
+  function rotas(r) {
+    var R = [], pai = G.por[r.x.pai], dep = pai ? pai.sai.filter(function (e) { return e.b === r; })[0] : null;
+    if (dep) {
+      var c = caminhoAte(pai).concat([dep]), esp = r.sai.filter(function (e) { return e.tipo === 'esp'; })[0];
+      if (esp) c.push(esp);
+      R.push(c);
+    }
+    r.chega.forEach(function (e) { if (e.tipo === 'passo') R.push(caminhoAte(e.a).concat([e])); });
+    (r.x.mede || []).forEach(function (id) {
+      var c = G.por[id] ? caminhoAte(G.por[id]) : [];
+      if (c.length) R.push(c);
+    });
+    return R;
+  }
+  function lancar(c, atraso, k, f, teto) {
+    if (!c.length || pulsos.length >= teto) return;
+    pulsos.push({e: c[0], seg: c.slice(1), d: -atraso, f: f, k: k, v: velBase(c[0]) * f * k});
+  }
+  // no vivo, uma execucao nova solta um trem de quatro por rota; no espelho, cada rodada marcada solta um
+  function disparar(R, trem) {
+    var f = .85 + Math.random() * .3;
+    R.forEach(function (c) {
+      if (!trem) { lancar(c, 0, 1, f, TETO.espelho); return; }
+      for (var i = 0; i < 4; i++) lancar(c, i * 16, 1.15, f, TETO.trem);
+    });
+  }
+
+  // ------------------------------------------------------------ desenho --
+  function circ(c, x, y, r) { c.beginPath(); c.arc(x, y, Math.max(.1, r), 0, TAU); }
+  function brilho(cor, r) {
+    r = Math.max(2, Math.round(r));
+    var k = cor + '|' + r;
+    if (SPR[k]) return SPR[k];
+    var s = Math.ceil(r * 2 * dpr * 2), c = document.createElement('canvas');
+    c.width = c.height = s;
+    var g = c.getContext('2d'), gr = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+    gr.addColorStop(0, rgba(cor, .9)); gr.addColorStop(.3, rgba(cor, .32)); gr.addColorStop(1, rgba(cor, 0));
+    g.fillStyle = gr; g.fillRect(0, 0, s, s);
+    return (SPR[k] = c);
+  }
+  function halo(cor, x, y, r, a) {
+    if (r < 1 || a <= 0) return;
+    var g0 = ctx.globalAlpha;
+    ctx.globalAlpha = g0 * a;
+    ctx.drawImage(brilho(cor, r), x - r, y - r, r * 2, r * 2);
+    ctx.globalAlpha = g0;
+  }
+  function corDe(e) {
+    if (PROB[e.estado]) return T.cor[e.estado];
+    var F = T.fio;
+    return F.modo === 'ident' ? e.ident : F.modo === 'alterna' ? F.cores[e.a.col % 2] : F.modo === 'degrade' ? F.tipo[e.b.tipo] : F.cor;
+  }
+  function tinta(e, a) {
+    var F = T.fio;
+    if (F.modo === 'degrade' && !PROB[e.estado]) {
+      var P = e.P, z = P[P.length - 1], g = ctx.createLinearGradient(P[0][0], P[0][1], z[0], z[1]);
+      g.addColorStop(0, rgba(F.tipo[e.a.tipo], a)); g.addColorStop(1, rgba(F.tipo[e.b.tipo], a));
+      return g;
+    }
+    return rgba(corDe(e), a);
+  }
+
+  function estatico() {
+    var c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(W * dpr)); c.height = Math.max(1, Math.round(H * dpr));
+    var g = c.getContext('2d'), f = T.fundo;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.fillStyle = T.css.bg; g.fillRect(0, 0, W, H);
+    function luz(x, y, r, cor, a) { var gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, rgba(cor, a)); gr.addColorStop(1, rgba(cor, 0)); g.fillStyle = gr; g.fillRect(0, 0, W, H); }
+    if (f === 'malha') { luz(W * .45, H * .5, W * .6, '#1b2b55', .45); }
+    else if (f === 'neon') { luz(W * .5, H * 1.15, W * .75, '#5a0f6e', .55); }
+    else if (f === 'holo') { luz(W * .55, H * .5, W * .6, '#0a5a78', .32); }
+    var vin = T.vinheta == null ? (T.escuro ? .55 : 0) : T.vinheta;
+    if (vin) {
+      var v = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .78);
+      v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,' + vin + ')');
+      g.fillStyle = v; g.fillRect(0, 0, W, H);
+    }
+    fundoCache = c;
+    padrao = null;
+    if (T.grade) {
+      var p = Math.round(T.grade.passo * dpr), t = document.createElement('canvas');
+      t.width = t.height = p;
+      var tg = t.getContext('2d');
+      tg.fillStyle = T.grade.cor; tg.strokeStyle = T.grade.cor;
+      if (T.grade.linhas) { tg.lineWidth = 1; tg.beginPath(); tg.moveTo(.5, 0); tg.lineTo(.5, p); tg.moveTo(0, .5); tg.lineTo(p, .5); tg.stroke(); }
+      else { tg.beginPath(); tg.arc(p / 2, p / 2, Math.max(.8, dpr * .9), 0, TAU); tg.fill(); }
+      padrao = ctx.createPattern(t, 'repeat');
+    }
+  }
+  function fundo(t) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    if (!fundoCache) estatico();
+    ctx.drawImage(fundoCache, 0, 0);
+    if (padrao) {
+      padrao.setTransform(new DOMMatrix([cam.s, 0, 0, cam.s, cam.tx * dpr, cam.ty * dpr]));
+      ctx.fillStyle = padrao; ctx.fillRect(0, 0, fios.width, fios.height);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (T.fundo === 'holo' && !reduz) {
+      var y = ((t * 55) % (H + 240)) - 120, g = ctx.createLinearGradient(0, y - 60, 0, y + 60);
+      g.addColorStop(0, 'rgba(77,232,255,0)'); g.addColorStop(.5, 'rgba(77,232,255,.055)'); g.addColorStop(1, 'rgba(77,232,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, y - 60, W, 120);
+    } else if (T.fundo === 'neon') {
+      var k = .5 + .5 * Math.sin(t * .8), g3 = ctx.createLinearGradient(0, H - 190, 0, H);
+      g3.addColorStop(0, 'rgba(255,43,214,0)'); g3.addColorStop(1, 'rgba(255,43,214,' + (.06 + .05 * k).toFixed(3) + ')');
+      ctx.fillStyle = g3; ctx.fillRect(0, H - 190, W, 190);
+    }
+  }
+
+  function fio(e, t) {
+    var on = aceso && aceso.a.has(e), hv = hover && !aceso && (e.a === hover || e.b === hover);
+    var dim = aceso ? (on ? 1 : 1 - .9 * foco) : 1;
+    if (dim < .02) return;
+    var lit = on ? foco : hv ? .6 : 0, F = T.fio, pr = PROB[e.estado], bus = e.tipo === 'bus';
+    var a = bus ? F.bus : pr ? Math.max(.6, F.a * 1.6) : F.a;
+    a = Math.min(1, a * (1 + lit * (bus ? 4 : 1.5)) + (bus ? lit * .25 : 0)) * dim;
+    var w = (bus ? .8 : F.larg) * (pr ? 1.4 : 1) * (1 + lit * .55), P = e.P, i;
+    ctx.beginPath(); ctx.moveTo(P[0][0], P[0][1]);
+    for (i = 1; i < P.length; i++) ctx.lineTo(P[i][0], P[i][1]);
+    if (T.escuro && lit > .05) { ctx.lineWidth = w * 4.5; ctx.strokeStyle = tinta(e, a * .14 * lit); ctx.stroke(); }
+    ctx.lineWidth = w; ctx.strokeStyle = tinta(e, a);
+    if (pr) { ctx.setLineDash([6, 5]); ctx.lineDashOffset = reduz ? 0 : -t * 16; }
+    else if (e.tipo === 'arco' || bus) ctx.setLineDash(bus ? [2, 5] : [3, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // a raiz do problema marcada no proprio fio, quando ela e uma ligacao
+  function seloRaiz(e) {
+    if (!e.raiz || (aceso && !aceso.a.has(e) && foco > .5)) return;
+    var q = e.P[12], c = T.cor[e.estado] || T.cor.atencao;
+    ctx.font = '600 8.5px ' + T.css.fontT;
+    ctx.letterSpacing = '.8px';
+    var w = ctx.measureText('RAIZ').width + 10;
+    ctx.beginPath(); ctx.roundRect(q[0] - w / 2, q[1] - 7, w, 14, 4);
+    ctx.fillStyle = c; ctx.fill();
+    ctx.fillStyle = T.css.bg; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('RAIZ', q[0], q[1] + .5);
+    ctx.letterSpacing = '0px';
+  }
+  function impulso(p) {
+    if (p.d < 0) return;
+    var e = p.e, on = !aceso || aceso.a.has(e), a = on ? 1 : 1 - .92 * foco;
+    if (a <= .02) return;
+    var P = T.pulso, c = PROB[e.estado] ? T.cor[e.estado] : P.cor || corDe(e), q = ponto(e, p.d);
+    ctx.globalAlpha = a;
+    if (P.forma === 'ponto') {
+      halo(c, q[0], q[1], P.halo, .8);
+      ctx.fillStyle = c; circ(ctx, q[0], q[1], P.r); ctx.fill();
+    } else if (P.forma === 'tinta') {
+      ctx.fillStyle = c; circ(ctx, q[0], q[1], P.r); ctx.fill();
+    } else {
+      var q2 = ponto(e, p.d - P.len), g = ctx.createLinearGradient(q2[0], q2[1], q[0], q[1]);
+      g.addColorStop(0, rgba(c, 0)); g.addColorStop(1, rgba(c, 1));
+      ctx.strokeStyle = g; ctx.lineWidth = P.forma === 'cometa' ? 2 : 1.5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(q2[0], q2[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+      halo(c, q[0], q[1], P.halo, .7);
+      if (P.forma === 'cometa' && !P.cor) { ctx.fillStyle = '#ffffff'; circ(ctx, q[0], q[1], 1.1); ctx.fill(); }
+    }
+    ctx.globalAlpha = 1;
+  }
+  function desenhar(t) {
+    fundo(t);
+    ctx.setTransform(dpr * cam.s, 0, 0, dpr * cam.s, dpr * cam.tx, dpr * cam.ty);
+    ctx.lineCap = 'round';
+    if (T.soma) ctx.globalCompositeOperation = 'lighter';
+    G.bus.forEach(function (e) { fio(e, t); });
+    G.comum.forEach(function (e) { fio(e, t); });
+    ctx.globalCompositeOperation = 'source-over';
+    G.prob.forEach(function (e) { fio(e, t); });
+    if (T.soma) ctx.globalCompositeOperation = 'lighter';
+    pulsos.forEach(impulso);
+    ctx.globalCompositeOperation = 'source-over';
+    G.prob.forEach(seloRaiz);
+    ctx.lineCap = 'butt';
+  }
+
+  // --------------------------------------------------------------- orbita --
+  // a orbita mostra o que o mapa nao mostra: o detalhe de dentro do no. Cartao que ja esta aceso
+  // ao lado nao vira pilula, senao a mesma coisa aparece duas vezes e uma cobre a outra
+  var CONTA = {ruim: 'quebradas', duvida: 'em dúvida', atencao: 'com atenção', dele: 'com você', construcao: 'em construção', bom: 'em dia', desligado: 'desligadas'};
+  var QUAL = {frente: ['frente', 'frentes'], rotina: ['rotina', 'rotinas'], servico: ['serviço', 'serviços'], voce: ['aviso', 'avisos'],
+    rede: ['rede', 'redes'], maquina: ['máquina', 'máquinas']};
+  function pior(L) { return L.reduce(function (a, r) { return GRAV[r.estado] > GRAV[a] ? r.estado : a; }, 'bom'); }
+  function contagem(L) {
+    var c = {};
+    L.forEach(function (r) { c[r.estado] = (c[r.estado] || 0) + 1; });
+    return Object.keys(c).sort(function (a, b) { return GRAV[b] - GRAV[a]; }).map(function (e) { return c[e] + ' ' + (CONTA[e] || NOME[e]); }).join(', ');
+  }
+  function itensOrb(n) {
+    var out = [], x = n.x, visto = {};
+    function poe(rot, t, estado) {
+      var k = rot + '|' + (t || '');
+      if (!rot || visto[k]) return;
+      visto[k] = 1;
+      out.push({rot: rot, t: t || '', estado: estado || 'bom'});
+    }
+    function sonda() { if (x.sonda && x.sonda.frase) x.sonda.frase.split(/;\s*/).forEach(function (s) { poe(s, '', est(x.sonda.estado)); }); }
+    if (n.partes) {
+      n.partes.forEach(function (p) { var e = est(p.estado); poe(p.rotulo, e === 'desligado' ? 'desligada' : PROB[e] ? 'com problema' : '', e); });
+      return out;
+    }
+    if (n.esp) {
+      if (n.esp.prazo) poe('prazo', n.esp.prazo, 'dele');
+      if (n.esp.feito_quando) poe('fica pronto quando', n.esp.feito_quando, 'bom');
+      return out;
+    }
+    if (n.tipo === 'rotina') {
+      if (PROB[n.estado] && agendaTxt(x)) poe('quando', minuscula(agendaTxt(x)), 'bom');
+      if (x.codigo_frase) poe('última vez', x.codigo_frase, n.estado);
+      else if (x.rodando) poe('última vez', 'rodando agora', n.estado);
+      if (x.proxima) poe('próxima', curto(x.proxima), 'bom');
+      (x.linhas || []).forEach(function (l) { poe('nota', l, n.estado); });
+      (x.esperando || []).forEach(function (v) { poe('espera você', v.texto + (v.prazo ? ', ' + v.prazo : ''), 'dele'); });
+      return out;
+    }
+    if (n.tipo === 'frente') {
+      if (x.resumo) poe('o que faz', x.resumo, 'bom');
+      sonda();
+      var rots = G.nos.filter(function (r) { return r.tipo === 'rotina' && r.x.pai === n.id; });
+      if (rots.length) {
+        poe(rots.length + (rots.length > 1 ? ' rotinas' : ' rotina'), contagem(rots), pior(rots));
+        var prox = rots.filter(function (r) { return r.x.proxima; }).sort(function (a, b) { return a.x.proxima < b.x.proxima ? -1 : 1; })[0];
+        if (prox) poe('a próxima', prox.rot + ', ' + curto(prox.x.proxima), 'bom');
+      }
+      return out;
+    }
+    if (x.resumo && x.resumo !== subDe(n)) poe('o que é', x.resumo, 'bom');
+    if (x.oque && x.oque !== x.resumo) poe('o que faz', x.oque, 'bom');
+    sonda();
+    // ate tres, pelo nome; mais que isso, contados por tipo
+    var alvo = unicos(n.sai.filter(function (e) { return e.tipo !== 'bus' && e.tipo !== 'lan'; }).map(function (e) { return e.b; }));
+    if (alvo.length && alvo.length <= 3) poe('dependem disto', lista(alvo.map(function (m) { return m.rot; })), 'bom');
+    else if (alvo.length) {
+      var c = {}, ordem = [];
+      alvo.forEach(function (m) { if (!c[m.tipo]) { c[m.tipo] = 0; ordem.push(m.tipo); } c[m.tipo]++; });
+      poe('dependem disto', lista(ordem.map(function (t) { return c[t] + ' ' + (c[t] > 1 ? QUAL[t][1] : QUAL[t][0]); })), 'bom');
+    }
+    if (n.sai.some(function (e) { return e.tipo === 'bus'; })) {
+      var todas = G.nos.filter(function (r) { return r.tipo === 'rotina'; });
+      poe(todas.length + ' rotinas', contagem(todas), pior(todas));
+    }
+    return out;
+  }
+  function orbitar(n) {
+    orb.innerHTML = '';
+    pilulas = itensOrb(n).map(function (it) {
+      var el = document.createElement('div'), e = it.estado || 'bom';
+      el.className = 'pil e-' + e + (PROB[e] ? ' prob' : '');
+      el.innerHTML = '<i></i><b>' + esc(it.rot) + '</b>' + (it.t ? '<span>' + esc(it.t) + '</span>' : '');
+      el.title = it.rot + (it.t ? ': ' + it.t : '');
+      orb.appendChild(el);
+      return {el: el, w: 0, h: 0, estado: e, x: 0, y: 0};
+    });
+    pilulas.forEach(function (p) { p.w = p.el.offsetWidth; p.h = p.el.offsetHeight; });
+    arrumarOrb(n);
+  }
+  // onde a orbita abre: a pilha de pilulas vai para o lado que cobre menos cartao aceso, sem sair
+  // da tela e sem passar por baixo da ficha. Tudo em coordenadas do mundo, para andar junto no zoom
+  function sobrepoe(a, b) { return a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b; }
+  function arrumarOrb(n) {
+    var k = pilulas.length, s = cam.s;
+    if (!k) return;
+    var f = fimPulo(n), C = {l: n.x0 + n.w / 2 + f.dx - n.w * f.sc / 2, t: n.y0 + n.h / 2 + f.dy - n.h * f.sc / 2};
+    C.r = C.l + n.w * f.sc; C.b = C.t + n.h * f.sc; C.cx = (C.l + C.r) / 2; C.cy = (C.t + C.b) / 2;
+    var vis = {l: (8 - cam.tx) / s, t: (8 - cam.ty) / s, r: (W - 8 - cam.tx) / s, b: (H - 8 - cam.ty) / s};
+    var obst = [{l: C.l - 8, t: C.t - 8, r: C.r + 8, b: C.b + 8, p: 40}];
+    aceso.n.forEach(function (m) { if (m !== n) obst.push({l: m.x0 - 4, t: m.y0 - 4, r: m.x0 + m.w + 4, b: m.y0 + m.h + 4, p: 6}); });
+    if (ficha.classList.contains('on')) {
+      var fr = ficha.getBoundingClientRect(), pr = palco.getBoundingClientRect();
+      obst.push({l: (fr.left - pr.left - 10 - cam.tx) / s, t: (fr.top - pr.top - 10 - cam.ty) / s, r: (fr.right - pr.left + 10 - cam.tx) / s, b: (fr.bottom - pr.top + 10 - cam.ty) / s, p: 40});
+    }
+    var GAP = 5, AFASTA = 28;
+    function pilha(L, lado, x, y0) {
+      var tot = -GAP, y = y0;
+      L.forEach(function (p) { tot += p.h + GAP; });
+      return L.map(function (p) {
+        var rel = (y + p.h / 2 - (y0 + tot / 2)) / (tot / 2 + 1), bojo = lado ? 16 * (1 - Math.min(1, rel * rel)) : 0;
+        var q = {p: p, x: lado > 0 ? x + bojo : lado < 0 ? x - p.w - bojo : x - p.w / 2, y: y};
+        y += p.h + GAP;
+        return q;
+      });
+    }
+    function altura(L) { var t = -GAP; L.forEach(function (p) { t += p.h + GAP; }); return t; }
+    function custo(Q, extra) {
+      var c = extra;
+      Q.forEach(function (q) {
+        var r = {l: q.x, t: q.y, r: q.x + q.p.w, b: q.y + q.p.h};
+        if (r.l < vis.l || r.r > vis.r || r.t < vis.t || r.b > vis.b) c += 60;
+        obst.forEach(function (o) { if (sobrepoe(r, o)) c += o.p; });
+      });
+      return c;
+    }
+    var ops = [], A = altura(pilulas), meio = Math.ceil(k / 2), L1 = pilulas.slice(0, meio), L2 = pilulas.slice(meio);
+    function opcao(Q, extra) { ops.push({Q: Q, c: custo(Q, extra)}); }
+    // a pilha de um lado so pode deslizar enquanto continuar de frente para o cartao
+    var folga = Math.max(0, A / 2 - 14);
+    for (var d = -folga; d <= folga + .01; d += folga ? Math.max(10, folga / 8) : 1) {
+      var y0 = C.cy - A / 2 + d;
+      opcao(pilha(pilulas, 1, C.r + AFASTA, y0), Math.abs(d) / 40);
+      opcao(pilha(pilulas, -1, C.l - AFASTA, y0), Math.abs(d) / 40 + .5);
+    }
+    if (k >= 4) {
+      var a1 = altura(L1), a2 = altura(L2);
+      [0, -28, 28, -56, 56].forEach(function (d) {
+        opcao(pilha(L1, 1, C.r + AFASTA, C.cy - a1 / 2 + d).concat(pilha(L2, -1, C.l - AFASTA, C.cy - a2 / 2 + d)), .8 + Math.abs(d) / 40);
+      });
+    }
+    [-1, 0, 1].forEach(function (j) {
+      opcao(pilha(pilulas, 0, C.cx + j * 70, C.t - 16 - A), 1.5 + Math.abs(j) * .3);
+      opcao(pilha(pilulas, 0, C.cx + j * 70, C.b + 16), 1.5 + Math.abs(j) * .3);
+    });
+    var melhor = ops[0];
+    ops.forEach(function (o) { if (o.c < melhor.c) melhor = o; });
+    melhor.Q.forEach(function (q) { q.p.x = q.x; q.p.y = q.y; });
+  }
+  // cada pilula fica no mundo e o raio sai da borda do cartao que esta de frente para ela
+  function posOrb(n) {
+    ctx2.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx2.clearRect(0, 0, W, H);
+    if (!pilulas.length || !n) return;
+    var s = cam.s, cx = cam.tx + (n.x0 + n.w / 2 + n.dx) * s, cyy = cam.ty + (n.y0 + n.h / 2 + n.dy) * s;
+    var hw = n.w * n.sc * s / 2, hh = n.h * n.sc * s / 2;
+    pilulas.forEach(function (p, i) {
+      var q = sai((foco - .12 - i * .02) * 1.8), pw = p.w * s, ph = p.h * s, px = cam.tx + p.x * s, py = cam.ty + p.y * s;
+      var x = cx + (px + pw / 2 - cx) * q - pw / 2, y = cyy + (py + ph / 2 - cyy) * q - ph / 2;
+      p.el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) scale(' + s.toFixed(4) + ')';
+      p.el.style.opacity = q.toFixed(3);
+      if (q < .05) return;
+      var mx = x + pw / 2, my = y + ph / 2, ax, ay, bx, by, hx = 0, hy = 0;
+      if (x >= cx + hw - 1) { ax = cx + hw; ay = cyy + clamp(my - cyy, -hh * .6, hh * .6); bx = x; by = my; hx = 18; }
+      else if (x + pw <= cx - hw + 1) { ax = cx - hw; ay = cyy + clamp(my - cyy, -hh * .6, hh * .6); bx = x + pw; by = my; hx = -18; }
+      else if (my < cyy) { ax = cx + clamp(mx - cx, -hw * .7, hw * .7); ay = cyy - hh; bx = mx; by = y + ph; hy = -14; }
+      else { ax = cx + clamp(mx - cx, -hw * .7, hw * .7); ay = cyy + hh; bx = mx; by = y; hy = 14; }
+      ctx2.strokeStyle = rgba(T.cor[p.estado] || T.cor.bom, .55 * q); ctx2.lineWidth = 1; ctx2.setLineDash([2, 3]);
+      ctx2.beginPath(); ctx2.moveTo(ax, ay);
+      ctx2.bezierCurveTo(ax + hx, ay + hy, bx - hx, by - hy, bx, by);
+      ctx2.stroke(); ctx2.setLineDash([]);
+    });
+  }
+
+  // ---------------------------------------------------------- mapa pequeno --
+  // o mapa pequeno so aparece quando alguma parte do mundo esta fora da vista
+  function miniDesenhar() {
+    var vx = -cam.tx / cam.s, vy = -cam.ty / cam.s;
+    var ver = vx > 2 || vy > 2 || vx + W / cam.s < WW - 2 || vy + H / cam.s < HH - 2;
+    mini.classList.toggle('on', ver);
+    if (!ver) return;
+    var mw = 200, k = mw / WW, mh = Math.round(HH * k);
+    if (mini.width !== Math.round(mw * dpr) || mini.height !== Math.round(mh * dpr)) {
+      mini.width = Math.round(mw * dpr); mini.height = Math.round(mh * dpr); mini.style.width = mw + 'px'; mini.style.height = mh + 'px';
+    }
+    mctx.setTransform(dpr * k, 0, 0, dpr * k, 0, 0);
+    mctx.clearRect(0, 0, WW, HH);
+    G.nos.forEach(function (n) {
+      mctx.fillStyle = PROB[n.estado] ? T.cor[n.estado] : rgba(T.cor.desligado, .9);
+      mctx.fillRect(n.x0, n.y0, n.w, n.h);
+    });
+    mctx.strokeStyle = T.css.acc; mctx.lineWidth = 2 / k;
+    mctx.strokeRect(-cam.tx / cam.s, -cam.ty / cam.s, W / cam.s, H / cam.s);
+  }
+
+  // ---------------------------------------------------------------- tempo --
+  function quadro(ts) {
+    requestAnimationFrame(quadro);
+    if (!G || !W) return;
+    var dt = Math.min(.05, Math.max(0, (ts - ult) / 1000)), t = ts / 1000, i;
+    ult = ts;
+    if (camAlvo) {
+      var q = Math.min(1, dt * 9);
+      cam.s += (camAlvo.s - cam.s) * q; cam.tx += (camAlvo.tx - cam.tx) * q; cam.ty += (camAlvo.ty - cam.ty) * q;
+      if (Math.abs(camAlvo.s - cam.s) < .001 && Math.abs(camAlvo.tx - cam.tx) < .3 && Math.abs(camAlvo.ty - cam.ty) < .3) { cam.s = camAlvo.s; cam.tx = camAlvo.tx; cam.ty = camAlvo.ty; camAlvo = null; }
+    }
+    var ct = 'translate(' + cam.tx.toFixed(2) + 'px,' + cam.ty.toFixed(2) + 'px) scale(' + cam.s.toFixed(4) + ')';
+    if (ct !== camTxt) { mundo.style.transform = ct; camTxt = ct; }
+    foco += (focoAlvo - foco) * Math.min(1, dt * 6);
+    if (focoAlvo === 0 && foco < .01 && sel) soltar();
+    if (sel) pular(sel, sai(foco));
+    G.arestas.forEach(geom);
+    // no vivo, cada fio solta impulso no ritmo do dado de agora; no espelho, so a agenda solta
+    if (!ritmo) G.arestas.forEach(function (e) {
+      var r = taxa(e);
+      if (r <= 0) return;
+      e.prox -= dt * r;
+      if (e.prox > 0) return;
+      e.prox = -Math.log(1 - Math.random());
+      if (pulsos.length < TETO.amb) pulsos.push({e: e, d: 0, v: velDe(e)});
+    });
+    else espelhar(dt);
+    for (i = pulsos.length - 1; i >= 0; i--) {
+      var p = pulsos[i];
+      p.d += p.v * dt;
+      if (p.d < p.e.len) continue;
+      p.e.b.flash = Math.min(1, p.e.b.flash + .6);
+      // o impulso de uma rota segue para o proximo fio com a sobra do passo
+      if (p.seg && p.seg.length) { p.d -= p.e.len; p.e = p.seg[0]; p.seg = p.seg.slice(1); p.v = velBase(p.e) * (p.f || 1) * (p.k || 1); }
+      else pulsos.splice(i, 1);
+    }
+    contado += dt;
+    if (contado >= 1) { contado = 0; palco.dataset.impulsos = pulsos.length; }
+    G.nos.forEach(function (n) {
+      if (n.flash > 0) n.flash = Math.max(0, n.flash - dt * 2.4);
+      if (Math.abs(n.flash - n.fv) > .04 || (n.flash === 0 && n.fv !== 0)) { n.fv = n.flash; n.el.style.setProperty('--f', n.flash.toFixed(2)); }
+    });
+    desenhar(t);
+    posOrb(sel);
+    miniDesenhar();
+  }
+
+  // --------------------------------------------------------------- clique --
+  function acender(n) {
+    var N = new Set([n]), A = new Set(), f = [n], x;
+    while (f.length) { x = f.pop(); x.sai.forEach(function (e) { A.add(e); if (!N.has(e.b)) { N.add(e.b); f.push(e.b); } }); }
+    var up = new Set([n]);
+    f = [n];
+    while (f.length) { x = f.pop(); x.chega.forEach(function (e) { A.add(e); if (!up.has(e.a)) { up.add(e.a); N.add(e.a); f.push(e.a); } }); }
+    return {n: N, a: A};
+  }
+  // "pula um pouco para a frente": cresce e anda um pouco para o meio da tela, se couber
+  function fimPulo(n) {
+    var s = cam.s, sc = 1 + POP, w = n.w * sc * s, h = n.h * sc * s;
+    var cx = cam.tx + (n.x0 + n.w / 2) * s, cyy = cam.ty + (n.y0 + n.h / 2) * s;
+    var nx = cx + clamp((W / 2 - cx) * .08, -40, 40), ny = cyy + clamp((H / 2 - cyy) * .08, -30, 30);
+    nx = clamp(nx, w / 2 + 12, Math.max(w / 2 + 12, W - w / 2 - 12)); ny = clamp(ny, h / 2 + 12, Math.max(h / 2 + 12, H - h / 2 - 12));
+    return {sc: sc, dx: (nx - cx) / s, dy: (ny - cyy) / s};
+  }
+  function pular(n, pf) {
+    var f = fimPulo(n);
+    n.sc = 1 + (f.sc - 1) * pf; n.dx = f.dx * pf; n.dy = f.dy * pf;
+    n.el.style.transform = 'translate(' + n.dx.toFixed(2) + 'px,' + n.dy.toFixed(2) + 'px) scale(' + n.sc.toFixed(4) + ')';
+  }
+  function soltar() {
+    if (sel) { sel.sc = 1; sel.dx = sel.dy = 0; sel.el.style.transform = ''; sel.el.classList.remove('sel'); }
+    sel = null; aceso = null; foco = 0; pilulas = []; orb.innerHTML = '';
+    ctx2.setTransform(1, 0, 0, 1, 0, 0); ctx2.clearRect(0, 0, sobre.width, sobre.height);
+  }
+  // a selecao que vale: a que esta saindo (Escape, clique fora) ainda e 'sel' ate a animacao acabar
+  function ativo() { return sel && focoAlvo ? sel : null; }
+  function selecionar(n) {
+    if (!n) {
+      if (sel) { focoAlvo = 0; G.nos.forEach(function (m) { m.el.classList.remove('apagado'); }); }
+      ficha.classList.remove('on');
+      if (window.Gaveta) Gaveta.fechar(true);
+      return;
+    }
+    soltar();
+    sel = n; aceso = acender(n); foco = 0; focoAlvo = 1;
+    G.nos.forEach(function (m) { m.el.classList.toggle('apagado', !aceso.n.has(m)); });
+    n.el.classList.add('sel');
+    mostrarFicha(n);
+    orbitar(n);
+  }
+  function par(k, v) { return '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>'; }
+  // O detalhe abre na gaveta (gaveta.js), a mesma das quatro paginas: o que o mapa mediu, as
+  // ultimas 24 h, quem afeta quem e os botoes. O cartao "esperando voce" abre a peca que espera.
+  function mostrarFicha(n) {
+    // fechar a gaveta alarga o palco e chama medir(), que passa por aqui com a selecao que esta saindo
+    if (!window.Gaveta || n !== ativo()) return;
+    if (!Gaveta.abrir(n.esp ? n.esp.de : n.id)) { Gaveta.fechar(true); return; }
+    clearTimeout(trazerT);
+    trazerT = setTimeout(function () { trazer(n); }, 80);
+  }
+  // a gaveta estreita o palco: se o cartao clicado ficou fora da vista, a camera anda ate ele
+  var trazerT = 0;
+  function trazer(n) {
+    if (encaixado || n !== ativo()) return;
+    var base = camAlvo || cam, esq = base.tx + n.x0 * base.s, dir = esq + n.w * base.s, d = 0;
+    if (dir > W - 24) d = W - 24 - dir; else if (esq < 24) d = 24 - esq;
+    if (d) camAlvo = {s: base.s, tx: base.tx + d, ty: base.ty};
+  }
+
+  // ------------------------------------------------------- mover e zoom --
+  function encaixar(anim) {
+    var s = Math.min(1, W / WW, H / HH), alvo = {s: s, tx: (W - WW * s) / 2, ty: (H - HH * s) / 2};
+    encaixado = true;
+    if (anim) camAlvo = alvo; else { cam.s = alvo.s; cam.tx = alvo.tx; cam.ty = alvo.ty; camAlvo = null; }
+  }
+  function zoomEm(mx, my, f) {
+    var base = camAlvo || cam, s2 = clamp(base.s * f, .5, 2.6);
+    encaixado = false;
+    camAlvo = {s: s2, tx: mx - (mx - base.tx) * s2 / base.s, ty: my - (my - base.ty) * s2 / base.s};
+  }
+  function local(ev) { var r = palco.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; }
+  var arr = null;
+  palco.addEventListener('pointerdown', function (ev) {
+    if (ev.button !== 0 || ev.target.closest('.ficha, .zoom, .mini, .pil')) return;
+    var el = ev.target.closest('.no');
+    arr = {x: ev.clientX, y: ev.clientY, tx: cam.tx, ty: cam.ty, moveu: false, no: el, id: ev.pointerId};
+  });
+  window.addEventListener('pointermove', function (ev) {
+    if (!arr) return;
+    var dx = ev.clientX - arr.x, dy = ev.clientY - arr.y;
+    if (!arr.moveu && Math.hypot(dx, dy) > 4) { arr.moveu = true; palco.classList.add('arrastando'); try { palco.setPointerCapture(arr.id); } catch (e) { /* sem captura */ } }
+    if (arr.moveu) { camAlvo = null; encaixado = false; cam.tx = arr.tx + dx; cam.ty = arr.ty + dy; }
+  });
+  window.addEventListener('pointerup', function () {
+    if (!arr) return;
+    var a = arr;
+    arr = null; palco.classList.remove('arrastando');
+    if (a.moveu) return;
+    if (a.no) { var n = G && G.por[a.no.dataset.id]; selecionar(n && n !== ativo() ? n : null); }
+    else selecionar(null);
+  });
+  palco.addEventListener('dblclick', function (ev) { if (!ev.target.closest('.no, .ficha, .zoom, .mini, .pil')) encaixar(true); });
+  palco.addEventListener('wheel', function (ev) {
+    if (ev.target.closest('.ficha')) return;
+    ev.preventDefault();
+    var p = local(ev);
+    if (ev.shiftKey && !ev.ctrlKey) { encaixado = false; camAlvo = null; cam.tx -= ev.deltaY || ev.deltaX; return; }
+    zoomEm(p[0], p[1], Math.exp(-ev.deltaY * .0016));
+  }, {passive: false});
+  $('#zoom').addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-z]');
+    if (!b) return;
+    var z = b.getAttribute('data-z');
+    if (z === 'fit') encaixar(true); else zoomEm(W / 2, H / 2, z === '+' ? 1.25 : .8);
+  });
+  mini.addEventListener('pointerdown', function (ev) {
+    var r = mini.getBoundingClientRect(), k = WW / r.width, wx = (ev.clientX - r.left) * k, wy = (ev.clientY - r.top) * k;
+    encaixado = false;
+    camAlvo = {s: cam.s, tx: W / 2 - wx * cam.s, ty: H / 2 - wy * cam.s};
+  });
+  mundo.addEventListener('pointerover', function (ev) { var el = ev.target.closest('.no'); hover = el && G ? G.por[el.dataset.id] : null; });
+  mundo.addEventListener('pointerout', function (ev) { if (!ev.relatedTarget || !ev.relatedTarget.closest || !ev.relatedTarget.closest('.no')) hover = null; });
+  mundo.addEventListener('keydown', function (ev) {
+    var el = ev.target.closest('.no');
+    if (!el || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+    ev.preventDefault();
+    var n = G.por[el.dataset.id];
+    selecionar(n !== ativo() ? n : null);
+  });
+  orb.addEventListener('click', function (ev) { var b = ev.target.closest('button.pil'); if (b && G.por[b.dataset.id]) selecionar(G.por[b.dataset.id]); });
+  ficha.addEventListener('click', function (ev) { if (ev.target.closest('.x')) selecionar(null); });
+
+  // --------------------------------------------------------------- estilo --
+  function aplicar(i) {
+    atual = i; T = TEMAS[i];
+    var st = document.documentElement.style;
+    Object.keys(T.css).forEach(function (k) { st.setProperty('--' + k, T.css[k]); });
+    Object.keys(T.cor).forEach(function (k) { st.setProperty('--' + k, T.cor[k]); });
+    st.colorScheme = T.escuro ? 'dark' : 'light';
+    document.body.className = 't-' + T.id;
+    [].forEach.call(abas.children, function (b, k) { b.setAttribute('aria-selected', k === i ? 'true' : 'false'); });
+    barra();
+    $('#leg').innerHTML = ['bom', 'atencao', 'duvida', 'ruim', 'dele', 'desligado'].map(function (e) {
+      return '<span><i style="background:' + T.cor[e] + '"></i>' + NOME[e] + '</span>';
+    }).join('') + '<span><i class="tr"></i>fio com problema</span><span><b class="rzl">raiz</b>onde começa</span>';
+    SPR = {}; fundoCache = null; padrao = null; pulsos = [];
+    // cada estilo tem a sua letra, e a altura dos cartoes muda com ela
+    if (G && W) { dispor(); if (encaixado) encaixar(false); }
+    if (ativo()) { mostrarFicha(sel); orbitar(sel); }
+    try { localStorage.setItem('fluxo.estilo', String(i)); } catch (e) { /* sem armazenamento */ }
+  }
+  abas.innerHTML = TEMAS.map(function (t, i) {
+    return '<button type="button" role="tab" data-i="' + i + '"><span class="k">' + (i + 1) + '</span>' + t.nome + '</button>';
+  }).join('');
+  abas.addEventListener('click', function (ev) { var b = ev.target.closest('[data-i]'); if (b) aplicar(+b.getAttribute('data-i')); });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.ctrlKey || ev.altKey || ev.metaKey) return;
+    if (ev.key >= '1' && ev.key <= '9') { var i = +ev.key - 1; if (i < TEMAS.length) aplicar(i); }
+    else if (ev.key === 'ArrowRight' && !ev.target.closest('.no')) aplicar((atual + 1) % TEMAS.length);
+    else if (ev.key === 'ArrowLeft' && !ev.target.closest('.no')) aplicar((atual + TEMAS.length - 1) % TEMAS.length);
+    else if (ev.key === 'Escape') selecionar(null);
+    else if (ev.key === '0') encaixar(true);
+  });
+
+  function separar() {
+    G.bus = G.arestas.filter(function (e) { return e.tipo === 'bus'; });
+    G.prob = G.arestas.filter(function (e) { return e.tipo !== 'bus' && PROB[e.estado]; });
+    G.comum = G.arestas.filter(function (e) { return e.tipo !== 'bus' && !PROB[e.estado]; });
+  }
+  function medir() {
+    var r = palco.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1);
+    W = Math.max(320, Math.round(r.width)); H = Math.max(240, Math.round(r.height));
+    if (d !== dpr) SPR = {};
+    dpr = d;
+    fios.width = sobre.width = Math.round(W * dpr); fios.height = sobre.height = Math.round(H * dpr);
+    fundoCache = null; padrao = null;
+    if (G) { dispor(); if (encaixado) encaixar(false); if (sel) { mostrarFicha(sel); orbitar(sel); } }
+  }
+  // a linha de baixo do topo: o que o estilo e, e o que o impulso quer dizer no ritmo escolhido
+  function barra() {
+    var dica = !ritmo ? 'clique num cartão para abrir o detalhe e acender o caminho dele · 1 a 6 trocam o estilo · Q a T trocam a organização'
+      : fila.length ? 'cada impulso é uma rodada da agenda real, acelerada'
+      : 'a agenda não veio no dado: o espelho não tem rodada para mostrar';
+    var d = $('#desc');
+    var od = ORGS[org].desc;
+    d.innerHTML = esc(T.desc) + ' · ' + esc(od) + '<small>' + esc(dica) + '</small>';
+    d.title = T.desc + '\n' + od + '\n' + dica;
+    caber();
+  }
+  // em tela estreita a dica sai primeiro; se ainda faltar espaco, a descricao termina em reticencias
+  // e o texto inteiro continua no title
+  function caber() {
+    var d = $('#desc');
+    d.classList.remove('curta');
+    if (d.scrollWidth > d.clientWidth + 1) d.classList.add('curta');
+  }
+  var DIAS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  function vivo() {
+    var d = M && M.gerado ? new Date(M.gerado) : null, el = $('#vivo');
+    if (ritmo) {
+      el.style.display = '';
+      el.title = d ? 'dados de ' + hm(d) + ', relidos a cada 30 s' : '';
+      vivoTxt = '';
+      relogioTxt();
+      return;
+    }
+    // no vivo, quem diz de quando e a leitura e o botao "conferir" (gaveta.js); este canto fica para o espelho
+    el.title = '';
+    el.innerHTML = '';
+    el.style.display = 'none';
+  }
+  // no espelho, o canto mostra a hora da agenda que esta passando, e so reescreve quando ela muda
+  function relogioTxt() {
+    var r = new Date(relogio);
+    var txt = fila.length ? 'agenda ' + DIAS[r.getDay()] + ' ' + pad(r.getDate()) + '/' + pad(r.getMonth() + 1) + ' ' + hm(r) + ' · ×' + ritmo : 'sem agenda no dado · ×' + ritmo;
+    if (txt === vivoTxt) return;
+    vivoTxt = txt;
+    $('#vivo').innerHTML = '<i></i>' + esc(txt);
+  }
+
+  // ------------------------------------------------------------ espelho --
+  // Cada rotina com os instantes que o Agendador tem marcados, a partir do 'agenda_base' do dado,
+  // e um ponteiro no proximo depois do relogio. A que esta rodando agora entra tambem: as rodadas
+  // dela que vem depois do relogio continuam marcadas no Agendador
+  function agendar() {
+    fila = [];
+    var base = M && M.agenda_base ? Date.parse(M.agenda_base) : NaN;
+    if (!G || isNaN(base)) { fimAgenda = 0; return; }
+    fimAgenda = base + 35 * 864e5;
+    G.rotinas.forEach(function (n) {
+      var A = n.x.agenda;
+      if (!Array.isArray(A) || !A.length) return;
+      var L = [];
+      A.forEach(function (t) { for (var i = 0; i < t[2]; i++) L.push(base + (t[0] + t[1] * i) * 6e4); });
+      L.sort(function (a, b) { return a - b; });
+      var k = 0;
+      while (k < L.length && L[k] <= relogio) k++;
+      if (k < L.length) fila.push({n: n, L: L, k: k, R: rotas(n)});
+    });
+  }
+  function espelhar(dt) {
+    relogio += dt * 1000 * ritmo;
+    // a agenda do dado cobre 35 dias; passou disso, o espelho volta para agora
+    if (fimAgenda && relogio >= fimAgenda) { relogio = Date.now(); agendar(); }
+    fila.forEach(function (f) {
+      while (f.k < f.L.length && f.L[f.k] <= relogio) { f.k++; disparar(f.R, false); }
+    });
+    relogioTxt();
+  }
+  function mudarRitmo(r) {
+    if (RITMOS.indexOf(r) < 0) r = 0;
+    var era = ritmo;
+    ritmo = r;
+    [].forEach.call(ritmoEl.querySelectorAll('button'), function (b) { b.setAttribute('aria-pressed', +b.getAttribute('data-x') === r ? 'true' : 'false'); });
+    // entrar ou sair do espelho limpa a tela; trocar so a velocidade mantem o relogio onde esta
+    if (!r !== !era) pulsos = [];
+    if (r && !era) relogio = Date.now();
+    if (r) agendar(); else fila = [];
+    vivo(); barra();
+    try { localStorage.setItem('fluxo.ritmo', String(r)); } catch (e) { /* sem armazenamento */ }
+  }
+  var ritmoEl = $('#ritmo');
+  RITMOS.forEach(function (r) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.setAttribute('data-x', r); b.setAttribute('aria-pressed', r === ritmo ? 'true' : 'false');
+    b.textContent = r ? '×' + r : 'vivo';
+    b.title = r ? 'Espelho da agenda real, ' + r + ' vezes mais rápido: cada impulso é uma rodada marcada no Agendador'
+      : 'Vivo: o ritmo de cada fio vem do dado de agora';
+    ritmoEl.appendChild(b);
+  });
+  ritmoEl.addEventListener('click', function (ev) { var b = ev.target.closest('[data-x]'); if (b) mudarRitmo(+b.getAttribute('data-x')); });
+
+  // os impulsos que estavam no caminho seguem no mapa novo, no mesmo fio; o que sumiu, some junto
+  function remapear(velhos) {
+    var por = {};
+    G.arestas.forEach(function (e) { por[e.a.id + '>' + e.b.id] = e; });
+    function achar(e) { return por[e.a.id + '>' + e.b.id]; }
+    return velhos.filter(function (p) {
+      var e = achar(p.e);
+      if (!e) return false;
+      var seg = [];
+      for (var i = 0; p.seg && i < p.seg.length; i++) { var s = achar(p.seg[i]); if (!s) break; seg.push(s); }
+      p.e = e; p.seg = seg;
+      return true;
+    });
+  }
+  // a execucao nova: a ultima vez de uma rotina subiu desde a leitura anterior
+  function trens(antes) {
+    if (ritmo) return;
+    G.rotinas.forEach(function (n) {
+      if (n.id in antes && (n.x.ultima || '') > antes[n.id]) trem(n);
+    });
+  }
+  // o trem de uma rotina, contado no palco para a prova ver de fora que a execucao virou impulso
+  function trem(n) {
+    disparar(rotas(n), true);
+    palco.dataset.trens = (+palco.dataset.trens || 0) + 1;
+    palco.dataset.tremDe = n.id;
+  }
+  // o motor regrava o estado a cada 5 min; a pagina rele e troca a rede sem recarregar
+  function recarregar() {
+    var s = document.createElement('script');
+    s.src = '/dados/estado.js?t=' + Date.now();
+    s.onload = function () {
+      s.remove();
+      var novo = window.MAPA;
+      if (!novo || !novo.nos || (M && novo.gerado === M.gerado)) return;
+      var id = ativo() && sel.id, antes = {}, velhos = pulsos;
+      G.nos.forEach(function (n) { if (n.tipo === 'rotina') antes[n.id] = n.x.ultima || ''; });
+      soltar(); focoAlvo = 0; ficha.classList.remove('on');
+      M = novo; G = montar(M); separar(); construir(); dispor();
+      if (window.Gaveta) Gaveta.receber(M);
+      pulsos = remapear(velhos);
+      if (encaixado) encaixar(false);
+      if (id && G.por[id]) selecionar(G.por[id]);
+      if (ritmo) agendar();
+      vivo(); barra();
+      var g = G;
+      setTimeout(function () { if (G === g) trens(antes); }, 400);
+    };
+    s.onerror = function () { s.remove(); };
+    document.head.appendChild(s);
+  }
+
+  var orgsEl = $('#orgs'), TECLA_ORG = ['q', 'w', 'e', 'r', 't'];
+  orgsEl.innerHTML = ORGS.map(function (o, i) {
+    return '<button type="button" role="tab" data-o="' + i + '" title="' + esc(o.desc) + '"><span class="k">' + TECLA_ORG[i].toUpperCase() + '</span>' + esc(o.nome) + '</button>';
+  }).join('');
+  function organizarEm(i) {
+    org = i;
+    [].forEach.call(orgsEl.children, function (b, k) { b.setAttribute('aria-selected', k === i ? 'true' : 'false'); });
+    try { localStorage.setItem('fluxo.org', String(i)); } catch (e) { /* sem armazenamento */ }
+    if (!G) return;
+    var id = ativo() && sel.id, velhos = pulsos;
+    soltar(); focoAlvo = 0; ficha.classList.remove('on');
+    G = montar(M); separar(); construir(); dispor();
+    pulsos = remapear(velhos);
+    encaixar(false);
+    if (id && G.por[id]) selecionar(G.por[id]);
+    if (ritmo) agendar();
+    barra();
+  }
+  orgsEl.addEventListener('click', function (ev) { var b = ev.target.closest('[data-o]'); if (b) organizarEm(+b.getAttribute('data-o')); });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.ctrlKey || ev.altKey || ev.metaKey || (ev.target && ev.target.closest && ev.target.closest('input, textarea'))) return;
+    var i = TECLA_ORG.indexOf(String(ev.key).toLowerCase());
+    if (i >= 0) organizarEm(i);
+  });
+  try { org = parseInt(localStorage.getItem('fluxo.org'), 10) || 0; } catch (e) { org = 0; }
+  if (!(org >= 0 && org < ORGS.length)) org = 0;
+  [].forEach.call(orgsEl.children, function (b, k) { b.setAttribute('aria-selected', k === org ? 'true' : 'false'); });
+
+  var salvo = 0;
+  try { salvo = parseInt(localStorage.getItem('fluxo.estilo'), 10) || 0; } catch (e) { /* sem armazenamento */ }
+  aplicar(salvo >= 0 && salvo < TEMAS.length ? salvo : 0);
+  if (!M || !M.nos) { palco.innerHTML = '<p class="vazio">O dados/estado.js não carregou: abra esta página de dentro da pasta do mapa.</p>'; return; }
+  // o endereco escolhe o cartao: mapa.html#<id> abre com aquele cartao aceso
+  function doEndereco() {
+    var id = decodeURIComponent(location.hash.slice(1));
+    if (id && G && G.por[id] && G.por[id] !== ativo()) selecionar(G.por[id]);
+  }
+  window.addEventListener('hashchange', doEndereco);
+  G = montar(M); separar(); construir();
+  medir();
+  // a gaveta e a mesma das quatro paginas; clicar numa linha dela acende o cartao correspondente aqui
+  if (window.Gaveta) {
+    Gaveta.iniciar({encolher: '#palco', ancora: '#palco',
+      aoAbrir: function (id) { if (id && G && G.por[id] && G.por[id] !== ativo()) selecionar(G.por[id]); },
+      aoFechar: function () { selecionar(null); }});
+    Gaveta.receber(M);
+  }
+  var rs = 0;
+  try { rs = parseInt(localStorage.getItem('fluxo.ritmo'), 10) || 0; } catch (e) { /* sem armazenamento */ }
+  mudarRitmo(rs);
+  doEndereco();
+  new ResizeObserver(medir).observe(palco);
+  new ResizeObserver(caber).observe($('.barra'));
+  requestAnimationFrame(quadro);
+  setInterval(recarregar, 30000);
+  // na primeira carga, a rotina que rodou nos ultimos 5 min solta o trem dela
+  setTimeout(function () {
+    if (ritmo) return;
+    var agora = Date.now();
+    G.rotinas.forEach(function (n) {
+      var u = n.x.ultima ? Date.parse(n.x.ultima) : NaN;
+      if (u <= agora && agora - u < 5 * 6e4) trem(n);
+    });
+  }, 600);
+})();
+</script>
 </body>
 </html>
