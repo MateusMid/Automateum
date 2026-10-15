@@ -1,4 +1,7 @@
-"""Lê o config.toml e o .env. AUTOMATEUM_CONFIG e AUTOMATEUM_DADOS trocam os caminhos (usado nos testes)."""
+"""Lê o config.toml, config.local.toml e o .env.
+
+AUTOMATEUM_CONFIG, AUTOMATEUM_CONFIG_LOCAL e AUTOMATEUM_DADOS trocam os caminhos (usado nos testes).
+"""
 from __future__ import annotations
 
 import os
@@ -43,9 +46,26 @@ class Config:
         return self.pasta_dados / "automateum.db"
 
 
+def _mesclar(base: dict, sobre: dict) -> dict:
+    resultado = dict(base)
+    for k, v in sobre.items():
+        if k in resultado and isinstance(resultado[k], dict) and isinstance(v, dict):
+            resultado[k] = _mesclar(resultado[k], v)
+        else:
+            resultado[k] = v
+    return resultado
+
+
 def carregar() -> Config:
     caminho = Path(os.environ.get("AUTOMATEUM_CONFIG") or RAIZ / "config.toml")
     dados = tomllib.loads(caminho.read_text(encoding="utf-8-sig")) if caminho.exists() else {}
+
+    caminho_local = Path(os.environ.get("AUTOMATEUM_CONFIG_LOCAL") or RAIZ / "config.local.toml")
+    if caminho_local.exists():
+        dados_local = tomllib.loads(caminho_local.read_text(encoding="utf-8-sig"))
+        dados = _mesclar(dados, dados_local)
+
     pasta_dados = Path(os.environ.get("AUTOMATEUM_DADOS") or RAIZ / "dados")
     pasta_dados.mkdir(parents=True, exist_ok=True)
     return Config(dados=dados, segredos=_ler_env(RAIZ / ".env"), pasta_dados=pasta_dados)
+

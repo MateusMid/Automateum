@@ -1,0 +1,7 @@
+# Configurações específicas desta máquina (não versionado).
+# Sobrepõe o que estiver no config.toml.
+
+[obsidian]
+# Caminho absoluto para a pasta do seu cofre do Obsidian.
+cofre = 'C:\Users\seu_usuario\Documents\SeuCofre'
+# pastas_contexto = ["Meets"]

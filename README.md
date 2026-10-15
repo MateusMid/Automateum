@@ -78,10 +78,11 @@ pip install -r requirements.txt
 
 ### 4. Configurar variáveis de ambiente e arquivo TOML
 
-Copie o template de ambiente:
+Copie o template de ambiente e o template de configuração local:
 
 ```bash
 cp .env.example .env
+cp config.local.example.toml config.local.toml
 ```
 
 Preencha os tokens no `.env`:
@@ -91,8 +92,14 @@ GITHUB_TOKEN=github_pat_...
 SLACK_TOKEN=xoxp-...
 ```
 
-Ajuste as preferências no arquivo `config.toml` (como caminho do seu cofre do Obsidian, canais do Slack, consultas do
-Gmail e horários das rotinas).
+Configure o caminho do seu cofre do Obsidian em `config.local.toml`:
+
+```toml
+[obsidian]
+cofre = 'C:\Users\seu_usuario\Documents\SeuCofre'
+```
+
+O `config.local.toml` é ignorado pelo git e sobrepõe apenas as configurações específicas da sua máquina. Ajuste preferências gerais e horários em `config.toml`.
 
 Para o Gmail, salve o cliente OAuth do tipo "Desktop" do Google Cloud em `dados/gmail_credentials.json` e rode
 `python -m automateum gmail-login` uma vez.
