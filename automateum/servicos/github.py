@@ -49,15 +49,17 @@ def pendencias(config: Config) -> list[dict]:
     repos = config.secao("github").get("repositorios", [])
     filtro = " ".join(f"repo:{r}" for r in repos)
     itens: dict[str, dict] = {}
-    for consulta, papel in (("assignee:@me", "atribuído"), ("review-requested:@me", "revisão pedida")):
-        dados = _get(config, "/search/issues", q=f"is:open {consulta} {filtro}".strip(),
-                     per_page=100, sort="updated")
-        for i in dados.get("items", []):
-            repo = i["repository_url"].split("/repos/")[-1]
-            tipo = "PR" if "pull_request" in i else "issue"
-            itens.setdefault(i["html_url"], {
-                "chave": i["html_url"], "titulo": i["title"], "origem": f"{repo} #{i['number']}",
-                "corpo": f"{tipo} · {papel}", "url": i["html_url"], "quando": i["updated_at"][:10]})
+    # A busca do GitHub exige is:issue ou is:pull-request e não aceita os dois juntos: uma consulta por tipo.
+    for tipo_busca in ("is:issue", "is:pull-request"):
+        for consulta, papel in (("assignee:@me", "atribuído"), ("review-requested:@me", "revisão pedida")):
+            dados = _get(config, "/search/issues", q=f"is:open {tipo_busca} {consulta} {filtro}".strip(),
+                         per_page=100, sort="updated")
+            for i in dados.get("items", []):
+                repo = i["repository_url"].split("/repos/")[-1]
+                tipo = "PR" if "pull_request" in i else "issue"
+                itens.setdefault(i["html_url"], {
+                    "chave": i["html_url"], "titulo": i["title"], "origem": f"{repo} #{i['number']}",
+                    "corpo": f"{tipo} · {papel}", "url": i["html_url"], "quando": i["updated_at"][:10]})
     return list(itens.values())
 
 
