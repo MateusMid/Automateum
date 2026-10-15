@@ -63,7 +63,8 @@ class Agendador:
         return job.next_run_time.isoformat(timespec="seconds") if job and job.next_run_time else None
 
     def rodando(self, rotina_id: str) -> bool:
-        return self._travas[rotina_id].locked()
+        trava = self._travas.get(rotina_id)
+        return trava.locked() if trava else False
 
     def rodar_agora(self, rotina_id: str, manual: bool = True) -> None:
         threading.Thread(target=self.executar, args=[rotina_id, manual], daemon=True,
