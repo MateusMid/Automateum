@@ -39,6 +39,11 @@ def config_uvicorn(pasta_dados: Path) -> dict:
     }
 
 
+def tem_console() -> bool:
+    """False quando stdout é o redirecionamento para o log (evita gravar a mesma linha duas vezes)."""
+    return not isinstance(sys.stdout, _Fluxo)
+
+
 def porta_livre(host: str, porta: int) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex((host, porta)) != 0

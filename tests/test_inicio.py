@@ -44,3 +44,14 @@ def test_porta_livre():
         porta = s.getsockname()[1]
         assert not log.porta_livre("127.0.0.1", porta)
     assert log.porta_livre("127.0.0.1", porta)
+
+
+def test_tem_console(tmp_path, monkeypatch):
+    assert log.tem_console()
+    monkeypatch.setattr(sys, "stdout", None)
+    monkeypatch.setattr(sys, "stderr", None)
+    logger = log.configurar(tmp_path)
+    try:
+        assert not log.tem_console()
+    finally:
+        _limpar(logger)

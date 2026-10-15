@@ -48,10 +48,12 @@ def main() -> int:
     if not log.porta_livre(host, porta):
         logger.error("a porta %s já está em uso: o Automateum provavelmente já está rodando em http://%s:%s",
                      porta, host, porta)
-        print(f"A porta {porta} já está em uso. O Automateum provavelmente já está rodando em http://{host}:{porta}")
+        if log.tem_console():
+            print(f"A porta {porta} já está em uso. O Automateum provavelmente já está rodando em http://{host}:{porta}")
         return 1
     logger.info("Automateum em http://%s:%s", host, porta)
-    print(f"Automateum em http://{host}:{porta}")
+    if log.tem_console():
+        print(f"Automateum em http://{host}:{porta}")
     uvicorn.run(app, host=host, port=porta, log_config=log.config_uvicorn(config.pasta_dados))
     return 0
 
