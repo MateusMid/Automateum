@@ -6,6 +6,7 @@ import argparse
 import sys
 
 from . import config as cfg
+from .nucleo import log
 
 
 def main() -> int:
@@ -16,6 +17,7 @@ def main() -> int:
     sub.add_parser("rodar").add_argument("rotina")
     args = parser.parse_args()
     config = cfg.carregar()
+    logger = log.configurar(config.pasta_dados)
 
     if args.comando == "gmail-login":
         from .servicos import gmail
@@ -43,11 +45,27 @@ def main() -> int:
     import uvicorn
     painel = config.secao("painel")
     host, porta = painel.get("host", "127.0.0.1"), painel.get("porta", 8765)
+    if not log.porta_livre(host, porta):
+        logger.error("a porta %s já está em uso: o Automateum provavelmente já está rodando em http://%s:%s",
+                     porta, host, porta)
+        print(f"A porta {porta} já está em uso. O Automateum provavelmente já está rodando em http://{host}:{porta}")
+        return 1
+    logger.info("Automateum em http://%s:%s", host, porta)
     print(f"Automateum em http://{host}:{porta}")
-    uvicorn.run(app, host=host, port=porta, log_level="warning")
+    uvicorn.run(app, host=host, port=porta, log_config=log.config_uvicorn(config.pasta_dados))
     return 0
 
 
+def _iniciar() -> int:
+    if sys.stdout is not None:  # sem console (pythonw.exe) o stdout não existe
+        sys.stdout.reconfigure(encoding="utf-8")
+    try:
+        return main()
+    except Exception:
+        import logging
+        logging.getLogger("automateum").exception("falha ao subir o Automateum")
+        raise
+
+
 if __name__ == "__main__":
-    sys.stdout.reconfigure(encoding="utf-8")
-    sys.exit(main())
+    sys.exit(_iniciar())
