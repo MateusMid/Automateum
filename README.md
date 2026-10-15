@@ -116,6 +116,17 @@ python -m automateum
 
 O painel abre em <http://127.0.0.1:8765>.
 
+### Iniciar junto com o Windows
+
+```powershell
+scripts\instalar-inicio.ps1      # registra a tarefa "Automateum" no logon e sobe agora (-SemIniciar só registra)
+scripts\desinstalar-inicio.ps1   # para e remove a tarefa
+```
+
+A tarefa roda `.venv\Scripts\pythonw.exe -m automateum` sem janela. Sem terminal, tudo vai para
+`dados/automateum.log` (rotação de 1 MB, 3 arquivos); é lá que aparece um erro de subida. Para parar sem remover:
+`Stop-ScheduledTask -TaskName Automateum`. O comando `claude` precisa estar no PATH do usuário, não só do terminal.
+
 Outros comandos:
 
 ```bash

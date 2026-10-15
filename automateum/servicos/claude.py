@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -18,6 +19,10 @@ _SISTEMA = (
 )
 
 
+# Sob pythonw.exe, cada subprocesso abriria uma janela de console por um instante.
+_SEM_JANELA = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
+
+
 def _executavel() -> str | None:
     return shutil.which("claude")
 
@@ -29,7 +34,8 @@ def configurado(config: Config) -> str | None:
 def checar(config: Config) -> Checagem:
     inicio = time.perf_counter()
     try:
-        r = subprocess.run([_executavel(), "--version"], capture_output=True, text=True, timeout=30)
+        r = subprocess.run([_executavel(), "--version"], capture_output=True, text=True, timeout=30,
+                           **_SEM_JANELA)
     except (OSError, subprocess.TimeoutExpired) as e:
         return Checagem(FALHA, f"`claude --version` não respondeu: {e}")
     ms = round((time.perf_counter() - inicio) * 1000)
@@ -49,7 +55,7 @@ def perguntar(config: Config, instrucao: str, dados: str = "") -> str:
     # Pasta vazia como diretório de trabalho: nenhum CLAUDE.md ou projeto entra no contexto.
     with tempfile.TemporaryDirectory(prefix="automateum-") as pasta:
         r = subprocess.run(comando, input=entrada, capture_output=True, text=True, encoding="utf-8",
-                           timeout=secao.get("timeout_segundos", 240), cwd=pasta)
+                           timeout=secao.get("timeout_segundos", 240), cwd=pasta, **_SEM_JANELA)
     if r.returncode != 0:
         raise RuntimeError(f"claude saiu com código {r.returncode}: {(r.stderr or r.stdout).strip()[:300]}")
     saida = json.loads(r.stdout)
