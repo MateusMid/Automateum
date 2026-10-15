@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Automateum</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/painel.css">
+</head>
+<body>
+<header id="topo">
+  <h1>AUTOMATEUM</h1>
+  <span id="conexao" class="estado-espera">conectando…</span>
+  <span id="contagem"></span>
+</header>
+
+<main id="palco" aria-label="Mapa das rotinas">
+  <div id="mundo">
+    <svg id="fios" aria-hidden="true"></svg>
+  </div>
+</main>
+
+<nav id="controles" aria-label="Zoom">
+  <span>arraste para mover · a roda aproxima</span>
+  <button id="menos" aria-label="Afastar">−</button>
+  <button id="encaixar">Encaixar</button>
+  <button id="mais" aria-label="Aproximar">+</button>
+</nav>
+
+<aside id="gaveta" hidden aria-label="Detalhes">
+  <button id="fechar" aria-label="Fechar">×</button>
+  <div id="gaveta-corpo"></div>
+</aside>
+
+<script src="/static/painel.js"></script>
+</body>
+</html>

@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .. import rotinas, servicos  # noqa: F401  (registram rotinas e serviços)
 from ..config import Config
-from ..nucleo import grafo
+from ..nucleo import grafo, mapa_leo
 from ..nucleo.agendador import Agendador
 from ..nucleo.estado import Estado
 from ..nucleo.eventos import Barramento
@@ -52,6 +52,23 @@ def criar_app(config: Config) -> FastAPI:
     @app.get("/")
     def painel():
         return FileResponse(_ESTATICOS / "index.html", headers={"Cache-Control": "no-store"})
+
+    @app.get("/dados/estado.js")
+    def estado_js():
+        dados = mapa_leo.montar_mapa_leo(config, estado, agendador)
+        js = f"window.MAPA = {json.dumps(dados, ensure_ascii=False)};"
+        from fastapi.responses import Response
+        return Response(content=js, media_type="application/javascript", headers={"Cache-Control": "no-store"})
+
+    @app.get("/dados/acoes.js")
+    def acoes_js():
+        from fastapi.responses import Response
+        js = 'window.MAPA_ACOES = {"porta": 8765, "token": "automateum"};'
+        return Response(content=js, media_type="application/javascript", headers={"Cache-Control": "no-store"})
+
+    @app.get("/vivo")
+    def vivo():
+        return {"ok": True}
 
     @app.get("/api/grafo")
     def ver_grafo():
