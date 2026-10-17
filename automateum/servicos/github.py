@@ -44,21 +44,34 @@ def checar(config: Config) -> Checagem:
     return Checagem(OK, f"logado como {usuario['login']}", round((time.perf_counter() - inicio) * 1000))
 
 
+# A busca de issues e PRs exige o qualificador de tipo (is:issue ou is:pr), senão a API responde 422.
+_BUSCAS = (
+    ("is:issue assignee:@me", "atribuído"),
+    ("is:pr assignee:@me", "atribuído"),
+    ("is:pr review-requested:@me", "revisão pedida"),
+)
+
+
 def pendencias(config: Config) -> list[dict]:
     """Issues e PRs abertos atribuídos a você, mais PRs esperando a sua revisão."""
     repos = config.secao("github").get("repositorios", [])
     filtro = " ".join(f"repo:{r}" for r in repos)
     itens: dict[str, dict] = {}
-    for consulta, papel in (("assignee:@me", "atribuído"), ("review-requested:@me", "revisão pedida")):
+    for consulta, papel in _BUSCAS:
         dados = _get(config, "/search/issues", q=f"is:open {consulta} {filtro}".strip(),
                      per_page=100, sort="updated")
         for i in dados.get("items", []):
             repo = i["repository_url"].split("/repos/")[-1]
             tipo = "PR" if "pull_request" in i else "issue"
-            itens.setdefault(i["html_url"], {
+            item = itens.setdefault(i["html_url"], {
                 "chave": i["html_url"], "titulo": i["title"], "origem": f"{repo} #{i['number']}",
-                "corpo": f"{tipo} · {papel}", "url": i["html_url"], "quando": i["updated_at"][:10]})
-    return list(itens.values())
+                "papeis": [], "tipo": tipo, "url": i["html_url"], "quando": i["updated_at"][:10]})
+            # Um PR pode ser seu e pedir sua revisão ao mesmo tempo: guarda os dois papéis.
+            if papel not in item["papeis"]:
+                item["papeis"].append(papel)
+    return [{"chave": i["chave"], "titulo": i["titulo"], "origem": i["origem"], "url": i["url"],
+             "quando": i["quando"], "corpo": f"{i['tipo']} · {', '.join(i['papeis'])}"}
+            for i in itens.values()]
 
 
 registrar_servico("github", "GitHub", checar, configurado, "Issues e pull requests atribuídos a você.")
