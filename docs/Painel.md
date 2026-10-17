@@ -41,3 +41,20 @@ O fluxo visual propaga-se da esquerda para a direita. Um traço vermelho ou âmb
 - **Modo painel (tecla `P`, botão Painel ou `/?parede=1`):** tela cheia sem controles, só a faixa Hoje com relógio e o mapa, que continua se atualizando. `Esc` sai. A tela do aparelho não apaga enquanto ele está ativo, quando o navegador permite.
 - **Celular:** em telas estreitas (até 760 px) o mapa vira uma lista: o que precisa de você, a máquina, as frentes com suas rotinas e os serviços de fora. Tocar num item abre a gaveta. É só leitura.
 
+### Ver no celular, pelo Wi-Fi (opcional)
+
+Desligado por padrão. Para ligar, no `config.local.toml`:
+
+```toml
+[painel]
+celular = true
+```
+
+Reinicie o Automateum e, no computador, abra `http://127.0.0.1:8765/celular`: a página mostra um QR code com o endereço e a chave. Leia com o celular (no mesmo Wi-Fi). Na primeira visita a chave vira um cookie, e o celular passa a abrir o painel direto.
+
+- O celular só **lê**: o painel, os textos de Hoje, o gráfico da máquina e os detalhes das rotinas. Não roda, liga nem desliga nada (os botões nem aparecem).
+- Só aceita aparelhos e endereços de rede privada (192.168.x, 10.x…); nome de domínio é recusado. Depois de 8 chaves erradas o aparelho fica bloqueado por 5 minutos.
+- A chave fica em `dados/celular.chave`. Para invalidar, apague o arquivo e reinicie.
+- O tráfego é HTTP, sem criptografia: use em rede de confiança, não em Wi-Fi público. O Windows pode perguntar uma vez se libera o Python na rede privada: aceite.
+- O computador precisa estar ligado e no mesmo Wi-Fi. Fora de casa, o acesso não funciona (isso exigiria algo como o Tailscale).
+

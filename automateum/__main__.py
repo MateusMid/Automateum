@@ -45,7 +45,9 @@ def main() -> int:
     import uvicorn
     painel = config.secao("painel")
     host, porta = painel.get("host", "127.0.0.1"), painel.get("porta", 8765)
-    if not log.porta_livre(host, porta):
+    if painel.get("celular"):
+        host = "0.0.0.0"  # o painel só deixa passar leitura, de rede privada, com a chave do celular (web/celular.py)
+    if not log.porta_livre("127.0.0.1" if host == "0.0.0.0" else host, porta):
         logger.error("a porta %s já está em uso: o Automateum provavelmente já está rodando em http://%s:%s",
                      porta, host, porta)
         if log.tem_console():

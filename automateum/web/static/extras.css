@@ -108,3 +108,9 @@ body.parede .palco { cursor: default; }
   .cl-ok, .cl-nota { margin: 8px 2px; color: var(--mudo); font-size: 12.5px; }
 }
 @media (prefers-reduced-motion: reduce) { #sair-parede { transition: none; } }
+
+/* ---- visto de outro aparelho (celular): só leitura ---- */
+body.leitura .gv-acoes { display: none !important; }
+.zoom .zoom-link { align-self: center; padding: 0 9px; font-size: 12px; color: var(--mudo); text-decoration: none; }
+.zoom .zoom-link:hover { color: var(--texto); }
+body.parede .zoom-link { display: none; }
