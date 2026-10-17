@@ -110,3 +110,53 @@ def test_pagina_do_computador_mostra_o_link_com_a_chave(ambiente):
     _, pasta, local = ambiente
     r = local.get("/celular")
     assert "chave=" + _chave(pasta) in r.text or "Não achei o endereço" in r.text
+
+
+# --- o cartão do celular conectado
+
+from automateum.web import celular as modulo_celular
+
+UA_CHROME_ANDROID = ("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) "
+                     "Chrome/126.0.0.0 Mobile Safari/537.36")
+UA_SAMSUNG = ("Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) "
+              "SamsungBrowser/25.0 Chrome/121.0.0.0 Mobile Safari/537.36")
+UA_IPHONE = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) "
+             "Version/17.4 Mobile/15E148 Safari/604.1")
+
+
+def test_descrever_o_aparelho_pelo_que_o_navegador_conta():
+    assert modulo_celular.descrever(UA_SAMSUNG) == ("SM-S918B", "Android 14 · Samsung Internet")
+    assert modulo_celular.descrever(UA_IPHONE) == ("iPhone", "iOS 17.4 · Safari")
+    # o Chrome do Android esconde o modelo: sem a dica, o nome é genérico
+    assert modulo_celular.descrever(UA_CHROME_ANDROID) == ("Celular Android", "Android 10 · Chrome")
+    # com a dica de modelo (HTTPS), ela vence
+    assert modulo_celular.descrever(UA_CHROME_ANDROID, '"Pixel 8"')[0] == "Pixel 8"
+    assert modulo_celular.descrever("") == ("Aparelho na rede", "")
+
+
+def test_conectados_some_depois_de_15_minutos_e_limita_a_tres(tmp_path):
+    c = modulo_celular.Celular(tmp_path)
+    for i in range(5):
+        c.visto(f"192.168.0.{10 + i}", UA_SAMSUNG)
+    assert len(c.conectados()) == 3
+    assert c.conectados(agora=c.conectados()[0]["visto"] + 901) == []
+
+
+def test_celular_que_acessou_vira_cartao_ligado_a_maquina(ambiente):
+    app, pasta, local = ambiente
+    c = _celular(app)
+    c.get(f"/?chave={_chave(pasta)}")
+    c.get("/api/hoje", headers={"user-agent": UA_SAMSUNG})
+    mapa = local.get("/dados/estado.js").text
+    import json
+    dados = json.loads(mapa.removeprefix("window.MAPA = ").removesuffix(";"))
+    cel = next(n for n in dados["nos"] if n["id"].startswith("cel-"))
+    assert cel["rotulo"] == "SM-S918B" and cel["frase"] == "conectado agora" and cel["maquina"] is True
+    assert "192.168.0.50" in cel["linhas"][0]
+    lig = next(l for l in dados["ligacoes"] if l["para"] == cel["id"])
+    assert lig["de"] == "mesa"
+
+
+def test_sem_celular_conectado_nao_ha_cartao(ambiente):
+    _, _, local = ambiente
+    assert '"cel-' not in local.get("/dados/estado.js").text

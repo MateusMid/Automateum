@@ -28,7 +28,7 @@ _ICONES = {
 }
 
 
-def montar_mapa_leo(config, estado: Estado, ag: Agendador) -> dict:
+def montar_mapa_leo(config, estado: Estado, ag: Agendador, celulares: list[dict] | None = None) -> dict:
     checagens = estado.checagens()
     ultimas = estado.ultimas_execucoes()
     avisos = estado.avisos(limite=5, horas=24, pendentes=True)
@@ -99,6 +99,24 @@ def montar_mapa_leo(config, estado: Estado, ag: Agendador) -> dict:
             "esperando": [],
         }
     ]
+
+    # Celulares que estão olhando o painel pela rede local: um cartão embaixo do da máquina, ligado a ela
+    for c in celulares or []:
+        segundos = max(0, int(time.time() - c["visto"]))
+        ligado = segundos <= 180
+        cid = f"cel-{c['id']}"
+        nos.append({
+            "id": cid, "tipo": "zona", "zona": "mesa", "maquina": True, "rotulo": c["nome"], "sub": c["detalhe"] or None,
+            "oque": "Aparelho que está vendo este painel pela rede local (só leitura).",
+            "estado": "bom" if ligado else "desligado",
+            "frase": "conectado agora" if ligado else f"visto há {max(1, segundos // 60)} min",
+            "linhas": [f"endereço {c['ip']}"], "esperando": [], "causa": None,
+        })
+        ligacoes.append({
+            "id": f"mesa~{cid}", "tipo": "ligacao", "de": "mesa", "para": cid, "rotulo": "Wi-Fi", "interna": False,
+            "estado": "bom" if ligado else "desligado", "frase": "vendo o painel pela rede local",
+            "causa": None, "linhas": [], "esperando": [],
+        })
 
     # Serviços (externo)
     for sid, s in SERVICOS.items():
