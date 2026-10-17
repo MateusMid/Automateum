@@ -55,7 +55,7 @@ def rodar(ctx):
                 projetos.guardar_preparados(ctx.estado, pid, guardados)
                 feitos.append(f"#{issue['numero']} {issue['titulo']}")
                 ctx.log(f"#{issue['numero']}: worktree {nome}, prompt digitado (sem enviar)")
-            except (RuntimeError, OSError) as e:
+            except (RuntimeError, OSError, KeyError, IndexError, ValueError) as e:   # inclui `modelo` com chave desconhecida
                 problemas.append(f"#{issue['numero']}: {e}")
         projetos.guardar_preparados(ctx.estado, pid, guardados)
     ctx.texto = ("Prompts prontos no Orca, esperando o seu Enter: " + "; ".join(feitos)) if feitos else ""
