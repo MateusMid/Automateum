@@ -73,6 +73,7 @@ def criar_app(config: Config) -> FastAPI:
 
     app = FastAPI(title="Automateum", lifespan=vida, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.agendador, app.state.estado = agendador, estado
+    app.state.celular = celular
 
     def _recusa(status: int, texto: str) -> Response:
         return HTMLResponse("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'>"
@@ -90,6 +91,7 @@ def criar_app(config: Config) -> FastAPI:
         if celular.bloqueado(ip):
             return _recusa(429, "Muitas tentativas. Aguarde alguns minutos.")
         if celular.cookie_ok(request.cookies.get(acesso_celular.COOKIE, "")):
+            celular.visto(ip, request.headers.get("user-agent", ""), request.headers.get("sec-ch-ua-model", ""))
             return await seguir(request)
         tentativa = request.query_params.get("chave")
         if tentativa is not None:
@@ -145,7 +147,7 @@ def criar_app(config: Config) -> FastAPI:
 
     @app.get("/dados/estado.js")
     def estado_js():
-        dados = mapa_leo.montar_mapa_leo(config, estado, agendador)
+        dados = mapa_leo.montar_mapa_leo(config, estado, agendador, celular.conectados() if celular else [])
         js = f"window.MAPA = {json.dumps(dados, ensure_ascii=False)};"
         from fastapi.responses import Response
         return Response(content=js, media_type="application/javascript", headers={"Cache-Control": "no-store"})

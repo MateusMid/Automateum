@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import ipaddress
+import re
 import secrets
 import socket
 import time
@@ -46,10 +47,45 @@ def ips_da_maquina() -> list[str]:
     return achados
 
 
+def descrever(user_agent: str, modelo_dica: str = "") -> tuple[str, str]:
+    """(nome, detalhe) do aparelho pelo que o navegador conta de si.
+
+    O Chrome do Android esconde o modelo ("Android 10; K") e o iPhone nunca o diz, e a dica de modelo
+    (Sec-CH-UA-Model) só vem em HTTPS: nesses casos o nome cai para "Celular Android" ou "iPhone".
+    """
+    ua = user_agent or ""
+    modelo = (modelo_dica or "").strip().strip('"')
+    navegador = next((n for t, n in (("SamsungBrowser", "Samsung Internet"), ("EdgA", "Edge"), ("Firefox", "Firefox"),
+                                     ("FxiOS", "Firefox"), ("CriOS", "Chrome"), ("Chrome", "Chrome"),
+                                     ("Safari", "Safari")) if t in ua), "")
+    if (m := re.search(r"iPhone|iPad", ua)):
+        versao = re.search(r"OS (\d+)[_.](\d+)", ua)
+        return m.group(0), " · ".join(x for x in (f"iOS {versao.group(1)}.{versao.group(2)}" if versao else "iOS", navegador) if x)
+    if (a := re.search(r"Android ([\d.]+)(?:; ([^;)]+))?", ua)):
+        achado = a.group(2) or ""
+        if not modelo and achado.strip() not in ("", "K", "Mobile", "wv"):
+            modelo = achado.strip()
+        return modelo or "Celular Android", " · ".join(x for x in (f"Android {a.group(1)}", navegador) if x)
+    return modelo or "Aparelho na rede", navegador
+
+
 class Celular:
     def __init__(self, pasta_dados: Path):
         self._arquivo = pasta_dados / "celular.chave"
         self._falhas: dict[str, list[float]] = {}
+        self._vistos: dict[str, dict] = {}
+
+    def visto(self, ip: str, user_agent: str, modelo_dica: str = "") -> None:
+        """Anota um aparelho que acabou de pedir o painel (já autenticado)."""
+        id_ = hashlib.sha1(f"{ip}|{user_agent}".encode()).hexdigest()[:8]
+        nome, detalhe = descrever(user_agent, modelo_dica)
+        self._vistos[id_] = {"id": id_, "ip": ip, "nome": nome, "detalhe": detalhe, "visto": time.time()}
+
+    def conectados(self, agora: float | None = None, janela_s: int = 900) -> list[dict]:
+        """Aparelhos vistos nos últimos `janela_s` segundos, o mais recente primeiro (no máximo 3)."""
+        agora = time.time() if agora is None else agora
+        vivos = [v for v in self._vistos.values() if agora - v["visto"] <= janela_s]
+        return sorted(vivos, key=lambda v: -v["visto"])[:3]
 
     def chave(self) -> str:
         if self._arquivo.exists():

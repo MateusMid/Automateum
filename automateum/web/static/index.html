@@ -745,7 +745,7 @@ button.pil:hover { border-color: var(--c); }
       // so a maquina que roda as frentes conta frente; a outra mostra o que ela e e o que a sonda viu
       var nb = n.sai.filter(function (e) { return e.tipo === 'bus'; }).length;
       sub = [x.sub, x.frase].filter(Boolean).join('\n');
-      h = '<span class="kk">máquina</span><span class="l1"><i class="gl"></i><b>' + esc(n.rot) + '</b></span>' +
+      h = '<span class="kk">' + (n.id.indexOf('cel-') === 0 ? 'celular' : 'máquina') + '</span><span class="l1"><i class="gl"></i><b>' + esc(n.rot) + '</b></span>' +
         (x.sub ? '<span class="s dois">' + esc(x.sub) + '</span>' : '') +
         (x.frase || rz ? '<span class="s tres">' + rz + esc(x.frase || '') + '</span>' : '') +
         (nb ? '<span class="s">roda ' + nb + (nb > 1 ? ' frentes' : ' frente') + '</span>' : '') +

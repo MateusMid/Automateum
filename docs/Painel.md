@@ -52,6 +52,7 @@ celular = true
 
 Reinicie o Automateum e, no computador, abra `http://127.0.0.1:8765/celular`: a página mostra um QR code com o endereço e a chave. Leia com o celular (no mesmo Wi-Fi). Na primeira visita a chave vira um cookie, e o celular passa a abrir o painel direto.
 
+- **Cartão do celular:** enquanto um celular estiver com o painel aberto, aparece um cartão "celular" embaixo do cartão do PC, ligado a ele, com "conectado agora" (ou "visto há N min" por até 15 min). O nome vem do que o navegador conta de si: o Chrome do Android esconde o modelo e o iPhone nunca o diz, então esses aparecem como "Celular Android" e "iPhone" (com a versão do sistema); navegadores como o Samsung Internet mostram o código do modelo, por exemplo `SM-S918B`.
 - O celular só **lê**: o painel, os textos de Hoje, o gráfico da máquina e os detalhes das rotinas. Não roda, liga nem desliga nada (os botões nem aparecem).
 - Só aceita aparelhos e endereços de rede privada (192.168.x, 10.x…); nome de domínio é recusado. Depois de 8 chaves erradas o aparelho fica bloqueado por 5 minutos.
 - A chave fica em `dados/celular.chave`. Para invalidar, apague o arquivo e reinicie.
