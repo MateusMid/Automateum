@@ -1,7 +1,7 @@
 from datetime import date
 
 from ..nucleo.registro import rotina
-from ..servicos import claude, git_local, obsidian
+from ..servicos import claude, git_local, maquina, obsidian
 from ._texto import listar, secao, sem_blocos
 
 _PEDIDO = (
@@ -47,8 +47,12 @@ def rodar(ctx):
         secao("Atividade Git Local / Repositórios", git_info),
     ]
     fechamento = claude.perguntar(cfg, _PEDIDO, "\n".join(material))
-    ctx.texto = fechamento
-    caminho = obsidian.escrever_bloco_diario(cfg, "dia_fechado", f"## Dia fechado\n\n{fechamento}")
+    # A linha da máquina sai das medições, não do Claude: é um número, e não deve ser reescrito.
+    ligada_desde = ((ctx.estado.checagens().get("maquina") or {}).get("meta") or {}).get("ligada_desde", "")
+    linha_maquina = maquina.resumo_do_dia(ctx.estado.medidas(f"{hoje}T00:00:00"), ligada_desde)
+    texto = fechamento + (f"\n\n{linha_maquina}" if linha_maquina else "")
+    ctx.texto = texto
+    caminho = obsidian.escrever_bloco_diario(cfg, "dia_fechado", f"## Dia fechado\n\n{texto}")
     ctx.log(f"bloco escrito em {caminho.name}")
     return f"fechamento escrito em {caminho.name}"
 

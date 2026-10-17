@@ -25,6 +25,9 @@ CREATE TABLE IF NOT EXISTS itens (
     quando TEXT, coletado TEXT NOT NULL, PRIMARY KEY (fonte, chave)
 );
 CREATE TABLE IF NOT EXISTS cursores (chave TEXT PRIMARY KEY, valor TEXT);
+CREATE TABLE IF NOT EXISTS medidas (
+    quando TEXT PRIMARY KEY, cpu INTEGER, memoria INTEGER, disco_livre_gb INTEGER
+);
 CREATE TABLE IF NOT EXISTS avisos (
     id INTEGER PRIMARY KEY AUTOINCREMENT, quando TEXT, rotina TEXT, nivel TEXT, texto TEXT
 );
@@ -97,6 +100,16 @@ class Estado:
         corte = (datetime.now() - timedelta(days=dias)).isoformat(timespec="seconds")
         self._exec("DELETE FROM execucoes WHERE inicio < ?", (corte,))
         self._exec("DELETE FROM avisos WHERE quando < ?", (corte,))
+        # as medições da máquina são de 2 em 2 minutos: só os últimos dias interessam
+        self._exec("DELETE FROM medidas WHERE quando < ?",
+                   ((datetime.now() - timedelta(days=7)).isoformat(timespec="seconds"),))
+
+    # --- medições da máquina
+    def salvar_medida(self, cpu: int, memoria: int, disco_livre_gb: int) -> None:
+        self._exec("INSERT OR REPLACE INTO medidas VALUES (?,?,?,?)", (agora(), cpu, memoria, disco_livre_gb))
+
+    def medidas(self, desde: str) -> list[dict]:
+        return self._linhas("SELECT * FROM medidas WHERE quando >= ? ORDER BY quando", (desde,))
 
     # --- checagens de serviço
     def salvar_checagem(self, servico: str, c: Checagem) -> None:

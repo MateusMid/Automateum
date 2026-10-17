@@ -19,6 +19,26 @@ def _ip_local() -> str:
         return "sem rede"
 
 
+def resumo_do_dia(medidas: list[dict], ligada_desde: str = "") -> str:
+    """Uma linha para o fechamento do dia: média e pico de CPU e memória, e o disco livre. Vazio sem medições."""
+    if not medidas:
+        return ""
+
+    def media_e_pico(campo: str) -> str:
+        pico = max(medidas, key=lambda m: m[campo])
+        media = round(sum(m[campo] for m in medidas) / len(medidas))
+        return f"média {media}% (pico {pico[campo]}% às {pico['quando'][11:16]})"
+
+    livre = [m["disco_livre_gb"] for m in medidas]
+    disco = f"disco livre {livre[-1]} GB" + (f" (mínimo do dia {min(livre)} GB)" if min(livre) != livre[-1] else "")
+    partes = [f"CPU {media_e_pico('cpu')}", f"memória {media_e_pico('memoria')}", disco]
+    if ligada_desde:
+        partes.append(f"ligada desde {ligada_desde}")
+    n = len(medidas)
+    return f"**Máquina:** {' · '.join(partes)} ({n} medição)." if n == 1 else \
+        f"**Máquina:** {' · '.join(partes)} ({n} medições)."
+
+
 def ler() -> Checagem:
     cpu = psutil.cpu_percent(interval=0.3)
     memoria = psutil.virtual_memory().percent
