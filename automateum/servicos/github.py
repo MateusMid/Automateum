@@ -73,8 +73,14 @@ def issues_abertas(config: Config, repo: str, rotulo: str = "") -> list[dict]:
     parametros = {"state": "open", "per_page": 100, "sort": "created", "direction": "asc"}
     if rotulo:
         parametros["labels"] = rotulo
-    return [{"numero": i["number"], "titulo": i["title"], "corpo": i.get("body") or "", "url": i["html_url"]}
+    return [{"numero": i["number"], "titulo": i["title"], "corpo": i.get("body") or "", "url": i["html_url"],
+             "atribuidos": [a["login"].lower() for a in i.get("assignees") or []]}
             for i in _get(config, f"/repos/{repo}/issues", **parametros) if "pull_request" not in i]
+
+
+def meu_login(config: Config) -> str:
+    """O login dono do token, em minúsculas: serve para achar as issues atribuídas a você."""
+    return str(_get(config, "/user").get("login", "")).lower()
 
 
 registrar_servico("github", "GitHub", checar, configurado, "Issues e pull requests atribuídos a você.")

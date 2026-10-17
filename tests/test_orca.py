@@ -62,9 +62,12 @@ class OrcaFalso:
         return [c for c in self.chamadas if c[:len(inicio)] == list(inicio)]
 
 
-def _issues(monkeypatch, *itens):
+def _issues(monkeypatch, *itens, de=("eu",)):
+    """Issues abertas; por padrão todas atribuídas ao dono do token (`eu`)."""
+    monkeypatch.setattr(github, "meu_login", lambda cfg: "eu")
     monkeypatch.setattr(github, "issues_abertas", lambda cfg, repo, rotulo="": [
-        {"numero": n, "titulo": t, "corpo": c, "url": f"https://github.com/dono/demo/issues/{n}"} for n, t, c in itens])
+        {"numero": n, "titulo": t, "corpo": c, "url": f"https://github.com/dono/demo/issues/{n}", "atribuidos": list(de)}
+        for n, t, c in itens])
 
 
 # --- a regra: nunca enviar
@@ -168,6 +171,45 @@ def test_repositorio_fora_do_orca_vira_aviso(tmp_path, monkeypatch):
     ctx = Ctx(tmp_path, projetos={"demo": {"nome": "Demo", "github": "outro/repo", "ativo": True}})
     with pytest.raises(Atencao, match="não está no Orca"):
         ROTINAS["preparar_prompts"].func(ctx)
+
+
+def test_issue_de_outra_pessoa_espera_o_comecar(tmp_path, monkeypatch):
+    falso = OrcaFalso(monkeypatch)
+    _issues(monkeypatch, (7, "Alheia", ""), (8, "Sem dono", ""), de=("outra",))
+    ctx = Ctx(tmp_path)
+    assert ROTINAS["preparar_prompts"].func(ctx) == "nada novo para preparar"
+    assert falso.com("worktree", "create") == []
+    sit = projetos.situacao(ctx.config, ctx.estado)[0]
+    assert [i["numero"] for i in sit["disponiveis"]] == [7, 8] and not any(i["minha"] for i in sit["disponiveis"])
+    projetos.aceitar(ctx.config, ctx.estado, "demo", 8)
+    ROTINAS["preparar_prompts"].func(ctx)
+    criar = falso.com("worktree", "create")
+    assert len(criar) == 1 and criar[0][criar[0].index("--issue") + 1] == "8"
+    assert [i["numero"] for i in projetos.situacao(ctx.config, ctx.estado)[0]["disponiveis"]] == [7]
+
+
+def test_aceita_nao_gasta_vaga__e_as_atribuidas_respeitam_o_limite(tmp_path, monkeypatch):
+    falso = OrcaFalso(monkeypatch)
+    _issues(monkeypatch, *[(n, f"Task {n}", "") for n in range(1, 6)], de=("outra",))
+    ctx = Ctx(tmp_path)
+    for n in (1, 2, 3, 4):
+        projetos.aceitar(ctx.config, ctx.estado, "demo", n)
+    ROTINAS["preparar_prompts"].func(ctx)
+    assert len(falso.com("worktree", "create")) == 4        # as aceitas passam do limite de 3 e de 2 por rodada
+
+
+def test_acao_comecar_registra_e_dispara_a_rotina(tmp_path):
+    from fastapi.testclient import TestClient
+    from automateum.web.api import criar_app
+    cfg = _cfg(tmp_path, projetos={"demo": {"nome": "Demo", "github": "dono/demo", "ativo": True}},
+               obsidian={"cofre": str(tmp_path)})
+    c = TestClient(criar_app(cfg))
+    c.headers.update({"host": "127.0.0.1:8765"})
+    token = c.get("/dados/acoes.js").text.split('"token": "', 1)[1].split('"', 1)[0]
+    cab = {"X-Mapa-Token": token, "Origin": "http://127.0.0.1:8765"}
+    assert c.post("/acao", json={"acao": "projeto-comecar:demo:abc"}, headers=cab).status_code == 400
+    assert c.post("/acao", json={"acao": "projeto-comecar:x:7"}, headers=cab).status_code == 400
+    assert c.post("/acao", json={"acao": "projeto-comecar:demo:7"}, headers=cab).status_code == 200
 
 
 # --- projetos e o botão

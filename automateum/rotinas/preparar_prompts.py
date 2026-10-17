@@ -6,6 +6,7 @@ from ..nucleo.registro import Atencao, rotina
 from ..servicos import github, orca
 
 _POR_RODADA = 2
+_ACEITAS_POR_RODADA = 5
 
 
 def _nome(numero: int, titulo: str) -> str:
@@ -34,10 +35,18 @@ def rodar(ctx):
             problemas.append(f"{projeto.get('nome', pid)}: o repositório {projeto['github']} não está no Orca")
             continue
         issues = github.issues_abertas(cfg, projeto["github"], projeto.get("rotulo", ""))
+        eu = github.meu_login(cfg)
+        for i in issues:
+            i["minha"] = bool(eu) and eu in i.get("atribuidos", [])
+        projetos.guardar_abertas(ctx.estado, pid, issues)   # a gaveta lista as que esperam o "Começar"
         abertas = {str(i["numero"]) for i in issues}
         guardados = {n: d for n, d in projetos.preparados(ctx.estado, pid).items() if n in abertas}  # fechada = libera a vaga
+        aceitas = set(projetos.aceitas(ctx.estado, pid))
         vagas = max(0, int(projeto.get("max_pendentes", 3)) - len(guardados))
-        novas = [i for i in issues if str(i["numero"]) not in guardados][:min(vagas, _POR_RODADA)]
+        livres = [i for i in issues if str(i["numero"]) not in guardados]
+        # as que você aceitou passam na frente e não gastam vaga; as atribuídas a você entram enquanto houver vaga
+        novas = [i for i in livres if i["numero"] in aceitas][:_ACEITAS_POR_RODADA]
+        novas += [i for i in livres if i["minha"] and i["numero"] not in aceitas][:min(vagas, _POR_RODADA)]
         for issue in novas:
             nome = _nome(issue["numero"], issue["titulo"])
             try:

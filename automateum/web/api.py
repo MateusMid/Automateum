@@ -183,6 +183,13 @@ def criar_app(config: Config) -> FastAPI:
         if tipo in ("projeto-ligar", "projeto-desligar") and alvo in projetos.lista(config):
             projetos.definir(config, estado, alvo, tipo == "projeto-ligar")
             return {"id": 0}
+        if tipo == "projeto-comecar":
+            pid, _, numero = alvo.partition(":")
+            if pid not in projetos.lista(config) or not numero.isdigit():
+                return _erro(400, f"ação desconhecida: {nome}")
+            projetos.aceitar(config, estado, pid, int(numero))
+            exec_id = agendador.disparar("preparar_prompts")   # prepara já, sem esperar os 15 minutos
+            return {"id": exec_id if exec_id is not None else 0}
         if tipo == "rodar" and alvo in ROTINAS:
             exec_id = agendador.disparar(alvo)
             if exec_id is None:
