@@ -4,16 +4,28 @@ Roda sem ferramentas liberadas (nenhum --allow-tool), numa pasta vazia, com o te
 """
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
+import sys
 import tempfile
+from pathlib import Path
 
 from ..config import Config
 from .claude import _SEM_JANELA, _SISTEMA
 
 
 def _executavel() -> str | None:
-    return shutil.which("copilot")
+    achado = shutil.which("copilot")
+    if achado or sys.platform != "win32":
+        return achado
+    # O winget põe o programa no PATH do usuário, mas a tarefa agendada só o vê depois do próximo logon:
+    # procura nos lugares onde o winget instala.
+    base = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WinGet"
+    for padrao in ("Links/copilot.exe", "Packages/GitHub.Copilot_*/copilot.exe"):
+        for caminho in sorted(base.glob(padrao)):
+            return str(caminho)
+    return None
 
 
 def configurado(config: Config) -> str | None:

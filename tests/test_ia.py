@@ -137,3 +137,14 @@ def test_copilot_erro_e_resposta_vazia(tmp_path, monkeypatch):
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: SimpleNamespace(returncode=0, stdout="  ", stderr=""))
     with pytest.raises(RuntimeError, match="não devolveu texto"):
         copilot.perguntar(cfg, "resuma")
+
+
+def test_copilot_acha_o_instalador_do_winget_fora_do_path(tmp_path, monkeypatch):
+    pacote = tmp_path / "Microsoft" / "WinGet" / "Packages" / "GitHub.Copilot_x" 
+    pacote.mkdir(parents=True)
+    (pacote / "copilot.exe").write_text("")
+    monkeypatch.undo()                                      # tira o falso do conftest
+    monkeypatch.setattr("shutil.which", lambda nome: None)
+    monkeypatch.setattr("sys.platform", "win32")
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    assert copilot._executavel() == str(pacote / "copilot.exe")
