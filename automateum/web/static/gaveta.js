@@ -439,6 +439,7 @@
   function rotAcao(a) {
     var p = a.split(':'), d = p[1] && /^\d{4}-\d\d-\d\d$/.test(p[1]) ? p[1].slice(8, 10) + '/' + p[1].slice(5, 7) : '';
     if (p[0] === 'rodar') return 'Rodar agora';
+    if (p[0] === 'projeto-comecar') return 'Começar';
     if (p[0] === 'projeto-ligar') return 'Ativar';
     if (p[0] === 'projeto-desligar') return 'Desativar';
     if (p[0] === 'motor') return 'Usar o ' + (p[1] === 'copilot' ? 'Copilot' : 'Claude') + ' como principal';
@@ -452,7 +453,7 @@
   function projetos(x) {
     var ps = x.projetos;
     if (!ps) return '';
-    var h = '<p class="gv-oque">Cada issue aberta de um projeto ativo ganha uma worktree no Orca, com o Claude Code aberto e o prompt <b>digitado, sem enviar</b>. Só sai quando você apertar Enter lá.</p>';
+    var h = '<p class="gv-oque">As issues atribuídas a você ganham sozinhas uma worktree no Orca, com o Claude Code aberto e o prompt <b>digitado, sem enviar</b>. As outras ficam abaixo até você clicar em Começar. Nada sai até você apertar Enter lá.</p>';
     if (!ps.length) h += '<p class="gv-nota">Nenhum projeto configurado. Veja <code>[projetos]</code> no config.toml.</p>';
     ps.forEach(function (p) {
       h += '<div class="gv-proj"><div class="gv-proj-t"><b>' + esc(p.nome) + '</b><small>' + esc(p.github) + ' · ' + (p.ativo ? 'ativo' : 'desativado') + '</small></div>' +
@@ -460,6 +461,12 @@
       if (p.prontos && p.prontos.length) {
         h += '<ul class="gv-linhas">' + p.prontos.map(function (q) {
           return '<li>#' + q.numero + ' ' + esc(q.titulo) + (q.digitado ? '' : ' (abra o Claude Code e digite o prompt à mão)') + '</li>';
+        }).join('') + '</ul>';
+      }
+      if (p.ativo && p.disponiveis && p.disponiveis.length) {
+        h += '<p class="gv-nota">Abertas, ainda sem prompt:</p><ul class="gv-linhas gv-livres">' + p.disponiveis.map(function (q) {
+          return '<li>#' + q.numero + ' ' + esc(q.titulo) + (q.minha ? ' <small>(sua)</small>' : '') +
+            '<span class="gv-acoes gv-e-bom">' + botaoAcao('projeto-comecar:' + p.id + ':' + q.numero) + '</span></li>';
         }).join('') + '</ul>';
       }
       h += '</div>';
@@ -782,6 +789,8 @@
     '.gv-frase { margin: 0 0 12px; font-size: 14px; line-height: 1.5; }',
     '.gv-proj { margin: 0 0 12px; padding: 0 0 4px; }',
     '.gv-proj-t { display: flex; flex-direction: column; gap: 1px; margin: 0 0 6px; }',
+    '.gv-livres li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }',
+    '.gv-livres .gv-acoes { margin: 0; flex: none; }',
     '.gv-proj-t small { color: var(--gv-mudo); font-size: 11.5px; }',
     '.gv-linhas { margin: 0 0 6px; padding: 9px 11px; list-style: none; background: var(--gv-fundo); border: 1px solid var(--gv-linha); border-radius: 7px; font: 11.5px/1.55 var(--gv-mono); color: var(--gv-texto2); overflow-wrap: anywhere; }',
     '.gv-linhas li + li { margin-top: 3px; }',

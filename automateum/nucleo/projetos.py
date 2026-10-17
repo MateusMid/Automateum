@@ -1,5 +1,6 @@
 """Os projetos em que você está trabalhando: quais estão ativos e que prompts já foram deixados prontos.
 
+Só as issues atribuídas a você viram prompt sozinhas; as outras esperam o "Começar" da gaveta.
 Cada projeto vem do config (`[projetos.<id>]`: nome, github, ativo, rotulo, max_pendentes, modelo). O ativar/desativar
 do mapa fica guardado no estado (cursor `projeto:<id>:ativo`) e vale mais que o `ativo` do config.
 """
@@ -44,13 +45,43 @@ def guardar_preparados(estado, pid: str, dados: dict[str, dict]) -> None:
     estado.definir_cursor(f"prompts:{pid}", json.dumps(dados, ensure_ascii=False))
 
 
+def aceitas(estado, pid: str) -> list[int]:
+    """Issues em que você clicou "Começar": viram prompt mesmo sem estar atribuídas a você."""
+    try:
+        return [int(n) for n in json.loads(estado.cursor(f"aceitas:{pid}") or "[]")]
+    except (ValueError, TypeError):
+        return []
+
+
+def aceitar(config: Config, estado, pid: str, numero: int) -> None:
+    if pid not in lista(config):
+        raise ValueError(f"projeto desconhecido: {pid}")
+    atuais = aceitas(estado, pid)
+    if numero not in atuais:
+        estado.definir_cursor(f"aceitas:{pid}", json.dumps(atuais + [numero]))
+
+
+def guardar_abertas(estado, pid: str, issues: list[dict]) -> None:
+    """Só número, título, link e se é sua: o corpo da issue não fica no estado do mapa."""
+    enxutas = [{"numero": i["numero"], "titulo": i["titulo"], "url": i["url"], "minha": bool(i.get("minha"))} for i in issues]
+    estado.definir_cursor(f"abertas:{pid}", json.dumps(enxutas, ensure_ascii=False))
+
+
+def abertas(estado, pid: str) -> list[dict]:
+    try:
+        return json.loads(estado.cursor(f"abertas:{pid}") or "[]")
+    except ValueError:
+        return []
+
+
 def situacao(config: Config, estado) -> list[dict]:
     """O que o mapa mostra de cada projeto: se está ativo e os prompts que já ficaram prontos."""
     saida = []
     for pid, p in lista(config).items():
         prontos = [{"numero": int(n), **d} for n, d in sorted(preparados(estado, pid).items(), key=lambda kv: int(kv[0]))]
+        feitos = {d["numero"] for d in prontos}
         saida.append({"id": pid, "nome": p.get("nome", pid), "github": p["github"], "ativo": ativo(config, estado, pid),
-                      "prontos": prontos})
+                      "prontos": prontos, "disponiveis": [i for i in abertas(estado, pid) if i["numero"] not in feitos]})
     return saida
 
 
