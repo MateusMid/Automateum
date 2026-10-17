@@ -31,7 +31,7 @@ _ICONES = {
 def montar_mapa_leo(config, estado: Estado, ag: Agendador) -> dict:
     checagens = estado.checagens()
     ultimas = estado.ultimas_execucoes()
-    avisos = estado.avisos(limite=5, horas=24)
+    avisos = estado.avisos(limite=5, horas=24, pendentes=True)
 
     m = checagens.get("maquina")
     meta = m["meta"] if m else {}

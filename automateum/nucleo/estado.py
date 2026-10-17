@@ -158,8 +158,15 @@ class Estado:
         self._exec("INSERT INTO avisos (quando, rotina, nivel, texto) VALUES (?,?,?,?)",
                    (agora(), rotina, nivel, texto))
 
-    def avisos(self, limite: int = 20, horas: int | None = None) -> list[dict]:
+    def avisos(self, limite: int = 20, horas: int | None = None, pendentes: bool = False) -> list[dict]:
+        """Avisos mais recentes primeiro. `resolvido` marca os que uma rodada ok posterior da mesma
+        rotina encerrou; `pendentes=True` esconde esses (o histórico em si nunca é apagado)."""
         corte = ""
         if horas is not None:
             corte = (datetime.now() - timedelta(hours=horas)).isoformat(timespec="seconds")
-        return self._linhas("SELECT * FROM avisos WHERE quando > ? ORDER BY id DESC LIMIT ?", (corte, limite))
+        # Conta a rodada que começou depois do aviso: a que o gerou não o resolve.
+        resolvido = ("EXISTS (SELECT 1 FROM execucoes e WHERE e.rotina = a.rotina AND e.status = 'ok' "
+                     "AND e.inicio > a.quando)")
+        filtro = f" AND NOT {resolvido}" if pendentes else ""
+        return self._linhas(f"SELECT a.*, {resolvido} AS resolvido FROM avisos a WHERE a.quando > ?{filtro} "
+                            "ORDER BY a.id DESC LIMIT ?", (corte, limite))

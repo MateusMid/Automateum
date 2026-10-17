@@ -58,7 +58,7 @@ def no_rotina(rid: str, ag: Agendador, ultimas: dict, estados_servico: dict) -> 
 
 def montar(config, estado, ag: Agendador) -> dict:
     checagens, ultimas = estado.checagens(), estado.ultimas_execucoes()
-    avisos = estado.avisos(limite=3, horas=24)
+    avisos = estado.avisos(limite=3, horas=24, pendentes=True)
 
     m = checagens.get("maquina")
     meta = m["meta"] if m else {}
