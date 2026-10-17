@@ -12,7 +12,7 @@ organiza seu dia e mantém seu cofre do Obsidian atualizado com suas tarefas e r
 ## 🚀 Funcionalidades
 
 - **📥 Centralização de Mensagens & Comunicações:**
-  - **Slack:** Leitura e consolidação de canais públicos, privados e mensagens diretas.
+  - **Slack:** Leitura e consolidação de canais públicos, privados e mensagens diretas, por um app com token ou por um coletor que lê o Slack web com a sua conta (modo `navegador`).
   - **Gmail:** Filtro e captura inteligente de e-mails prioritários e não lidos.
   - **GitHub:** Rastreamento de issues e pull requests atribuídos a você.
 - **🧠 Resumos Inteligentes com Claude:**
@@ -98,6 +98,21 @@ Configure o caminho do seu cofre do Obsidian em `config.local.toml`:
 [obsidian]
 cofre = 'C:\Users\seu_usuario\Documents\SeuCofre'
 ```
+
+Para ler o Slack sem criar um app (modo `navegador`), aponte para a pasta do coletor, que fica fora do repositório. Ele precisa de Node, Python e Chrome, e o login é feito uma vez pelo `logar.ps1` do próprio coletor:
+
+```toml
+[slack]
+modo = "navegador"
+kit = 'C:\Users\seu_usuario\.automateum\kit-slack'
+meu_nome = "Seu Nome"   # suas próprias mensagens não entram no resumo
+
+# a colheita leva de 1 a 25 minutos: use um horário espaçado
+[horarios]
+coletar_slack = "cron: 30 8-18 * * mon-fri"
+```
+
+Sem `modo`, vale o padrão `app`, que usa o `SLACK_TOKEN` do `.env`. Use o modo `navegador` só se as normas do seu workspace permitirem essa leitura automatizada.
 
 O `config.local.toml` é ignorado pelo git e sobrepõe apenas as configurações específicas da sua máquina. Ajuste preferências gerais e horários em `config.toml`.
 

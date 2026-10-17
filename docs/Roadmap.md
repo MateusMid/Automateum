@@ -31,8 +31,9 @@ Planejamento de etapas e guia para configuração de cada serviço.
 
 ### Etapa 4 — Slack
 - [x] Implementação das rotinas `coletar_slack` e `resumo_mensagens`
-- [ ] Configuração das credenciais do Slack no `.env`
-- [ ] Validação de coleta e sumarização
+- [x] Slack pelo navegador (`[slack] modo = "navegador"`): login, coleta e resumo validados com conta real
+- [x] Validação de coleta e sumarização (a segunda rodada devolve "nada novo", sem duplicar)
+- [ ] Opcional: app com token (`modo = "app"` e `SLACK_TOKEN` no `.env`), para um workspace que aceite instalar o app
 
 ### Etapa 5 — Gmail
 - [x] Implementação da rotina `coletar_gmail`
@@ -59,6 +60,15 @@ Enquanto uma credencial não estiver configurada, o respectivo serviço é exibi
    ```
 
 ### Slack
+Há dois modos, escolhidos em `[slack] modo` no `config.local.toml`. Os dois só leem; nenhum envia mensagem.
+
+**Modo `navegador`:** um coletor externo (fora do repositório) abre o Slack web num perfil próprio do Chrome, com a sua conta, e gera um texto com as mensagens. Não precisa instalar app no workspace. Precisa de Node, Python e Chrome.
+1. Coloque a pasta do coletor num lugar fixo e rode o `logar.ps1` dela uma vez para entrar no Slack.
+2. Configure `modo`, `kit` e, se quiser, `fora`, `time` e `meu_nome` (veja `config.local.example.toml`).
+3. A colheita leva de 1 a 25 minutos: ponha um horário espaçado em `[horarios] coletar_slack`.
+4. Rode `python -m automateum rodar coletar_slack` para validar. Use esse modo só se as normas do seu workspace permitirem a leitura automatizada.
+
+**Modo `app` (padrão):**
 1. Crie um app em [api.slack.com/apps](https://api.slack.com/apps) no seu workspace.
 2. Em **OAuth & Permissions**, adicione os escopos de usuário (**User Token Scopes**):
    - `channels:history`, `groups:history`, `im:history`, `mpim:history`

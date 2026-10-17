@@ -1,0 +1,87 @@
+"""O resultado de cada rotina numa nota só, em Automateum/Saídas/Rotinas/<rotina>.md no cofre.
+
+A nota é reescrita a cada rodada com o último resultado: estado, resumo, texto gerado, log e itens.
+O painel mostra o mesmo e tem um link que abre a nota no Obsidian.
+"""
+from __future__ import annotations
+
+import hashlib
+import time
+from datetime import datetime
+from urllib.parse import quote
+
+from ..config import Config
+from ..servicos import obsidian
+from .estado import Estado
+
+# De qual fonte de itens cada rotina é dona (a lista que o painel mostra e a nota repete).
+FONTES = {"tasks_obsidian": "obsidian", "tasks_github": "github", "coletar_slack": "slack",
+          "coletar_gmail": "gmail"}
+# Mensagens de outras pessoas não são despejadas no cofre: a nota só conta quantas há.
+SO_CONTAGEM = {"coletar_slack", "coletar_gmail"}
+_ITENS_NA_NOTA = 60
+_REESCREVER_APOS_S = 3600  # mesmo resultado: reescreve no máximo de hora em hora, para não agitar o cofre
+
+
+def _relativo(rotina_id: str) -> str:
+    return f"Rotinas/{rotina_id}.md"
+
+
+def _caminho(config: Config, rotina_id: str):
+    pasta = config.cofre / config.secao("obsidian").get("pasta_automateum", "Automateum")
+    return pasta / _relativo(rotina_id)
+
+
+def nota(config: Config, rotina_id: str) -> dict | None:
+    """Onde está a nota da rotina e o link para abri-la no Obsidian; None se ainda não existe."""
+    if obsidian.configurado(config) or not _caminho(config, rotina_id).exists():
+        return None
+    pasta = config.secao("obsidian").get("pasta_automateum", "Automateum")
+    arquivo = f"{pasta}/{_relativo(rotina_id)}"
+    uri = f"obsidian://open?vault={quote(config.cofre.name)}&file={quote(arquivo.removesuffix('.md'), safe='/')}"
+    return {"arquivo": arquivo, "obsidian": uri}
+
+
+def _linha_item(i: dict) -> str:
+    titulo = " ".join((i.get("titulo") or "").split())[:140]
+    titulo = f"[{titulo}]({i['url']})" if i.get("url") else titulo
+    detalhe = " · ".join(p for p in (i.get("origem"), (i.get("quando") or "")[:10]) if p)
+    return f"- {titulo}" + (f" — {detalhe}" if detalhe else "")
+
+
+def _conteudo(config: Config, estado: Estado, rotina, exec_id: int, status: str, resumo: str, texto: str) -> str:
+    execucao = estado.execucao(exec_id) or {}
+    agora = datetime.now().isoformat(timespec="seconds")
+    partes = [f"---\nrotina: {rotina.id}\nestado: {status}\natualizado: {agora}\n---",
+              f"# {rotina.nome}", f"**{status}** · {agora[:16].replace('T', ' ')} · {resumo or 'sem resumo'}"]
+    if rotina.descricao:
+        partes.append(rotina.descricao)
+    if texto.strip():
+        partes.append(texto.strip())
+    fonte = FONTES.get(rotina.id)
+    if fonte and rotina.id in SO_CONTAGEM:
+        partes.append(f"## Itens\n{estado.contar_itens(fonte)} guardados. O conteúdo fica no painel, não no cofre.")
+    elif fonte:
+        itens = estado.itens([fonte], limite=_ITENS_NA_NOTA + 1)
+        if itens:
+            linhas = [_linha_item(i) for i in itens[:_ITENS_NA_NOTA]]
+            if len(itens) > _ITENS_NA_NOTA:
+                linhas.append("- (há mais itens no painel)")
+            partes.append("## Itens\n" + "\n".join(linhas))
+    if (execucao.get("log") or "").strip():
+        partes.append("## Log da última rodada\n```\n" + execucao["log"].strip() + "\n```")
+    return "\n\n".join(partes)
+
+
+def gravar(config: Config, estado: Estado, rotina, exec_id: int, status: str, resumo: str, texto: str = "") -> None:
+    """Escreve a nota da rotina. Sem cofre configurado não faz nada; erro aqui nunca derruba a rodada."""
+    if obsidian.configurado(config):
+        return
+    assinatura = hashlib.sha1(f"{status}|{resumo}|{texto}".encode()).hexdigest()
+    chave = f"nota:{rotina.id}"
+    anterior, _, quando = estado.cursor(chave).partition("|")
+    if anterior == assinatura and quando and time.time() - float(quando) < _REESCREVER_APOS_S:
+        return
+    obsidian.escrever_proprio(config, _relativo(rotina.id),
+                              _conteudo(config, estado, rotina, exec_id, status, resumo, texto))
+    estado.definir_cursor(chave, f"{assinatura}|{time.time()}")
