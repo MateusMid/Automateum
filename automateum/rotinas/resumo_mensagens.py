@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from ..nucleo.estado import agora
 from ..nucleo.registro import rotina
-from ..servicos import claude, obsidian
+from ..servicos import ia, obsidian
 from ._texto import listar
 
 _MAXIMO_NO_RESUMO = 300
@@ -25,7 +25,7 @@ def rodar(ctx):
     if not itens:
         return "nada novo para resumir"
     ctx.log(f"{len(itens)} mensagens para resumir")
-    resumo = claude.perguntar(ctx.config, _PEDIDO, listar(itens, limite=_MAXIMO_NO_RESUMO))
+    resumo = ia.perguntar(ctx, _PEDIDO, listar(itens, limite=_MAXIMO_NO_RESUMO))
     ctx.texto = resumo
     # O cursor avança até o fim da rodada: o que passou do teto não entra em resumo nenhum. Deixa registro.
     if fora := max(0, len(itens) - _MAXIMO_NO_RESUMO):

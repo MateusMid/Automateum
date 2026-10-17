@@ -10,6 +10,15 @@ Parte da [Documentação](README.md). Os horários e frequências podem ser pers
 - **No cofre:** cada rotina mantém uma nota com o último resultado em `Automateum/Saídas/Rotinas/<rotina>.md` (a pasta vem de `[obsidian] pasta_automateum`). A nota traz estado, resumo, o texto gerado (briefing, fechamento, resumo de mensagens), os itens (tasks) e o log. Coletas de Slack e Gmail só registram quantas mensagens guardaram: o conteúdo delas não vai para o cofre.
 - A nota só é reescrita quando o resultado muda, ou no máximo de hora em hora, para não agitar a sincronização do cofre. O `meu_dia` e o `dia_fechado` continuam escrevendo também o bloco na nota do dia.
 
+## Qual IA escreve os resumos
+
+`meu_dia`, `dia_fechado` e `resumo_mensagens` usam o **Claude** (`claude -p`) e, se ele falhar ou não estiver instalado, o **Copilot** (`copilot`, a CLI do GitHub Copilot). Quando o texto sai pelo motor de reserva, o log da rodada diz por quê.
+
+- **Botão:** no mapa, clique no serviço **Claude** e, na seção **Motor dos resumos**, use **Usar o Copilot como principal** (ou o contrário). O motor escolhido passa a ser o principal e o outro vira a reserva. A escolha fica guardada.
+- **Config (opcional):** `[ia] motor = "copilot"` define o inicial; `[copilot] modelo = "..."` e `timeout_segundos` ajustam a CLI.
+- **Copilot:** precisa da CLI instalada e logada (`copilot`, com o login feito uma vez no terminal). O Automateum não libera nenhuma ferramenta para ele: só manda o texto e lê a resposta.
+- **Privacidade:** o texto vai para o motor que responder. Com o Copilot, vai para o GitHub/Microsoft.
+
 ## Sistema
 
 | Rotina | Quando | Depende de | O que faz |

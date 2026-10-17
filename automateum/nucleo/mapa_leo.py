@@ -6,6 +6,7 @@ from datetime import datetime
 
 from .agendador import Agendador
 from .estado import Estado, agora
+from ..servicos import ia
 from .registro import ATENCAO, ESPERA, FALHA, OK, PARADO, RODANDO, ROTINAS, SERVICOS, quando_texto
 
 # Mapeia estados internos do Automateum para os estados da interface do Léo
@@ -130,6 +131,7 @@ def montar_mapa_leo(config, estado: Estado, ag: Agendador) -> dict:
             "linhas": [],
             "esperando": [],
             "causa": None,
+            **({"motor": ia.situacao(config, estado)} if sid == "claude" else {}),
         })
 
     # Frentes (grupos)
