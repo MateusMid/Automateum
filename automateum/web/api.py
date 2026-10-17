@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .. import rotinas, servicos  # noqa: F401  (registram rotinas e serviços)
 from ..config import Config
-from ..nucleo import grafo, mapa_leo
+from ..nucleo import grafo, mapa_leo, saidas
 from ..nucleo.agendador import Agendador
 from ..nucleo.estado import Estado, agora
 from ..nucleo.eventos import Barramento
@@ -23,9 +23,16 @@ from ..nucleo.registro import ATENCAO, FALHA, OK, ROTINAS, SERVICOS, quando_text
 
 _ESTATICOS = Path(__file__).parent / "static"
 _LOCAIS = {"127.0.0.1", "localhost"}
-# De qual fonte de itens cada rotina é dona, para mostrar a lista no painel lateral.
-_ITENS = {"tasks_obsidian": "obsidian", "tasks_github": "github", "coletar_slack": "slack",
-          "coletar_gmail": "gmail"}
+
+
+class _Estaticos(StaticFiles):
+    """Arquivos do painel que o navegador revalida a cada carga (ETag): sem isso ele guarda o JS antigo
+    e uma atualização do painel só aparece depois de um recarregar forçado."""
+
+    async def get_response(self, path, scope):
+        resposta = await super().get_response(path, scope)
+        resposta.headers["Cache-Control"] = "no-cache"
+        return resposta
 
 
 def _erro(status: int, mensagem: str) -> JSONResponse:
@@ -164,7 +171,7 @@ def criar_app(config: Config) -> FastAPI:
     def detalhe(tipo: str, nid: str):
         if tipo == "rotina" and nid in ROTINAS:
             r = ROTINAS[nid]
-            fonte = _ITENS.get(nid)
+            fonte = saidas.FONTES.get(nid)
             return {
                 "tipo": tipo, "titulo": r.nome, "descricao": r.descricao,
                 "campos": [["frente", r.frente], ["quando", quando_texto(agendador.quando(r))],
@@ -173,6 +180,7 @@ def criar_app(config: Config) -> FastAPI:
                 "rodar": nid, "motivo": agendador.motivo_parada(r), "rodando": agendador.rodando(nid),
                 "execucoes": estado.execucoes(nid),
                 "itens": estado.itens([fonte], limite=200) if fonte else [],
+                "nota": saidas.nota(config, nid),
             }
         if tipo == "servico" and nid in SERVICOS:
             s = SERVICOS[nid]
@@ -210,5 +218,5 @@ def criar_app(config: Config) -> FastAPI:
                     "campos": [[r.nome, quando_texto(agendador.quando(r))] for r in fontes]}
         raise HTTPException(404, "nó desconhecido")
 
-    app.mount("/static", StaticFiles(directory=_ESTATICOS), name="static")
+    app.mount("/static", _Estaticos(directory=_ESTATICOS), name="static")
     return app

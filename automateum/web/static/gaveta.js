@@ -261,6 +261,60 @@
     return secao('Do começo ao fim', '<dl class="gv-fatos gv-percurso"><dt>Começa</dt><dd>' + comeca + '</dd><dt>Termina</dt><dd>' + termina + '</dd></dl>');
   }
 
+  // ------------------------------------------- o resultado da rotina --
+  // O que a rotina fez na última rodada, o log, os itens que ela guarda e o link da nota dela no
+  // Obsidian. Vem do servidor (/api/no/rotina/<id>) e não do estado.js: o estado.js pode ser lido
+  // por qualquer página aberta no navegador, e o resultado tem conteúdo de mensagens e tasks.
+  var resultados = {};  // rotina -> {t: quando buscou, d: resposta do servidor}
+  var logAberto = false;
+  var ESTADO_DA_RODADA = {ok: 'bom', falha: 'ruim', atencao: 'atencao', rodando: 'duvida'};
+  function htmlResultado(d) {
+    var ex = (d.execucoes || [])[0], h = '', itens = d.itens || [];
+    if (ex) {
+      var e = ESTADO_DA_RODADA[ex.status] || 'construcao';
+      h += '<div class="gv-res-topo gv-e-' + e + '">' + gl(e) + '<b>' + esc(ex.resumo || nomeEst(e)) + '</b><small>' +
+        esc(longo(ex.fim || ex.inicio)) + '</small></div>';
+      if (ex.log && ex.log.trim()) {
+        h += '<details class="gv-det"' + (logAberto ? ' open' : '') + '><summary>Log da última rodada</summary><pre class="gv-pre">' +
+          esc(ex.log.trim()) + '</pre></details>';
+      }
+    } else {
+      h += '<p class="gv-nota">Ainda não há resultado guardado desta rotina.</p>';
+    }
+    if (itens.length) {
+      h += '<ul class="gv-itens">' + itens.slice(0, 12).map(function (i) {
+        var t = esc((i.titulo || '').slice(0, 160));
+        var link = /^https?:\/\//.test(i.url || '') ? '<a href="' + esc(i.url) + '" target="_blank" rel="noopener noreferrer">' + t + '</a>' : t;
+        var det = [i.origem, (i.quando || '').slice(0, 10)].filter(Boolean).join(' · ');
+        return '<li>' + link + (det ? '<small>' + esc(det) + '</small>' : '') + '</li>';
+      }).join('') + '</ul>';
+      if (itens.length > 12) h += '<p class="gv-nota">e mais ' + (itens.length - 12) + ' itens guardados.</p>';
+    }
+    if (d.nota && /^obsidian:\/\/open\?/.test(d.nota.obsidian || '')) {
+      h += '<a class="gv-obs" href="' + esc(d.nota.obsidian) + '">Abrir no Obsidian</a>' +
+        '<p class="gv-nota">' + esc(d.nota.arquivo) + '</p>';
+    }
+    return h;
+  }
+  function preencherResultado() {
+    var el = raiz && raiz.querySelector('[data-gv-res]');
+    if (!el) return;
+    var rid = el.getAttribute('data-gv-res'), c = resultados[rid];
+    if (!/^[\w-]+$/.test(rid)) { el.innerHTML = ''; return; }
+    if (c) el.innerHTML = htmlResultado(c.d);
+    if (c && Date.now() - c.t < 15000) return;
+    fetch('/api/no/rotina/' + encodeURIComponent(rid), {headers: {'Accept': 'application/json'}})
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (d) {
+        resultados[rid] = {t: Date.now(), d: d};
+        var vivo = raiz && raiz.querySelector('[data-gv-res="' + rid + '"]');
+        if (vivo) vivo.innerHTML = htmlResultado(d);
+      })
+      .catch(function () {
+        if (!resultados[rid] && el.isConnected) el.innerHTML = '<p class="gv-nota">Não consegui ler o resultado desta rotina no servidor.</p>';
+      });
+  }
+
   // ----------------------------------------------------------- a peca --
   function corpoDaPeca(id) {
     var x = I.itens[id], e = est(x.estado), sit = situacao(x);
@@ -269,6 +323,7 @@
     h += trilha(x);
     h += '<div class="gv-est gv-e-' + e + '"><span class="gv-estn">' + gl(e) + esc(nomeEst(e)) + '</span>' + (sit ? '<span class="gv-passo">· ' + esc(sit) + '</span>' : '') + '</div>';
     if (x.frase) h += '<p class="gv-frase">' + esc(x.frase) + '</p>';
+    if (x.tipo === 'rotina') h += secao('Resultado', '<div data-gv-res="' + esc(String(x.id).replace(/^rot-/, '')) + '"><p class="gv-nota">Carregando…</p></div>');
     h += percurso(x);
     var linhas = (x.linhas || []).slice();
     if (x.sonda && x.sonda.frase) linhas.unshift('sonda da área: ' + x.sonda.frase);
@@ -536,15 +591,19 @@
     if (!raiz || !aberto || !M) return;
     var c = raiz.querySelector('.gv-corpo');
     rolagem = c ? c.scrollTop : 0;
+    // a gaveta é redesenhada a cada leitura nova: lembra se o log estava aberto
+    if (raiz.querySelector('.gv-det')) logAberto = !!raiz.querySelector('.gv-det[open]');
     raiz.innerHTML = aberto === MAPA_ID ? corpoDoMapa() : corpoDaPeca(aberto);
     c = raiz.querySelector('.gv-corpo');
     if (c) c.scrollTop = rolagem;
+    preencherResultado();
   }
   function abrir(id) {
     montar();
     if (!M || !I) return false;
     if (id !== MAPA_ID && !I.itens[id]) return false;
     var mudou = aberto !== id;
+    if (mudou) logAberto = false;
     aberto = id;
     if (mudou) { var c = raiz.querySelector('.gv-corpo'); if (c) c.scrollTop = 0; }
     desenhar();
@@ -671,6 +730,15 @@
     '.gv-frase { margin: 0 0 12px; font-size: 14px; line-height: 1.5; }',
     '.gv-linhas { margin: 0 0 6px; padding: 9px 11px; list-style: none; background: var(--gv-fundo); border: 1px solid var(--gv-linha); border-radius: 7px; font: 11.5px/1.55 var(--gv-mono); color: var(--gv-texto2); overflow-wrap: anywhere; }',
     '.gv-linhas li + li { margin-top: 3px; }',
+    '.gv-res-topo { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; column-gap: 10px; align-items: baseline; font-size: 13px; }',
+    '.gv-res-topo small { color: var(--gv-mudo); font-size: 11.5px; white-space: nowrap; }',
+    '.gv-det { margin-top: 10px; } .gv-det summary { cursor: pointer; color: var(--gv-mudo); font-size: 12px; }',
+    '.gv-pre { margin: 8px 0 0; padding: 9px 11px; max-height: 220px; overflow: auto; background: var(--gv-fundo); border: 1px solid var(--gv-linha); border-radius: 7px; font: 11.5px/1.55 var(--gv-mono); color: var(--gv-texto2); white-space: pre-wrap; overflow-wrap: anywhere; }',
+    '.gv-itens { list-style: none; margin: 10px 0 0; padding: 0; font-size: 12.5px; } .gv-itens li { padding: 5px 0; } .gv-itens li + li { border-top: 1px solid var(--gv-linha); }',
+    '.gv-itens a { color: var(--gv-texto); text-decoration: none; } .gv-itens a:hover { text-decoration: underline; }',
+    '.gv-itens small { display: block; color: var(--gv-mudo); font-size: 11.5px; overflow-wrap: anywhere; }',
+    '.gv-obs { display: inline-block; margin-top: 12px; padding: 6px 12px; border: 1px solid var(--gv-linha); border-radius: 7px; color: var(--gv-texto); text-decoration: none; font-size: 12.5px; }',
+    '.gv-obs:hover, .gv-obs:focus-visible { background: color-mix(in srgb, var(--gv-mudo) 14%, transparent); outline: none; }',
     '.gv-sec { margin-top: 20px; }',
     '.gv-sec h4 { margin: 0 0 8px; font: 600 9.5px/1.2 var(--gv-fontT); letter-spacing: .12em; text-transform: uppercase; color: var(--gv-mudo); }',
     '.gv-sec h4 span { margin-left: 4px; font-variant-numeric: tabular-nums; opacity: .8; }',

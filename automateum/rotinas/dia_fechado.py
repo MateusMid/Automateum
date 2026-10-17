@@ -47,6 +47,7 @@ def rodar(ctx):
         secao("Atividade Git Local / Repositórios", git_info),
     ]
     fechamento = claude.perguntar(cfg, _PEDIDO, "\n".join(material))
+    ctx.texto = fechamento
     caminho = obsidian.escrever_bloco_diario(cfg, "dia_fechado", f"## Dia fechado\n\n{fechamento}")
     ctx.log(f"bloco escrito em {caminho.name}")
     return f"fechamento escrito em {caminho.name}"

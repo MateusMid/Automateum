@@ -26,6 +26,7 @@ def rodar(ctx):
         return "nada novo para resumir"
     ctx.log(f"{len(itens)} mensagens para resumir")
     resumo = claude.perguntar(ctx.config, _PEDIDO, listar(itens, limite=_MAXIMO_NO_RESUMO))
+    ctx.texto = resumo
     # O cursor avança até o fim da rodada: o que passou do teto não entra em resumo nenhum. Deixa registro.
     if fora := max(0, len(itens) - _MAXIMO_NO_RESUMO):
         ctx.avisar(f"resumo das mensagens: {fora} mensagens ficaram de fora (o teto é {_MAXIMO_NO_RESUMO} por resumo)")

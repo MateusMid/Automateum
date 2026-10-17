@@ -8,6 +8,7 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from ..config import Config
+from . import saidas
 from .estado import Estado
 from .eventos import Barramento
 from .registro import ATENCAO, FALHA, OK, ROTINAS, SERVICOS, Atencao, Resultado, Rotina, gatilho
@@ -18,6 +19,7 @@ class Contexto:
 
     def __init__(self, config: Config, estado: Estado, rotina: Rotina, exec_id: int):
         self.config, self.estado, self.rotina, self.exec_id = config, estado, rotina, exec_id
+        self.texto = ""  # o que a rotina escreveu de resultado (briefing, resumo...); vai para a nota dela
 
     def log(self, mensagem: str) -> None:
         self.estado.log_execucao(self.exec_id, mensagem)
@@ -133,6 +135,10 @@ class Agendador:
                 texto = str(e) if type(e) is RuntimeError else f"{type(e).__name__}: {e}"
                 r = Resultado(FALHA, texto[:300])
             self.estado.finalizar_execucao(exec_id, r.estado, r.resumo)
+            try:
+                saidas.gravar(self.config, self.estado, rotina, exec_id, r.estado, r.resumo, ctx.texto)
+            except Exception as e:  # a nota é um extra: não pode transformar uma rodada boa em falha
+                ctx.log(f"não consegui gravar a nota da rotina: {type(e).__name__}: {e}")
             # Avisa só na virada para falha, não a cada repetição do mesmo erro.
             if r.estado == FALHA and anterior != FALHA:
                 self.estado.avisar(rotina_id, f"{rotina.nome} falhou: {r.resumo}", FALHA)

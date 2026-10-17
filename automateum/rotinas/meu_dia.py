@@ -34,6 +34,7 @@ def rodar(ctx):
             material.append(secao(f"Nota recente: {pasta}/{nome}", texto, 4000))
 
     briefing = claude.perguntar(cfg, _PEDIDO, "\n".join(material))
+    ctx.texto = briefing
     caminho = obsidian.escrever_bloco_diario(cfg, "meu_dia", f"## Meu dia\n\n{briefing}")
     ctx.log(f"bloco escrito em {caminho.name}")
     return f"briefing escrito em {caminho.name}"

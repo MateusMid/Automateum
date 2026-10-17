@@ -2,6 +2,12 @@
 
 Parte da [Documentação](README.md). Os horários e frequências podem ser personalizados na seção `[horarios]` do `config.toml`.
 
+## Onde ver o resultado de cada rotina
+
+- **No mapa:** clique na rotina. A seção **Resultado** da gaveta mostra o que a última rodada fez, o log e os itens que ela guarda, com um botão **Abrir no Obsidian**.
+- **No cofre:** cada rotina mantém uma nota com o último resultado em `Automateum/Saídas/Rotinas/<rotina>.md` (a pasta vem de `[obsidian] pasta_automateum`). A nota traz estado, resumo, o texto gerado (briefing, fechamento, resumo de mensagens), os itens (tasks) e o log. Coletas de Slack e Gmail só registram quantas mensagens guardaram: o conteúdo delas não vai para o cofre.
+- A nota só é reescrita quando o resultado muda, ou no máximo de hora em hora, para não agitar a sincronização do cofre. O `meu_dia` e o `dia_fechado` continuam escrevendo também o bloco na nota do dia.
+
 ## Sistema
 
 | Rotina | Quando | Depende de | O que faz |
