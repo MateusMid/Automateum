@@ -38,7 +38,13 @@ def montar_mapa_leo(config, estado: Estado, ag: Agendador) -> dict:
     nome_pc = meta.get("nome", "PC Mateus")
     sistema_pc = meta.get("sistema", "Windows 11")
     disco_livre = meta.get("disco_livre_gb", 0)
-    if "cpu" in meta and "memoria" in meta:
+    discos = meta.get("discos") or []
+    if "cpu" in meta and "memoria" in meta and discos:
+        # espaço que não quebra dentro de cada item: o cartão é estreito e a linha só deve quebrar nos " · "
+        itens = [f"CPU {meta['cpu']}%", f"memória {meta['memoria']}%",
+                 *(f"{d['nome']} {d['livre_gb']} GB" for d in discos)]
+        frase_disco = " · ".join(i.replace(" ", " ") for i in itens) + " livres"
+    elif "cpu" in meta and "memoria" in meta:
         frase_disco = f"CPU {meta['cpu']}% · memória {meta['memoria']}% · {disco_livre} GB livres"
     else:
         frase_disco = f"C: com {disco_livre} GB livres" if disco_livre else "Disco operando normalmente"
@@ -55,7 +61,8 @@ def montar_mapa_leo(config, estado: Estado, ag: Agendador) -> dict:
         "maquina": True,
         "estado": "bom" if (not m or m["estado"] == OK) else _MAPA_ESTADO.get(m["estado"], "atencao"),
         "frase": frase_disco,
-        "linhas": [f"ligada desde {boot_str}"] if boot_str else [],
+        "linhas": [f"{d['nome']} {d['livre_gb']} GB livres de {d['total_gb']} GB ({d['usado_pct']}% usado)"
+                   for d in discos] + ([f"ligada desde {boot_str}"] if boot_str else []),
         "esperando": [],
         "causa": None,
     }

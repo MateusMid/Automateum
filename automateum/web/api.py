@@ -201,11 +201,13 @@ def criar_app(config: Config) -> FastAPI:
         if tipo == "maquina":
             c = estado.checagens().get("maquina") or {"meta": {}, "detalhe": "", "quando": ""}
             m = c["meta"]
+            # um campo por disco; leituras antigas, de um disco só, ainda têm `disco_livre_gb`
+            discos = [[f"disco {d['nome']}", f"{d['livre_gb']} GB livres de {d['total_gb']} GB"]
+                      for d in m.get("discos", [])] or [["disco livre", f"{m.get('disco_livre_gb', '—')} GB"]]
             return {"tipo": tipo, "titulo": m.get("nome", "esta máquina"), "descricao": c["detalhe"],
                     "campos": [["sistema", m.get("sistema", "—")], ["ip", m.get("ip", "—")],
                                ["ligada desde", m.get("ligada_desde", "—")], ["cpu", f"{m.get('cpu', '—')}%"],
-                               ["memória", f"{m.get('memoria', '—')}%"],
-                               ["disco livre", f"{m.get('disco_livre_gb', '—')} GB"],
+                               ["memória", f"{m.get('memoria', '—')}%"], *discos,
                                ["checado", grafo._hora(c["quando"]) or "—"]]}
         if tipo == "destino":
             if nid == "avisos":

@@ -37,6 +37,10 @@ max_emails = 40
 # Vazio = tudo que estiver atribuído a você. Ou restrinja: ["org/repo"].
 repositorios = []
 
+[maquina]
+# Discos que aparecem no mapa e no fechamento do dia. Vazio = todos os discos fixos da máquina.
+# discos = ["C:", "D:"]
+
 # Sobrescreve o horário de uma rotina, ou desliga com "nunca".
 [horarios]
 # resumo_mensagens = "cron: 0 9-18 * * 1-5"

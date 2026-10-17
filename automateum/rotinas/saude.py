@@ -5,10 +5,11 @@ from ..servicos import maquina
 @rotina(id="saude", nome="saúde", frente="Sistema", quando="cada 2m")
 def rodar(ctx):
     """Checa a máquina e cada serviço configurado; é o que pinta a coluna de serviços."""
-    leitura = maquina.ler()
+    leitura = maquina.ler(ctx.config.secao("maquina").get("discos"))
     ctx.estado.salvar_checagem("maquina", leitura)
     if {"cpu", "memoria", "disco_livre_gb"} <= leitura.meta.keys():
-        ctx.estado.salvar_medida(leitura.meta["cpu"], leitura.meta["memoria"], leitura.meta["disco_livre_gb"])
+        ctx.estado.salvar_medida(leitura.meta["cpu"], leitura.meta["memoria"], leitura.meta["disco_livre_gb"],
+                                 {d["nome"]: d["livre_gb"] for d in leitura.meta.get("discos", [])})
     ok, falhas, parados = 0, [], 0
     for s in SERVICOS.values():
         if s.configurado(ctx.config):

@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS itens (
 );
 CREATE TABLE IF NOT EXISTS cursores (chave TEXT PRIMARY KEY, valor TEXT);
 CREATE TABLE IF NOT EXISTS medidas (
-    quando TEXT PRIMARY KEY, cpu INTEGER, memoria INTEGER, disco_livre_gb INTEGER
+    quando TEXT PRIMARY KEY, cpu INTEGER, memoria INTEGER, disco_livre_gb INTEGER, discos TEXT
 );
 CREATE TABLE IF NOT EXISTS avisos (
     id INTEGER PRIMARY KEY AUTOINCREMENT, quando TEXT, rotina TEXT, nivel TEXT, texto TEXT
@@ -46,6 +46,9 @@ class Estado:
         self._db = sqlite3.connect(str(caminho), check_same_thread=False, isolation_level=None)
         self._db.row_factory = sqlite3.Row
         self._db.executescript(_ESQUEMA)
+        # bancos criados antes de a máquina ter mais de um disco não têm a coluna `discos`
+        if "discos" not in {c["name"] for c in self._db.execute("PRAGMA table_info(medidas)")}:
+            self._db.execute("ALTER TABLE medidas ADD COLUMN discos TEXT")
 
     def _exec(self, sql: str, args: tuple = ()) -> sqlite3.Cursor:
         with self._trava:
@@ -105,11 +108,19 @@ class Estado:
                    ((datetime.now() - timedelta(days=7)).isoformat(timespec="seconds"),))
 
     # --- medições da máquina
-    def salvar_medida(self, cpu: int, memoria: int, disco_livre_gb: int) -> None:
-        self._exec("INSERT OR REPLACE INTO medidas VALUES (?,?,?,?)", (agora(), cpu, memoria, disco_livre_gb))
+    def salvar_medida(self, cpu: int, memoria: int, disco_livre_gb: int, discos: dict[str, int] | None = None) -> None:
+        """`discos`: GB livres por disco ({'C:': 85, 'D:': 94}); `disco_livre_gb` é o primeiro, para quem só conhece um."""
+        self._exec("INSERT OR REPLACE INTO medidas (quando, cpu, memoria, disco_livre_gb, discos) VALUES (?,?,?,?,?)",
+                   (agora(), cpu, memoria, disco_livre_gb, json.dumps(discos or {})))
 
     def medidas(self, desde: str) -> list[dict]:
-        return self._linhas("SELECT * FROM medidas WHERE quando >= ? ORDER BY quando", (desde,))
+        linhas = self._linhas("SELECT * FROM medidas WHERE quando >= ? ORDER BY quando", (desde,))
+        for m in linhas:
+            try:
+                m["discos"] = json.loads(m["discos"]) if m.get("discos") else {}
+            except ValueError:
+                m["discos"] = {}
+        return linhas
 
     # --- checagens de serviço
     def salvar_checagem(self, servico: str, c: Checagem) -> None:
