@@ -37,6 +37,16 @@ max_emails = 40
 # Vazio = tudo que estiver atribuído a você. Ou restrinja: ["org/repo"].
 repositorios = []
 
+# Projetos em que você trabalha. O ativar/desativar fica no mapa (gaveta da rotina "prompts das tasks").
+# Cada issue aberta de um projeto ativo ganha uma worktree no Orca com o Claude Code e o prompt digitado, sem
+# enviar: só sai quando você apertar Enter. `rotulo` limita às issues com essa etiqueta; `max_pendentes` é
+# quantos prompts prontos ficam de uma vez; `modelo` troca o texto ({numero}, {titulo}, {url}, {corpo}).
+[projetos.automateum]
+nome = "Automateum"
+github = "MateusMid/Automateum"
+ativo = false
+max_pendentes = 3
+
 [maquina]
 # Discos que aparecem no mapa e no fechamento do dia. Vazio = todos os discos fixos da máquina.
 # discos = ["C:", "D:"]

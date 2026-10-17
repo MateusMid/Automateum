@@ -68,4 +68,13 @@ def pendencias(config: Config) -> list[dict]:
             for i in itens.values()]
 
 
+def issues_abertas(config: Config, repo: str, rotulo: str = "") -> list[dict]:
+    """Issues abertas de `dono/nome` (sem PRs), da mais antiga para a mais nova; `rotulo` filtra por etiqueta."""
+    parametros = {"state": "open", "per_page": 100, "sort": "created", "direction": "asc"}
+    if rotulo:
+        parametros["labels"] = rotulo
+    return [{"numero": i["number"], "titulo": i["title"], "corpo": i.get("body") or "", "url": i["html_url"]}
+            for i in _get(config, f"/repos/{repo}/issues", **parametros) if "pull_request" not in i]
+
+
 registrar_servico("github", "GitHub", checar, configurado, "Issues e pull requests atribuídos a você.")

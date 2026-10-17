@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .. import rotinas, servicos  # noqa: F401  (registram rotinas e serviços)
 from ..config import Config
-from ..nucleo import grafo, mapa_leo, saidas
+from ..nucleo import grafo, mapa_leo, projetos, saidas
 from ..nucleo.agendador import Agendador
 from ..nucleo.estado import Estado, agora
 from ..nucleo.eventos import Barramento
@@ -179,6 +179,9 @@ def criar_app(config: Config) -> FastAPI:
             return {"id": 0}  # sem rodada para acompanhar: /estado/0 responde como concluído
         if tipo == "motor" and alvo in ia.MOTORES:
             ia.definir(estado, alvo)
+            return {"id": 0}
+        if tipo in ("projeto-ligar", "projeto-desligar") and alvo in projetos.lista(config):
+            projetos.definir(config, estado, alvo, tipo == "projeto-ligar")
             return {"id": 0}
         if tipo == "rodar" and alvo in ROTINAS:
             exec_id = agendador.disparar(alvo)

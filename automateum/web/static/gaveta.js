@@ -329,7 +329,7 @@
     h += trilha(x);
     h += '<div class="gv-est gv-e-' + e + '"><span class="gv-estn">' + gl(e) + esc(nomeEst(e)) + '</span>' + (sit ? '<span class="gv-passo">· ' + esc(sit) + '</span>' : '') + '</div>';
     if (x.frase) h += '<p class="gv-frase">' + esc(x.frase) + '</p>';
-    h += motor(x);
+    h += motor(x) + projetos(x);
     if (x.tipo === 'rotina') {
       // o botão de rodar também fica aqui, junto do resultado que ele atualiza (o do fim da gaveta continua)
       var rodarAqui = x.rodar_ok && x.ligada !== false
@@ -439,12 +439,32 @@
   function rotAcao(a) {
     var p = a.split(':'), d = p[1] && /^\d{4}-\d\d-\d\d$/.test(p[1]) ? p[1].slice(8, 10) + '/' + p[1].slice(5, 7) : '';
     if (p[0] === 'rodar') return 'Rodar agora';
+    if (p[0] === 'projeto-ligar') return 'Ativar';
+    if (p[0] === 'projeto-desligar') return 'Desativar';
     if (p[0] === 'motor') return 'Usar o ' + (p[1] === 'copilot' ? 'Copilot' : 'Claude') + ' como principal';
     if (p[0] === 'ligar') return 'Ligar esta rotina';
     if (p[0] === 'desligar') return armado[a] ? 'Confirmar: desligar' : 'Desligar esta rotina';
     if (a === 'medir-agora') return 'Medir agora';
     if (a === 'provar-mapa') return 'Rodar a prova';
     return a;
+  }
+  // Os projetos em que voce trabalha: cada um liga e desliga, e os prompts ja deixados prontos aparecem embaixo
+  function projetos(x) {
+    var ps = x.projetos;
+    if (!ps) return '';
+    var h = '<p class="gv-oque">Cada issue aberta de um projeto ativo ganha uma worktree no Orca, com o Claude Code aberto e o prompt <b>digitado, sem enviar</b>. Só sai quando você apertar Enter lá.</p>';
+    if (!ps.length) h += '<p class="gv-nota">Nenhum projeto configurado. Veja <code>[projetos]</code> no config.toml.</p>';
+    ps.forEach(function (p) {
+      h += '<div class="gv-proj"><div class="gv-proj-t"><b>' + esc(p.nome) + '</b><small>' + esc(p.github) + ' · ' + (p.ativo ? 'ativo' : 'desativado') + '</small></div>' +
+        '<div class="gv-acoes gv-e-' + (p.ativo ? 'bom' : 'desligado') + '">' + botaoAcao((p.ativo ? 'projeto-desligar:' : 'projeto-ligar:') + p.id) + '</div>';
+      if (p.prontos && p.prontos.length) {
+        h += '<ul class="gv-linhas">' + p.prontos.map(function (q) {
+          return '<li>#' + q.numero + ' ' + esc(q.titulo) + (q.digitado ? '' : ' (abra o Claude Code e digite o prompt à mão)') + '</li>';
+        }).join('') + '</ul>';
+      }
+      h += '</div>';
+    });
+    return secao('Projetos', h);
   }
   // Qual IA escreve os resumos: o botao inverte principal e reserva (o servidor guarda a escolha)
   function motor(x) {
@@ -760,6 +780,9 @@
     '.gv-est.gv-e-bom .gv-estn { color: var(--gv-texto); }',
     '.gv-passo { color: var(--gv-mudo); font-size: 12px; }',
     '.gv-frase { margin: 0 0 12px; font-size: 14px; line-height: 1.5; }',
+    '.gv-proj { margin: 0 0 12px; padding: 0 0 4px; }',
+    '.gv-proj-t { display: flex; flex-direction: column; gap: 1px; margin: 0 0 6px; }',
+    '.gv-proj-t small { color: var(--gv-mudo); font-size: 11.5px; }',
     '.gv-linhas { margin: 0 0 6px; padding: 9px 11px; list-style: none; background: var(--gv-fundo); border: 1px solid var(--gv-linha); border-radius: 7px; font: 11.5px/1.55 var(--gv-mono); color: var(--gv-texto2); overflow-wrap: anywhere; }',
     '.gv-linhas li + li { margin-top: 3px; }',
     '.gv-acao-topo { margin: 0 0 10px; }',

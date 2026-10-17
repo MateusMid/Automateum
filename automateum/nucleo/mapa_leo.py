@@ -4,6 +4,7 @@ from __future__ import annotations
 import time
 from datetime import datetime
 
+from . import projetos
 from .agendador import Agendador
 from .estado import Estado, agora
 from ..servicos import ia
@@ -202,6 +203,12 @@ def montar_mapa_leo(config, estado: Estado, ag: Agendador, celulares: list[dict]
                 passo = "codigo"
 
             ultima_iso = (u["fim"] or u["inicio"]) if u else None
+            extra = {}
+            if rid == "preparar_prompts":
+                # o cartão mostra quais projetos estão ativos; a gaveta traz as chaves de cada um
+                extra["projetos"] = projetos.situacao(config, estado)
+                if est_r != "desligado" and not rodando and (not u or u["status"] == "ok"):
+                    frase_r = projetos.resumo(extra["projetos"])
 
             nos.append({
                 "id": node_id,
@@ -226,6 +233,7 @@ def montar_mapa_leo(config, estado: Estado, ag: Agendador, celulares: list[dict]
                 "causa": None,
                 "mede": list(r.usa),
                 "zona": "mesa",
+                **extra,
             })
 
             # Ligação da Frente com os Serviços que suas rotinas usam
