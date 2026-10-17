@@ -329,7 +329,12 @@
     h += trilha(x);
     h += '<div class="gv-est gv-e-' + e + '"><span class="gv-estn">' + gl(e) + esc(nomeEst(e)) + '</span>' + (sit ? '<span class="gv-passo">· ' + esc(sit) + '</span>' : '') + '</div>';
     if (x.frase) h += '<p class="gv-frase">' + esc(x.frase) + '</p>';
-    if (x.tipo === 'rotina') h += secao('Resultado', '<div data-gv-res="' + esc(String(x.id).replace(/^rot-/, '')) + '"><p class="gv-nota">Carregando…</p></div>');
+    if (x.tipo === 'rotina') {
+      // o botão de rodar também fica aqui, junto do resultado que ele atualiza (o do fim da gaveta continua)
+      var rodarAqui = x.rodar_ok && x.ligada !== false
+        ? '<div class="gv-acoes gv-e-' + e + ' gv-acao-topo">' + botaoAcao('rodar:' + x.id) + '</div>' : '';
+      h += secao('Resultado', rodarAqui + '<div data-gv-res="' + esc(String(x.id).replace(/^rot-/, '')) + '"><p class="gv-nota">Carregando…</p></div>');
+    }
     h += percurso(x);
     var linhas = (x.linhas || []).slice();
     if (x.sonda && x.sonda.frase) linhas.unshift('sonda da área: ' + x.sonda.frase);
@@ -502,6 +507,11 @@
   }
   function fimAcao(acao, estado, texto) {
     marcarAcao(acao, estado, texto);
+    // a rodada acabou: o resultado guardado ficou velho, então busca de novo e redesenha a gaveta aberta
+    if (/^rodar:/.test(acao)) {
+      delete resultados[acao.slice(6).replace(/^rot-/, '')];
+      if (aberto) desenhar();
+    }
     // a chave mudou no Agendador: uma leitura agora, para a tela nao esperar os 5 min
     if (estado === 'ok' && /^(ligar|desligar):/.test(acao)) agir('medir-agora');
     if (opts.aoAgir) { try { opts.aoAgir(acao, estado); } catch (e) { /* a pagina que se vire */ } }
@@ -736,6 +746,7 @@
     '.gv-frase { margin: 0 0 12px; font-size: 14px; line-height: 1.5; }',
     '.gv-linhas { margin: 0 0 6px; padding: 9px 11px; list-style: none; background: var(--gv-fundo); border: 1px solid var(--gv-linha); border-radius: 7px; font: 11.5px/1.55 var(--gv-mono); color: var(--gv-texto2); overflow-wrap: anywhere; }',
     '.gv-linhas li + li { margin-top: 3px; }',
+    '.gv-acao-topo { margin: 0 0 10px; }',
     '.gv-res-topo { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; column-gap: 10px; align-items: baseline; font-size: 13px; }',
     '.gv-res-topo small { color: var(--gv-mudo); font-size: 11.5px; white-space: nowrap; }',
     '.gv-texto { margin-top: 10px; padding: 10px 12px; max-height: 320px; overflow: auto; background: var(--gv-fundo); border: 1px solid var(--gv-linha); border-radius: 7px; font-size: 12.5px; line-height: 1.55; color: var(--gv-texto2); overflow-wrap: anywhere; }',
