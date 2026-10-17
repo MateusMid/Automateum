@@ -20,8 +20,8 @@ Planejamento de etapas e guia para configuração de cada serviço.
 
 ### Etapa 2 — GitHub
 - [x] Implementação da rotina `tasks_github`
-- [ ] Configuração do token GitHub no `.env`
-- [ ] Validação da rotina com dados reais
+- [x] Configuração do token GitHub no `.env`
+- [x] Validação da rotina com dados reais
 
 ### Etapa 3 — Claude e Escrita no Obsidian
 - [x] Cliente Claude Code headless (`claude -p`) sem tools
@@ -36,12 +36,13 @@ Planejamento de etapas e guia para configuração de cada serviço.
 
 ### Etapa 5 — Gmail
 - [x] Implementação da rotina `coletar_gmail`
-- [ ] Configuração do cliente OAuth Google Cloud Desktop
-- [ ] Execução do fluxo de autorização (`python -m automateum gmail-login`)
-- [ ] Validação de coleta de mensagens
+- [x] Configuração do cliente OAuth Google Cloud Desktop
+- [x] Execução do fluxo de autorização (`python -m automateum gmail-login`)
+- [x] Validação de coleta de mensagens (segunda rodada devolve "nada novo")
+- [x] Mensagem clara no painel quando a autorização expira (modo Testing vence em 7 dias)
 
 ### Etapa 6 — Inicialização do Sistema
-- [ ] Agendamento de inicialização automática no logon do Windows
+- [x] Agendamento de inicialização automática no logon do Windows
 
 ---
 
