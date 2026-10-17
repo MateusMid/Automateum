@@ -84,6 +84,10 @@ class Estado:
     def execucoes(self, rotina: str, limite: int = 15) -> list[dict]:
         return self._linhas("SELECT * FROM execucoes WHERE rotina=? ORDER BY id DESC LIMIT ?", (rotina, limite))
 
+    def execucao(self, exec_id: int) -> dict | None:
+        linhas = self._linhas("SELECT * FROM execucoes WHERE id=?", (exec_id,))
+        return linhas[0] if linhas else None
+
     def ultimas_execucoes(self) -> dict[str, dict]:
         linhas = self._linhas("SELECT id, rotina, inicio, fim, status, resumo FROM execucoes WHERE id IN "
                               "(SELECT MAX(id) FROM execucoes GROUP BY rotina)")

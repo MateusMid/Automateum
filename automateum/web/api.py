@@ -2,22 +2,24 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 import json
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from .. import rotinas, servicos  # noqa: F401  (registram rotinas e serviços)
 from ..config import Config
 from ..nucleo import grafo, mapa_leo
 from ..nucleo.agendador import Agendador
-from ..nucleo.estado import Estado
+from ..nucleo.estado import Estado, agora
 from ..nucleo.eventos import Barramento
-from ..nucleo.registro import ROTINAS, SERVICOS, quando_texto
+from ..nucleo.registro import ATENCAO, FALHA, OK, ROTINAS, SERVICOS, quando_texto
 
 _ESTATICOS = Path(__file__).parent / "static"
 _LOCAIS = {"127.0.0.1", "localhost"}
@@ -26,10 +28,29 @@ _ITENS = {"tasks_obsidian": "obsidian", "tasks_github": "github", "coletar_slack
           "coletar_gmail": "gmail"}
 
 
+def _erro(status: int, mensagem: str) -> JSONResponse:
+    # o mapa lê "erro" nas respostas de ação
+    return JSONResponse({"erro": mensagem}, status_code=status)
+
+
+# Código que o mapa espera para cada estado de execução: 0 ok, -1 aviso, 1 falha.
+_CODIGO = {OK: 0, ATENCAO: -1, FALHA: 1}
+
+
 def criar_app(config: Config) -> FastAPI:
     estado = Estado(config.banco)
     eventos = Barramento()
     agendador = Agendador(config, estado, eventos)
+    # Token da sessão: vai só para a página local (acoes.js). Ações exigem também a origem local.
+    token = secrets.token_urlsafe(24)
+    porta = int(config.secao("painel").get("porta", 8765))
+
+    def _token_ok(request: Request) -> bool:
+        return hmac.compare_digest(request.headers.get("x-mapa-token", ""), token)
+
+    def _origem_local(request: Request) -> bool:
+        origem = request.headers.get("origin")
+        return origem is not None and urlsplit(origem).hostname in _LOCAIS
 
     @asynccontextmanager
     async def vida(app: FastAPI):
@@ -62,13 +83,50 @@ def criar_app(config: Config) -> FastAPI:
 
     @app.get("/dados/acoes.js")
     def acoes_js():
-        from fastapi.responses import Response
-        js = 'window.MAPA_ACOES = {"porta": 8765, "token": "automateum"};'
+        js = f"window.MAPA_ACOES = {json.dumps({'porta': porta, 'token': token})};"
         return Response(content=js, media_type="application/javascript", headers={"Cache-Control": "no-store"})
 
     @app.get("/vivo")
     def vivo():
         return {"ok": True}
+
+    @app.post("/acao")
+    async def acao(request: Request):
+        # POST de outra origem sempre traz Origin; exigir a origem local fecha o CSRF mesmo com o token.
+        if not (_origem_local(request) and _token_ok(request)):
+            return _erro(403, "sem permissão")
+        try:
+            nome = str((await request.json()).get("acao", ""))
+        except (ValueError, AttributeError):
+            return _erro(400, "pedido inválido")
+        tipo, _, alvo = nome.partition(":")
+        alvo = alvo.removeprefix("rot-")  # o mapa manda o id do nó ("rot-<rotina>"), não o da rotina
+        if nome == "medir-agora":
+            tipo, alvo = "rodar", "saude"
+        if tipo in ("ligar", "desligar") and alvo in ROTINAS:
+            agendador.ligar(alvo, ligada=tipo == "ligar")
+            return {"id": 0}  # sem rodada para acompanhar: /estado/0 responde como concluído
+        if tipo == "rodar" and alvo in ROTINAS:
+            exec_id = agendador.disparar(alvo)
+            if exec_id is None:
+                motivo = agendador.motivo_parada(ROTINAS[alvo]) or "já está rodando"
+                return _erro(409, motivo)
+            return {"id": exec_id}
+        return _erro(400, f"ação desconhecida: {nome}")
+
+    @app.get("/estado/{eid}")
+    def estado_acao(eid: int, request: Request):
+        if not _token_ok(request):
+            return _erro(403, "sem permissão")
+        if eid == 0:
+            return {"fim": agora(), "codigo": 0, "texto": ""}
+        execucao = estado.execucao(eid)
+        if execucao is None:
+            return _erro(404, "execução desconhecida")
+        if execucao["fim"] is None:
+            return {"fim": None, "codigo": None, "texto": ""}
+        return {"fim": execucao["fim"], "codigo": _CODIGO.get(execucao["status"], 1),
+                "texto": execucao["resumo"]}
 
     @app.get("/api/grafo")
     def ver_grafo():
