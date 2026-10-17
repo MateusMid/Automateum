@@ -77,6 +77,25 @@ def test_saude_sem_meta_nao_quebra(tmp_path, estado, monkeypatch):
     assert estado.medidas("2000-01-01T00:00:00") == []
 
 
+def test_cartao_da_maquina_no_mapa_mostra_cpu_memoria_e_disco(tmp_path, estado):
+    from automateum.nucleo import mapa_leo
+    from automateum.nucleo.agendador import Agendador
+    from automateum.nucleo.eventos import Barramento
+
+    cfg = Config(dados={}, segredos={}, pasta_dados=tmp_path)
+    agendador = Agendador(cfg, estado, Barramento())
+
+    antes = mapa_leo.montar_mapa_leo(cfg, estado, agendador)
+    mesa = next(n for n in antes["nos"] if n["id"] == "mesa")
+    assert "CPU" not in mesa["frase"]                                  # sem medição, não inventa
+
+    estado.salvar_checagem("maquina", Checagem(OK, "ok", meta={
+        "cpu": 7, "memoria": 53, "disco_livre_gb": 85, "ligada_desde": "17/10 08:40"}))
+    mesa = next(n for n in mapa_leo.montar_mapa_leo(cfg, estado, agendador)["nos"] if n["id"] == "mesa")
+    assert mesa["frase"] == "CPU 7% · memória 53% · 85 GB livres"
+    assert mesa["linhas"] == ["ligada desde 17/10 08:40"]
+
+
 def test_fechamento_do_dia_traz_a_linha_da_maquina(tmp_path, estado, monkeypatch):
     cofre = tmp_path / "cofre"
     (cofre / "Diário").mkdir(parents=True)

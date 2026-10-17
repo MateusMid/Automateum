@@ -38,7 +38,10 @@ def montar_mapa_leo(config, estado: Estado, ag: Agendador) -> dict:
     nome_pc = meta.get("nome", "PC Mateus")
     sistema_pc = meta.get("sistema", "Windows 11")
     disco_livre = meta.get("disco_livre_gb", 0)
-    frase_disco = f"C: com {disco_livre} GB livres" if disco_livre else "Disco operando normalmente"
+    if "cpu" in meta and "memoria" in meta:
+        frase_disco = f"CPU {meta['cpu']}% · memória {meta['memoria']}% · {disco_livre} GB livres"
+    else:
+        frase_disco = f"C: com {disco_livre} GB livres" if disco_livre else "Disco operando normalmente"
     boot_str = meta.get("ligada_desde", "")
 
     # Nó Mesa / Máquina
