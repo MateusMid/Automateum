@@ -6,6 +6,7 @@ import hmac
 import json
 import secrets
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -20,6 +21,7 @@ from ..nucleo.agendador import Agendador
 from ..nucleo.estado import Estado, agora
 from ..nucleo.eventos import Barramento
 from ..nucleo.registro import ATENCAO, FALHA, OK, ROTINAS, SERVICOS, quando_texto
+from ..servicos import maquina
 
 _ESTATICOS = Path(__file__).parent / "static"
 _LOCAIS = {"127.0.0.1", "localhost"}
@@ -138,6 +140,24 @@ def criar_app(config: Config) -> FastAPI:
     @app.get("/api/grafo")
     def ver_grafo():
         return grafo.montar(config, estado, agendador)
+
+    @app.get("/api/hoje")
+    def ver_hoje():
+        """Os últimos textos gerados (briefing, resumo de mensagens, fechamento) para a faixa "Hoje" do mapa."""
+        textos = []
+        for rid, titulo in (("meu_dia", "Briefing do dia"), ("resumo_mensagens", "Resumo das mensagens"),
+                            ("dia_fechado", "Fechamento do dia")):
+            if ultimo := saidas.ultimo_texto(estado, rid):
+                textos.append({"id": rid, "titulo": titulo, "quando": ultimo["quando"],
+                               "conteudo": ultimo["conteudo"], "nota": saidas.nota(config, rid)})
+        return {"gerado": agora(), "textos": textos}
+
+    @app.get("/api/maquina/historico")
+    def historico_da_maquina(horas: int = 24):
+        """CPU, memória e disco das últimas horas, reduzidos a poucos pontos, para o gráfico da máquina."""
+        horas = max(1, min(horas, 168))
+        desde = (datetime.now() - timedelta(hours=horas)).isoformat(timespec="seconds")
+        return {"desde": desde, "medidas": maquina.reduzir_medidas(estado.medidas(desde))}
 
     @app.get("/api/eventos")
     async def ver_eventos(request: Request):

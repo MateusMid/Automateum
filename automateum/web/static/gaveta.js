@@ -347,6 +347,7 @@
     if (af.length) h += secao('Afeta', refs(af), af.length);
     h += fatos(x);
     h += secao('Últimas 24 horas', batimento(id));
+    if (x.id === 'mesa' && window.Extras) h += secao('CPU e memória · 24 horas', '<div data-gv-hist><p class="gv-nota">Carregando…</p></div>');
     if (x.partes && x.partes.length) {
       var ps = x.partes.slice().sort(function (a, b) { return (EST[est(b.estado)].grav - EST[est(a.estado)].grav) || String(a.rotulo).localeCompare(String(b.rotulo), 'pt-BR'); });
       h += secao(x.id === 'lojas' ? 'Lojas' : 'Partes', '<ul class="gv-ref">' + ps.map(parte).join('') + '</ul>', ps.length);
@@ -613,6 +614,8 @@
     c = raiz.querySelector('.gv-corpo');
     if (c) c.scrollTop = rolagem;
     preencherResultado();
+    var hist = raiz.querySelector('[data-gv-hist]');
+    if (hist && window.Extras) Extras.preencherGrafico(hist);
   }
   function abrir(id) {
     montar();

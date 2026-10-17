@@ -47,6 +47,24 @@ def resumo_do_dia(medidas: list[dict], ligada_desde: str = "") -> str:
         f"**Máquina:** {' · '.join(partes)} ({n} medições)."
 
 
+def reduzir_medidas(medidas: list[dict], maximo: int = 240) -> list[dict]:
+    """Agrupa as medições em até `maximo` pontos, para o gráfico não receber 700 pontos por dia.
+
+    Cada faixa guarda o pico da CPU (os picos são o que se quer ver) e a média da memória.
+    """
+    if len(medidas) <= maximo:
+        return medidas
+    passo = len(medidas) / maximo
+    saida = []
+    for i in range(maximo):
+        faixa = medidas[int(i * passo):int((i + 1) * passo)]
+        if faixa:
+            saida.append({"quando": faixa[0]["quando"], "cpu": max(m["cpu"] for m in faixa),
+                          "memoria": round(sum(m["memoria"] for m in faixa) / len(faixa)),
+                          "disco_livre_gb": faixa[-1]["disco_livre_gb"], "discos": faixa[-1].get("discos") or {}})
+    return saida
+
+
 def _nome_do_disco(texto: str) -> str:
     """'c', 'C:' ou 'C:\\' -> 'C:'; '/' continua '/'."""
     texto = texto.strip().rstrip("\\/")

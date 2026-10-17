@@ -52,7 +52,7 @@ Parte da [Documentação](README.md). Os horários e frequências podem ser pers
 
 ## Ideias e Próximos Passos
 
-- Visualização do painel no celular direto pelo navegador (HTML responsivo / rede local)
+- Acesso ao painel pelo celular fora deste computador (a lista para celular já existe; falta o acesso remoto seguro)
 - Preparação de pautas automatizadas para reuniões a partir de notas de reuniões recentes
 - Sinalização visual no cofre para tasks com mais de N dias sem movimentação
 - Resumo executivo semanal
