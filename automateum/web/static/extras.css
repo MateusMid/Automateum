@@ -1,0 +1,110 @@
+/* Extras do mapa (extras.js): faixa Hoje, gráficos, densidade, tamanho do texto, modo painel e celular. */
+:root { --ft: 1; --dp: 1; }
+
+/* ---- faixa Hoje ---- */
+.hoje { position: relative; border-bottom: 1px solid var(--linha); min-width: 0; }
+.hoje-cab { display: flex; align-items: center; gap: 10px; padding: 6px 20px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.hoje-estado, .hoje-dele { flex: none; display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--mudo); white-space: nowrap; }
+.hoje-estado i { width: 8px; height: 8px; border-radius: 50%; background: var(--bom); }
+.hoje-estado.e-atencao i { background: var(--atencao); }
+.hoje-estado.e-duvida i { background: var(--duvida); }
+.hoje-estado.e-ruim i { background: var(--ruim); }
+.hoje-estado.e-ruim, .hoje-estado.e-atencao { color: var(--texto); }
+.hoje-dele { color: var(--dele); }
+.hoje-chip { flex: 0 1 280px; min-width: 150px; display: flex; flex-direction: column; gap: 1px; padding: 4px 10px; text-align: left; cursor: pointer;
+  background: var(--painel); border: 1px solid var(--linha); border-radius: var(--raio); }
+.hoje-chip:hover, .hoje-chip.on { border-color: color-mix(in srgb, var(--texto) 34%, transparent); background: var(--painel2); }
+.hoje-chip b { font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.hoje-chip b small { font-weight: 400; color: var(--mudo); font-size: 10.5px; }
+.hoje-chip span { font-size: 11.5px; color: var(--mudo); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hoje-relogio { display: none; margin-left: auto; flex: none; font: 600 20px/1 var(--fontT); font-variant-numeric: tabular-nums; }
+.hoje-painel { position: absolute; z-index: 30; left: 20px; right: 20px; top: calc(100% + 4px); max-height: 56vh; overflow: auto; padding: 14px 18px 16px;
+  background: var(--ficha-bg); border: 1px solid var(--ficha-borda); border-radius: var(--raio); box-shadow: var(--ficha-sombra); font-size: 13px; line-height: 1.5; }
+.hoje-painel[hidden] { display: none; }
+.hoje-painel h3 { margin: 0 24px 8px 0; font-size: 14px; }
+.hoje-painel h3 small { font-weight: 400; color: var(--mudo); font-size: 11.5px; }
+.hoje-painel h4 { margin: 12px 0 4px; font-size: 12px; text-transform: var(--caixa); letter-spacing: var(--esp); color: var(--mudo); }
+.hoje-painel p { margin: 4px 0; }
+.hoje-painel ul { margin: 4px 0; padding-left: 18px; }
+.hoje-painel code { font-size: 12px; }
+.hoje-x { position: absolute; top: 8px; right: 10px; width: 26px; height: 26px; border: 0; border-radius: 6px; background: none; color: var(--mudo); cursor: pointer; font-size: 18px; line-height: 1; }
+
+/* ---- gráficos de CPU e memória ---- */
+.no .spark { display: block; height: 22px; margin-top: 5px; }
+.spk { display: block; width: 100%; height: 100%; fill: none; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+.spk polyline, .grf polyline { vector-effect: non-scaling-stroke; }
+.spk-cpu { stroke: var(--duvida); fill: var(--duvida); }
+.spk-mem { stroke: var(--atencao); fill: var(--atencao); }
+.spk-cpu, .spk-mem { stroke-width: 1.4; }
+.spk-cpu polyline, .spk-mem polyline { fill: none; }
+.grf { display: block; width: 100%; height: auto; margin-top: 6px; fill: none; }
+.grf-grade line { stroke: var(--gv-linha, var(--linha)); stroke-width: 1; }
+.grf-grade text { fill: var(--gv-mudo, var(--mudo)); font-size: 8px; stroke: none; }
+.grf-eixo { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--gv-mudo, var(--mudo)); }
+.grf-leg { display: flex; gap: 14px; margin-top: 4px; font-size: 11px; color: var(--gv-mudo, var(--mudo)); }
+.grf-leg span { display: inline-flex; align-items: center; gap: 5px; stroke: none; fill: none; }
+.grf-leg i { width: 14px; height: 0; border-top: 2px solid; }
+.grf-leg .spk-cpu i { border-color: var(--duvida); }
+.grf-leg .spk-mem i { border-color: var(--atencao); }
+
+/* ---- tamanho do texto: só quando diferente de 100% (cada regra espelha a original) ---- */
+html.ft .no b { font-size: calc(12.5px * var(--ft)); }
+html.ft .no .s { font-size: calc(11px * var(--ft)); }
+html.ft .no .tg { font-size: calc(10px * var(--ft)); }
+html.ft .no .kk { font-size: calc(9.5px * var(--ft)); }
+html.ft .no.k-maquina b { font-size: calc(15px * var(--ft)); }
+html.ft .no.k-rotina b { font-size: calc(12px * var(--ft)); }
+html.ft .no.k-rotina .s { font-size: calc(10.5px * var(--ft)); }
+html.ft .no.k-rotina .tg { font-size: calc(9.5px * var(--ft)); }
+html.ft .no.k-voce b.dois, html.ft .no.k-voce b.tres { font-size: calc(12px * var(--ft)); }
+html.ft body.t-holograma .no b { font-size: calc(11px * var(--ft)); }
+html.ft body.t-holograma .no.k-maquina b { font-size: calc(14px * var(--ft)); }
+html.ft body.t-holograma .no.k-rotina b { font-size: calc(11px * var(--ft)); }
+html.ft body.t-holograma .no .s { font-size: calc(10px * var(--ft)); }
+/* densidade: o respiro dentro do cartão (a altura mínima e o vão entre cartões saem do dispor()) */
+.no { padding-top: calc(5px * var(--dp)); padding-bottom: calc(5px * var(--dp)); }
+.no.k-rotina { padding-top: calc(var(--dp) * 1px - 1px); padding-bottom: calc(var(--dp) * 1px - 1px); }
+
+/* ---- modo painel ---- */
+#sair-parede { display: none; }
+body.parede { grid-template-rows: auto minmax(0, 1fr); }
+body.parede .topo, body.parede .barra, body.parede .zoom, body.parede .mini, body.parede .ficha { display: none !important; }
+body.parede .gv, body.parede .gv-chip { display: none !important; }
+body.parede .hoje-cab { padding: 12px 28px; gap: 14px; }
+body.parede .hoje-chip { flex-basis: 360px; }
+body.parede .hoje-chip b, body.parede .hoje-estado, body.parede .hoje-dele { font-size: 14px; }
+body.parede .hoje-chip span { font-size: 13.5px; }
+body.parede .hoje-relogio { display: block; }
+body.parede #sair-parede { display: block; position: fixed; right: 10px; bottom: 10px; z-index: 40; opacity: 0; transition: opacity .3s;
+  padding: 6px 12px; border: 1px solid var(--linha); border-radius: var(--raio); background: var(--painel); color: var(--mudo); cursor: pointer; font-size: 12px; }
+body.parede #sair-parede:hover, body.parede #sair-parede:focus-visible { opacity: 1; }
+body.parede .palco { cursor: default; }
+
+/* ---- lista para o celular ---- */
+.celular { display: none; }
+@media (max-width: 760px) {
+  html, body { height: auto; }
+  body { display: block; overflow: auto; }
+  .topo { flex-wrap: wrap; gap: 8px 12px; padding: 10px 16px; }
+  .topo .abas, .topo .ritmo, .topo .vivo, .barra, .palco, .marca small { display: none !important; }
+  .hoje-cab { padding: 8px 16px; }
+  .hoje-chip { flex: 0 0 220px; }
+  .hoje-painel { left: 8px; right: 8px; max-height: 70vh; }
+  .celular { display: block; padding: 4px 16px 40px; }
+  .celular h2 { margin: 18px 0 6px; font: 600 10.5px/1 var(--fontT); letter-spacing: var(--esp); text-transform: uppercase; color: var(--mudo); }
+  .cl-item, .cl-grupo summary { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 11px 12px; margin: 0 0 6px; text-align: left; cursor: pointer;
+    background: var(--card); border: 1px solid var(--card-borda); border-radius: var(--card-raio); color: var(--texto); }
+  .cl-item i, .cl-grupo summary i { flex: none; width: 9px; height: 9px; margin-top: 5px; border-radius: 50%; background: var(--bom); }
+  .e-atencao > i { background: var(--atencao); } .e-duvida > i { background: var(--duvida); } .e-ruim > i { background: var(--ruim); }
+  .e-dele > i { background: var(--dele); } .e-desligado > i, .e-construcao > i { background: var(--desligado); }
+  .cl-item span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .cl-item b, .cl-grupo summary b { font-size: 14px; font-weight: 600; }
+  .cl-item small, .cl-grupo summary small { font-size: 12px; color: var(--mudo); overflow-wrap: anywhere; }
+  .cl-grupo { margin: 0 0 6px; }
+  .cl-grupo summary { margin: 0 0 6px; align-items: center; list-style: none; }
+  .cl-grupo summary small { margin-left: auto; }
+  .cl-grupo[open] { padding-left: 12px; border-left: 2px solid var(--linha); }
+  .cl-spark { height: 40px; margin: -2px 0 8px; padding: 6px 12px; background: var(--card); border: 1px solid var(--card-borda); border-radius: var(--card-raio); }
+  .cl-ok, .cl-nota { margin: 8px 2px; color: var(--mudo); font-size: 12.5px; }
+}
+@media (prefers-reduced-motion: reduce) { #sair-parede { transition: none; } }
