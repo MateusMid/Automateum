@@ -8,7 +8,15 @@ from ..config import Config
 from ..nucleo.registro import FALHA, OK, Checagem, registrar_servico
 
 
+def modo(config: Config) -> str:
+    """'app' (token do app do Slack, padrão) ou 'navegador' (coletor que lê o Slack web logado)."""
+    return config.secao("slack").get("modo", "app")
+
+
 def configurado(config: Config) -> str | None:
+    if modo(config) == "navegador":
+        from . import slack_navegador
+        return slack_navegador.configurado(config)
     return None if config.segredo("SLACK_TOKEN") else "falta SLACK_TOKEN no .env"
 
 
@@ -21,6 +29,9 @@ def _cliente(config: Config):
 
 
 def checar(config: Config) -> Checagem:
+    if modo(config) == "navegador":
+        from . import slack_navegador
+        return slack_navegador.checar(config)
     inicio = time.perf_counter()
     try:
         quem = _cliente(config).auth_test()

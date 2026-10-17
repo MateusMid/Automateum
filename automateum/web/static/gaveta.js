@@ -38,7 +38,7 @@
   var MAPA_ID = '@mapa';
 
   var M = null, I = null, aberto = null, raiz = null, opts = {}, rolagem = 0;
-  var servidor = {token: null, porta: 47833, vivo: false, visto: false};
+  var servidor = {token: null, porta: 8765, vivo: false, visto: false};
   var acoes = {};
   var armado = {};      // desligar:<id> esperando o segundo clique
 
@@ -454,7 +454,7 @@
     s.onload = function () {
       s.remove();
       var a = window.MAPA_ACOES; window.MAPA_ACOES = undefined;
-      if (a && a.token) { servidor.token = a.token; servidor.porta = a.porta || 47833; sondarServidor(); }
+      if (a && a.token) { servidor.token = a.token; servidor.porta = a.porta || 8765; sondarServidor(); }
       else mudarServidor(null, false);
     };
     s.onerror = function () { s.remove(); mudarServidor(null, false); };

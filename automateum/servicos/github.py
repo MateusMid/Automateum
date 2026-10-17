@@ -57,10 +57,15 @@ def pendencias(config: Config) -> list[dict]:
             for i in dados.get("items", []):
                 repo = i["repository_url"].split("/repos/")[-1]
                 tipo = "PR" if "pull_request" in i else "issue"
-                itens.setdefault(i["html_url"], {
+                item = itens.setdefault(i["html_url"], {
                     "chave": i["html_url"], "titulo": i["title"], "origem": f"{repo} #{i['number']}",
-                    "corpo": f"{tipo} · {papel}", "url": i["html_url"], "quando": i["updated_at"][:10]})
-    return list(itens.values())
+                    "papeis": [], "tipo": tipo, "url": i["html_url"], "quando": i["updated_at"][:10]})
+                # Um PR pode ser seu e pedir sua revisão ao mesmo tempo: guarda os dois papéis.
+                if papel not in item["papeis"]:
+                    item["papeis"].append(papel)
+    return [{"chave": i["chave"], "titulo": i["titulo"], "origem": i["origem"], "url": i["url"],
+             "quando": i["quando"], "corpo": f"{i['tipo']} · {', '.join(i['papeis'])}"}
+            for i in itens.values()]
 
 
 registrar_servico("github", "GitHub", checar, configurado, "Issues e pull requests atribuídos a você.")
