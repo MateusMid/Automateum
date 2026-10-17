@@ -12,7 +12,7 @@ Parte da [Documentação](README.md). Os horários e frequências podem ser pers
 
 | Rotina | Quando | Depende de | O que faz |
 |---|---|---|---|
-| `saude` | a cada 2 min | Máquina | Checa a integridade da máquina (CPU, memória, disco) e de cada serviço configurado. Atualiza o status da coluna de serviços. |
+| `saude` | a cada 2 min | Máquina | Checa a integridade da máquina (CPU, memória, disco) e de cada serviço configurado. Atualiza o status da coluna de serviços. Mede todos os discos fixos (ou só os de `[maquina] discos`, por exemplo `["C:", "D:"]`) e guarda uma medição por rodada (7 dias) para o fechamento do dia. |
 
 ## Mensagens
 
@@ -34,7 +34,7 @@ Parte da [Documentação](README.md). Os horários e frequências podem ser pers
 | Rotina | Quando | Depende de | O que faz |
 |---|---|---|---|
 | `meu_dia` | 08:30, seg a sex | Obsidian, Claude | Agrega tarefas abertas, mensagens recentes, notas dos últimos diários e notas de contexto recentes, escrevendo o briefing matinal no diário de hoje. |
-| `dia_fechado` | 19:00, seg a sex | Obsidian, Claude | Lê as anotações do dia, resumos de mensagens e tarefas concluídas/pendentes, registrando o fechamento no diário. |
+| `dia_fechado` | 19:00, seg a sex | Obsidian, Claude | Lê as anotações do dia, resumos de mensagens e tarefas concluídas/pendentes, registrando o fechamento no diário. Termina com uma linha da máquina (média e pico de CPU e memória, o disco livre de cada disco, desde quando está ligada), calculada pelas medições e não escrita pelo Claude. A temperatura não entra: o Windows não a expõe sem um programa de monitoramento à parte. |
 
 ## Estrutura dos Briefings
 
