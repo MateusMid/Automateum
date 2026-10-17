@@ -21,7 +21,10 @@ modelo = "sonnet"
 timeout_segundos = 240
 
 [slack]
-# Vazio = todas as conversas em que você está. Ou liste nomes: ["geral", "dev"].
+# "app" lê pela API com o SLACK_TOKEN do .env (padrão). "navegador" roda um coletor externo que lê o
+# Slack web com a sua conta logada; as chaves dele ficam no config.local.toml (veja o exemplo).
+modo = "app"
+# Vazio = todas as conversas em que você está. Ou liste nomes: ["geral", "dev"]. Só vale no modo "app".
 canais = []
 tipos = ["public_channel", "private_channel", "im", "mpim"]
 max_conversas = 60

@@ -5,3 +5,18 @@
 # Caminho absoluto para a pasta do seu cofre do Obsidian.
 cofre = 'C:\Users\seu_usuario\Documents\SeuCofre'
 # pastas_contexto = ["Meets"]
+
+# Slack pelo navegador, no lugar do app com token. Precisa do coletor de Slack numa pasta fixa
+# (a que tem o colher.ps1 e o logar.ps1), de Node, de Python e do Chrome. Rode o logar.ps1 uma vez.
+# [slack]
+# modo = "navegador"
+# kit = 'C:\Users\seu_usuario\.automateum\kit-slack'
+# fora = ["Slackbot"]          # conversas que não entram, pelo nome na barra lateral
+# time = ""                    # id do workspace, se o coletor não usar o padrão dele
+# meu_nome = "Seu Nome"        # suas próprias mensagens não entram no resumo
+# dias = 1                     # 1 = hoje e ontem
+# timeout_segundos = 2700      # a colheita cheia leva de 1 a 25 minutos
+#
+# A colheita é longa: use um horário espaçado em vez do padrão de 15 minutos.
+# [horarios]
+# coletar_slack = "cron: 30 8-18 * * mon-fri"
