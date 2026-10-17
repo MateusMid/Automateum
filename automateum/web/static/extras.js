@@ -284,6 +284,10 @@
         else if (a === 'parede') entrarParede(true);
       });
     }
+    // de outro aparelho o painel é só leitura: os botões de rodar e ligar não existem lá
+    var local = /^(127\.0\.0\.1|localhost)$/.test(location.hostname);
+    if (!local) document.body.classList.add('leitura');
+    else if (zoom) zoom.insertAdjacentHTML('beforeend', '<a href="/celular" target="_blank" rel="noopener" class="zoom-link" title="Abrir o painel no celular">Celular</a>');
     aplicarTamanho();
     if (hoje) {
       hoje.addEventListener('click', function (ev) {

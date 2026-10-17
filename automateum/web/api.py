@@ -11,7 +11,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from .. import rotinas, servicos  # noqa: F401  (registram rotinas e serviços)
@@ -22,9 +22,11 @@ from ..nucleo.estado import Estado, agora
 from ..nucleo.eventos import Barramento
 from ..nucleo.registro import ATENCAO, FALHA, OK, ROTINAS, SERVICOS, quando_texto
 from ..servicos import maquina
+from . import celular as acesso_celular
 
 _ESTATICOS = Path(__file__).parent / "static"
 _LOCAIS = {"127.0.0.1", "localhost"}
+_LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 
 
 class _Estaticos(StaticFiles):
@@ -53,6 +55,8 @@ def criar_app(config: Config) -> FastAPI:
     # Token da sessão: vai só para a página local (acoes.js). Ações exigem também a origem local.
     token = secrets.token_urlsafe(24)
     porta = int(config.secao("painel").get("porta", 8765))
+    # leitura pelo celular na rede local: desligada, a não ser que o config.local.toml peça
+    celular = acesso_celular.Celular(config.pasta_dados) if config.secao("painel").get("celular") else None
 
     def _token_ok(request: Request) -> bool:
         return hmac.compare_digest(request.headers.get("x-mapa-token", ""), token)
@@ -70,14 +74,70 @@ def criar_app(config: Config) -> FastAPI:
     app = FastAPI(title="Automateum", lifespan=vida, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.agendador, app.state.estado = agendador, estado
 
+    def _recusa(status: int, texto: str) -> Response:
+        return HTMLResponse("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'>"
+                            f"<body style='font:16px system-ui;padding:24px;background:#0c0c0b;color:#ecebe6'>{texto}", status_code=status)
+
+    async def _de_fora(request: Request, host: str, origem: str | None, seguir):
+        """Pedido que não veio do próprio computador: só leitura, da rede privada, com a chave do celular."""
+        ip = request.client.host if request.client else ""
+        if not (acesso_celular.privado(ip) and acesso_celular.privado(host)):
+            return JSONResponse({"detail": "origem não permitida"}, status_code=403)
+        if origem and urlsplit(origem).hostname != host:
+            return JSONResponse({"detail": "origem não permitida"}, status_code=403)
+        if request.method not in ("GET", "HEAD") or not acesso_celular.caminho_de_leitura(request.url.path):
+            return JSONResponse({"detail": "o celular só lê o painel"}, status_code=403)
+        if celular.bloqueado(ip):
+            return _recusa(429, "Muitas tentativas. Aguarde alguns minutos.")
+        if celular.cookie_ok(request.cookies.get(acesso_celular.COOKIE, "")):
+            return await seguir(request)
+        tentativa = request.query_params.get("chave")
+        if tentativa is not None:
+            if not celular.chave_ok(tentativa):
+                celular.falhou(ip)
+                return _recusa(401, "Chave errada. Abra a página <b>/celular</b> no computador e use o QR code de lá.")
+            resposta = RedirectResponse(request.url.path or "/", status_code=303)
+            resposta.set_cookie(acesso_celular.COOKIE, celular.selo(), max_age=60 * 60 * 24 * 90, httponly=True, samesite="strict")
+            return resposta
+        return _recusa(401, "Acesso do celular: abra no computador a página <b>/celular</b> e leia o QR code de lá.")
+
     @app.middleware("http")
     async def so_local(request: Request, seguir):
         # Barra páginas de outros sites (CSRF) e DNS rebinding: só o próprio painel fala com a API.
         host = (request.headers.get("host") or "").rsplit(":", 1)[0]
         origem = request.headers.get("origin")
-        if host not in _LOCAIS or (origem and urlsplit(origem).hostname not in _LOCAIS):
+        if host in _LOCAIS:
+            # com a rede aberta, "Host: 127.0.0.1" vindo de outro aparelho não pode valer como local
+            if celular and (request.client.host if request.client else "") not in _LOOPBACK | {"testclient"}:
+                return JSONResponse({"detail": "origem não permitida"}, status_code=403)
+            if origem and urlsplit(origem).hostname not in _LOCAIS:
+                return JSONResponse({"detail": "origem não permitida"}, status_code=403)
+            return await seguir(request)
+        if celular is None:
             return JSONResponse({"detail": "origem não permitida"}, status_code=403)
-        return await seguir(request)
+        return await _de_fora(request, host, origem, seguir)
+
+    @app.get("/celular")
+    def pagina_celular():
+        """Só no computador: o endereço (com a chave) e o QR code para abrir o painel no celular."""
+        if celular is None:
+            return _recusa(200, "O acesso pelo celular está desligado. No <code>config.local.toml</code> ponha "
+                                "<code>celular = true</code> em <code>[painel]</code> e reinicie o Automateum.")
+        chave = celular.chave()
+        links = [f"http://{ip}:{porta}/?chave={chave}" for ip in acesso_celular.ips_da_maquina()]
+        try:
+            import segno
+            qrs = [segno.make(l, error="m").svg_inline(scale=6, dark="#000", light="#fff", border=2) for l in links]
+        except ImportError:
+            qrs = ["" for _ in links]
+        corpo = "<h2>Painel no celular</h2><p>O celular precisa estar no mesmo Wi-Fi que este computador. Só leitura.</p>"
+        for l, q in zip(links, qrs):
+            corpo += f"<div style='margin:16px 0'>{q}</div><p><code style='word-break:break-all'>{l}</code></p>"
+        if not links:
+            corpo += "<p>Não achei o endereço de rede deste computador. Conecte-se a uma rede e recarregue.</p>"
+        corpo += ("<p style='color:#8d8b84'>A chave fica só neste computador (dados/celular.chave). Quem tiver o endereço acima "
+                  "lê o painel enquanto estiver na sua rede. Para invalidar, apague esse arquivo e reinicie.</p>")
+        return _recusa(200, corpo)
 
     @app.get("/")
     def painel():

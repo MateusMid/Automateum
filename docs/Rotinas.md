@@ -52,7 +52,7 @@ Parte da [Documentação](README.md). Os horários e frequências podem ser pers
 
 ## Ideias e Próximos Passos
 
-- Acesso ao painel pelo celular fora deste computador (a lista para celular já existe; falta o acesso remoto seguro)
+- Acesso ao painel pelo celular fora do Wi-Fi (hoje só pela rede local; ver docs/Painel.md)
 - Preparação de pautas automatizadas para reuniões a partir de notas de reuniões recentes
 - Sinalização visual no cofre para tasks com mais de N dias sem movimentação
 - Resumo executivo semanal
