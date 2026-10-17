@@ -6,6 +6,7 @@ O painel mostra o mesmo e tem um link que abre a nota no Obsidian.
 from __future__ import annotations
 
 import hashlib
+import json
 import time
 from datetime import datetime
 from urllib.parse import quote
@@ -58,6 +59,10 @@ def _conteudo(config: Config, estado: Estado, rotina, exec_id: int, status: str,
         partes.append(rotina.descricao)
     if texto.strip():
         partes.append(texto.strip())
+    elif ultimo := ultimo_texto(estado, rotina.id):
+        quando = datetime.fromisoformat(ultimo["quando"]).strftime("%d/%m %H:%M")
+        partes.append(f"> Último texto gerado, em {quando}. A rodada de agora não trouxe nada novo.\n\n"
+                      + ultimo["conteudo"])
     fonte = FONTES.get(rotina.id)
     if fonte and rotina.id in SO_CONTAGEM:
         partes.append(f"## Itens\n{estado.contar_itens(fonte)} guardados. O conteúdo fica no painel, não no cofre.")
@@ -73,8 +78,23 @@ def _conteudo(config: Config, estado: Estado, rotina, exec_id: int, status: str,
     return "\n\n".join(partes)
 
 
+def ultimo_texto(estado: Estado, rotina_id: str) -> dict | None:
+    """O último texto que a rotina gerou ({quando, conteudo}), mesmo que as rodadas seguintes não tragam nada novo."""
+    bruto = estado.cursor(f"texto:{rotina_id}")
+    try:
+        d = json.loads(bruto) if bruto else None
+    except ValueError:
+        return None
+    return d if isinstance(d, dict) and d.get("conteudo") else None
+
+
 def gravar(config: Config, estado: Estado, rotina, exec_id: int, status: str, resumo: str, texto: str = "") -> None:
     """Escreve a nota da rotina. Sem cofre configurado não faz nada; erro aqui nunca derruba a rodada."""
+    if texto.strip():
+        # Rotinas de hora em hora quase sempre voltam com "nada novo": sem guardar, esse resultado vazio
+        # apagaria o último resumo de verdade, tanto da nota quanto da gaveta do mapa.
+        estado.definir_cursor(f"texto:{rotina.id}", json.dumps(
+            {"quando": datetime.now().isoformat(timespec="seconds"), "conteudo": texto.strip()}, ensure_ascii=False))
     if obsidian.configurado(config):
         return
     assinatura = hashlib.sha1(f"{status}|{resumo}|{texto}".encode()).hexdigest()

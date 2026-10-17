@@ -268,18 +268,24 @@
   var resultados = {};  // rotina -> {t: quando buscou, d: resposta do servidor}
   var logAberto = false;
   var ESTADO_DA_RODADA = {ok: 'bom', falha: 'ruim', atencao: 'atencao', rodando: 'duvida'};
+  // Só o que os textos gerados usam: **negrito** e quebra de linha, sobre texto já escapado.
+  function mdSimples(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>'); }
   function htmlResultado(d) {
     var ex = (d.execucoes || [])[0], h = '', itens = d.itens || [];
+    var texto = d.texto && d.texto.conteudo
+      ? '<div class="gv-texto"><small>Último texto gerado · ' + esc(longo(d.texto.quando)) + '</small><div>' + mdSimples(d.texto.conteudo) + '</div></div>'
+      : '';
     if (ex) {
       var e = ESTADO_DA_RODADA[ex.status] || 'construcao';
       h += '<div class="gv-res-topo gv-e-' + e + '">' + gl(e) + '<b>' + esc(ex.resumo || nomeEst(e)) + '</b><small>' +
         esc(longo(ex.fim || ex.inicio)) + '</small></div>';
+      h += texto;
       if (ex.log && ex.log.trim()) {
-        h += '<details class="gv-det"' + (logAberto ? ' open' : '') + '><summary>Log da última rodada</summary><pre class="gv-pre">' +
+        h += '<details class="gv-det gv-log"' + (logAberto ? ' open' : '') + '><summary>Log da última rodada</summary><pre class="gv-pre">' +
           esc(ex.log.trim()) + '</pre></details>';
       }
     } else {
-      h += '<p class="gv-nota">Ainda não há resultado guardado desta rotina.</p>';
+      h += '<p class="gv-nota">Ainda não há resultado guardado desta rotina.</p>' + texto;
     }
     if (itens.length) {
       h += '<ul class="gv-itens">' + itens.slice(0, 12).map(function (i) {
@@ -592,7 +598,7 @@
     var c = raiz.querySelector('.gv-corpo');
     rolagem = c ? c.scrollTop : 0;
     // a gaveta é redesenhada a cada leitura nova: lembra se o log estava aberto
-    if (raiz.querySelector('.gv-det')) logAberto = !!raiz.querySelector('.gv-det[open]');
+    if (raiz.querySelector('.gv-log')) logAberto = !!raiz.querySelector('.gv-log[open]');
     raiz.innerHTML = aberto === MAPA_ID ? corpoDoMapa() : corpoDaPeca(aberto);
     c = raiz.querySelector('.gv-corpo');
     if (c) c.scrollTop = rolagem;
@@ -732,6 +738,8 @@
     '.gv-linhas li + li { margin-top: 3px; }',
     '.gv-res-topo { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; column-gap: 10px; align-items: baseline; font-size: 13px; }',
     '.gv-res-topo small { color: var(--gv-mudo); font-size: 11.5px; white-space: nowrap; }',
+    '.gv-texto { margin-top: 10px; padding: 10px 12px; max-height: 320px; overflow: auto; background: var(--gv-fundo); border: 1px solid var(--gv-linha); border-radius: 7px; font-size: 12.5px; line-height: 1.55; color: var(--gv-texto2); overflow-wrap: anywhere; }',
+    '.gv-texto small { display: block; margin-bottom: 6px; color: var(--gv-mudo); font-size: 11px; }',
     '.gv-det { margin-top: 10px; } .gv-det summary { cursor: pointer; color: var(--gv-mudo); font-size: 12px; }',
     '.gv-pre { margin: 8px 0 0; padding: 9px 11px; max-height: 220px; overflow: auto; background: var(--gv-fundo); border: 1px solid var(--gv-linha); border-radius: 7px; font: 11.5px/1.55 var(--gv-mono); color: var(--gv-texto2); white-space: pre-wrap; overflow-wrap: anywhere; }',
     '.gv-itens { list-style: none; margin: 10px 0 0; padding: 0; font-size: 12.5px; } .gv-itens li { padding: 5px 0; } .gv-itens li + li { border-top: 1px solid var(--gv-linha); }',

@@ -181,6 +181,7 @@ def criar_app(config: Config) -> FastAPI:
                 "execucoes": estado.execucoes(nid),
                 "itens": estado.itens([fonte], limite=200) if fonte else [],
                 "nota": saidas.nota(config, nid),
+                "texto": saidas.ultimo_texto(estado, nid),
             }
         if tipo == "servico" and nid in SERVICOS:
             s = SERVICOS[nid]

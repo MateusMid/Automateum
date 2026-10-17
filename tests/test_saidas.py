@@ -77,6 +77,47 @@ def test_mesmo_resultado_nao_reescreve_mas_mudanca_sim(cfg, monkeypatch):
     assert "outro" in nota.read_text(encoding="utf-8")
 
 
+def test_rodada_sem_novidade_nao_apaga_o_ultimo_texto(cfg, monkeypatch):
+    def rotina(ctx):
+        if ctx.estado.cursor("tem_novidade") == "1":
+            ctx.texto = "**Precisa de ação:** responder o contrato."
+            return "3 mensagens resumidas"
+        return "nada novo para resumir"
+
+    agendador, estado = _agendador(cfg, monkeypatch, rotina)
+    estado.definir_cursor("tem_novidade", "1")
+    agendador.executar("rotina_teste")
+    estado.definir_cursor("tem_novidade", "0")
+    estado._exec("UPDATE cursores SET valor = '' WHERE chave = 'nota:rotina_teste'")  # força reescrever a nota
+    agendador.executar("rotina_teste")
+
+    texto = _nota(cfg).read_text(encoding="utf-8")
+    assert "nada novo para resumir" in texto                       # o resultado de agora aparece
+    assert "responder o contrato" in texto                         # e o último texto de verdade continua
+    assert "Último texto gerado, em" in texto
+    ultimo = saidas.ultimo_texto(estado, "rotina_teste")
+    assert ultimo["conteudo"].startswith("**Precisa de ação:**") and ultimo["quando"]
+
+
+def test_ultimo_texto_sem_nada_gerado_ou_corrompido(cfg, monkeypatch):
+    _, estado = _agendador(cfg, monkeypatch, lambda ctx: "ok")
+    assert saidas.ultimo_texto(estado, "rotina_teste") is None
+    estado.definir_cursor("texto:rotina_teste", "{isto não é json")
+    assert saidas.ultimo_texto(estado, "rotina_teste") is None
+
+
+def test_texto_fica_guardado_mesmo_sem_cofre(tmp_path, monkeypatch):
+    cfg = Config(dados={}, segredos={}, pasta_dados=tmp_path)
+
+    def rotina(ctx):
+        ctx.texto = "briefing do dia"
+        return "ok"
+
+    agendador, estado = _agendador(cfg, monkeypatch, rotina)
+    agendador.executar("rotina_teste")
+    assert saidas.ultimo_texto(estado, "rotina_teste")["conteudo"] == "briefing do dia"
+
+
 def test_coletores_nao_despejam_mensagens_no_cofre(cfg, monkeypatch):
     agendador, estado = _agendador(cfg, monkeypatch, lambda ctx: "ok", "coletar_slack")
     estado.juntar_itens("slack", [{"chave": "a", "titulo": "Ana: conversa reservada", "origem": "DM Ana"}])
@@ -146,3 +187,19 @@ def test_api_da_rotina_traz_a_nota_e_o_log(cfg, monkeypatch):
     d = cliente.get("/api/no/rotina/saude_x").json()
     assert d["nota"]["obsidian"].startswith("obsidian://open?vault=")
     assert d["execucoes"][0]["status"] == "ok"
+    assert d["texto"] is None                                      # esta rotina não gerou texto
+
+
+def test_api_da_rotina_traz_o_ultimo_texto(cfg, monkeypatch):
+    def rotina(ctx):
+        ctx.texto = "Resumo do dia"
+        return "ok"
+
+    cliente = TestClient(criar_app(cfg))
+    cliente.headers.update({"host": "127.0.0.1:8765"})
+    monkeypatch.setitem(ROTINAS, "resumo_x", Rotina("resumo_x", "resumo x", "Teste", "nunca", rotina))
+    cliente.app.state.agendador._travas["resumo_x"] = threading.Lock()
+    cliente.app.state.agendador.executar("resumo_x")
+
+    d = cliente.get("/api/no/rotina/resumo_x").json()
+    assert d["texto"]["conteudo"] == "Resumo do dia" and d["texto"]["quando"]
