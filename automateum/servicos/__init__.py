@@ -1,2 +1,2 @@
 """Importar este pacote registra todos os serviços, na ordem em que aparecem no painel."""
-from . import slack, gmail, github, obsidian, claude, git_local  # noqa: F401, I001
+from . import slack, gmail, github, obsidian, claude, git_local, copilot, ia  # noqa: F401, I001

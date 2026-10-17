@@ -21,7 +21,7 @@ from ..nucleo.agendador import Agendador
 from ..nucleo.estado import Estado, agora
 from ..nucleo.eventos import Barramento
 from ..nucleo.registro import ATENCAO, FALHA, OK, ROTINAS, SERVICOS, quando_texto
-from ..servicos import maquina
+from ..servicos import ia, maquina
 from . import celular as acesso_celular
 
 _ESTATICOS = Path(__file__).parent / "static"
@@ -177,6 +177,9 @@ def criar_app(config: Config) -> FastAPI:
         if tipo in ("ligar", "desligar") and alvo in ROTINAS:
             agendador.ligar(alvo, ligada=tipo == "ligar")
             return {"id": 0}  # sem rodada para acompanhar: /estado/0 responde como concluído
+        if tipo == "motor" and alvo in ia.MOTORES:
+            ia.definir(estado, alvo)
+            return {"id": 0}
         if tipo == "rodar" and alvo in ROTINAS:
             exec_id = agendador.disparar(alvo)
             if exec_id is None:

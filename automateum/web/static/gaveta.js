@@ -329,6 +329,7 @@
     h += trilha(x);
     h += '<div class="gv-est gv-e-' + e + '"><span class="gv-estn">' + gl(e) + esc(nomeEst(e)) + '</span>' + (sit ? '<span class="gv-passo">· ' + esc(sit) + '</span>' : '') + '</div>';
     if (x.frase) h += '<p class="gv-frase">' + esc(x.frase) + '</p>';
+    h += motor(x);
     if (x.tipo === 'rotina') {
       // o botão de rodar também fica aqui, junto do resultado que ele atualiza (o do fim da gaveta continua)
       var rodarAqui = x.rodar_ok && x.ligada !== false
@@ -438,11 +439,23 @@
   function rotAcao(a) {
     var p = a.split(':'), d = p[1] && /^\d{4}-\d\d-\d\d$/.test(p[1]) ? p[1].slice(8, 10) + '/' + p[1].slice(5, 7) : '';
     if (p[0] === 'rodar') return 'Rodar agora';
+    if (p[0] === 'motor') return 'Usar o ' + (p[1] === 'copilot' ? 'Copilot' : 'Claude') + ' como principal';
     if (p[0] === 'ligar') return 'Ligar esta rotina';
     if (p[0] === 'desligar') return armado[a] ? 'Confirmar: desligar' : 'Desligar esta rotina';
     if (a === 'medir-agora') return 'Medir agora';
     if (a === 'provar-mapa') return 'Rodar a prova';
     return a;
+  }
+  // Qual IA escreve os resumos: o botao inverte principal e reserva (o servidor guarda a escolha)
+  function motor(x) {
+    var m = x.motor, u = m && m.ultimo;
+    if (!m) return '';
+    var h = '<p class="gv-oque">Em uso: <b>' + esc(m.ativo_nome) + '</b>. Se ele falhar, o texto é feito pelo ' + esc(m.reserva_nome) +
+      (m.reserva_pronta ? '.' : ' (que não está instalado neste computador, então não vai adiantar).') + '</p>';
+    if (u && u.reserva) h += '<p class="gv-nota">Na última vez o ' + esc(m.ativo_nome) + ' não respondeu e o texto saiu pelo ' + esc(m.reserva_nome) +
+      ' (' + hm(new Date(u.quando)) + '): ' + esc(u.motivo) + '</p>';
+    h += '<div class="gv-acoes gv-e-bom">' + botaoAcao('motor:' + m.reserva) + '</div>';
+    return secao('Motor dos resumos', h);
   }
   // A chave da rotina (13/10/2026): ligar e desligar no Agendador, com a decisao anotada pelo servidor
   function chave(x) {

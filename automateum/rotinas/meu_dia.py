@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 
 from ..nucleo.registro import rotina
-from ..servicos import claude, obsidian
+from ..servicos import ia, obsidian
 from ._texto import listar, secao, sem_blocos
 
 _PEDIDO = (
@@ -33,7 +33,7 @@ def rodar(ctx):
         for nome, texto in obsidian.notas_recentes(cfg, pasta, 2):
             material.append(secao(f"Nota recente: {pasta}/{nome}", texto, 4000))
 
-    briefing = claude.perguntar(cfg, _PEDIDO, "\n".join(material))
+    briefing = ia.perguntar(ctx, _PEDIDO, "\n".join(material))
     ctx.texto = briefing
     caminho = obsidian.escrever_bloco_diario(cfg, "meu_dia", f"## Meu dia\n\n{briefing}")
     ctx.log(f"bloco escrito em {caminho.name}")
