@@ -39,9 +39,14 @@ def _servico(config: Config):
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
     from googleapiclient.discovery import build
+    from google.auth.exceptions import RefreshError
     credenciais = Credentials.from_authorized_user_file(str(_token(config)), _ESCOPOS)
     if not credenciais.valid:
-        credenciais.refresh(Request())
+        try:
+            credenciais.refresh(Request())
+        except RefreshError:
+            # No modo "Testing" do Google Cloud o refresh token vence em 7 dias.
+            raise RuntimeError("a autorização do Gmail expirou: rode `python -m automateum gmail-login`") from None
         _token(config).write_text(credenciais.to_json(), encoding="utf-8")
     return build("gmail", "v1", credentials=credenciais, cache_discovery=False)
 
@@ -51,7 +56,8 @@ def checar(config: Config) -> Checagem:
     try:
         perfil = _servico(config).users().getProfile(userId="me").execute()
     except Exception as e:
-        return Checagem(FALHA, f"{type(e).__name__}: {e}"[:200])
+        # RuntimeError já traz a mensagem pronta para o painel.
+        return Checagem(FALHA, (str(e) if type(e) is RuntimeError else f"{type(e).__name__}: {e}")[:200])
     return Checagem(OK, perfil["emailAddress"], round((time.perf_counter() - inicio) * 1000))
 
 
