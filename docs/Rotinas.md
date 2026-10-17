@@ -10,6 +10,17 @@ Parte da [Documentação](README.md). Os horários e frequências podem ser pers
 - **No cofre:** cada rotina mantém uma nota com o último resultado em `Automateum/Saídas/Rotinas/<rotina>.md` (a pasta vem de `[obsidian] pasta_automateum`). A nota traz estado, resumo, o texto gerado (briefing, fechamento, resumo de mensagens), os itens (tasks) e o log. Coletas de Slack e Gmail só registram quantas mensagens guardaram: o conteúdo delas não vai para o cofre.
 - A nota só é reescrita quando o resultado muda, ou no máximo de hora em hora, para não agitar a sincronização do cofre. O `meu_dia` e o `dia_fechado` continuam escrevendo também o bloco na nota do dia.
 
+## Projetos e prompts prontos no Orca
+
+A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o começo de cada task: para cada **issue aberta** de um projeto **ativo**, ela cria no Orca uma **worktree** ligada à issue (`issue-<número>-<título>`), abre o Claude Code nela e **digita o prompt na caixa de entrada, sem enviar**. O prompt só vai embora quando você aperta **Enter** no Orca; é isso que autoriza.
+
+- **Regra de segurança:** o Automateum nunca envia. O código só usa `orca terminal send --text` (sem `--enter`) e nunca usa `--agent` com `--prompt` (que enviaria sozinho). Há testes para isso. O texto passa por uma limpeza (sem caracteres de controle, no máximo 6000 caracteres).
+- **Ativar e desativar:** no mapa, clique na rotina **prompts das tasks**; a seção **Projetos** da gaveta tem um botão por projeto. Projetos nascem desativados.
+- **Config (`config.toml` ou `config.local.toml`):** `[projetos.<id>]` com `nome`, `github` (dono/repo, que também precisa estar no Orca), `rotulo` (opcional: só issues com essa etiqueta), `max_pendentes` (padrão 3: quantos prompts prontos ficam de uma vez; fechar a issue libera a vaga) e `modelo` (opcional, com `{numero}`, `{titulo}`, `{url}`, `{corpo}`). No máximo 2 worktrees novas por rodada.
+- **Texto padrão:** título, link e corpo da issue, mais "leia o que for preciso e me proponha um plano antes de alterar qualquer arquivo; não faça commit, push nem abra PR sem eu pedir".
+- **Precisa de:** o app do Orca aberto (o serviço **Orca** do mapa mostra isso), o token do GitHub e o `claude` instalado. As worktrees são criadas sem rodar os scripts de setup do repositório.
+- O corpo das issues não vai para o cofre: a nota da rotina só lista número e título.
+
 ## Qual IA escreve os resumos
 
 `meu_dia`, `dia_fechado` e `resumo_mensagens` usam o **Claude** (`claude -p`) e, se ele falhar ou não estiver instalado, o **Copilot** (`copilot`, a CLI do GitHub Copilot). Quando o texto sai pelo motor de reserva, o log da rodada diz por quê.
