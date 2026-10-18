@@ -1,4 +1,5 @@
 import dataclasses
+from datetime import datetime
 import threading
 import time
 
@@ -221,3 +222,28 @@ def test_botao_abre_a_nota_no_obsidian_pelo_servidor(cfg, monkeypatch):
     assert len(abertos) == 1 and abertos[0].startswith("obsidian://open?vault=")
     assert cliente.post("/acao", json={"acao": "abrir-nota:saude_x"}).status_code == 403             # sem token, nada abre
     assert len(abertos) == 1
+
+
+def test_historico_dos_dias_guarda_cada_texto_novo_numa_pasta_da_rotina(cfg, monkeypatch):
+    textos = iter(["Primeiro resumo.", "", "Segundo resumo."])
+
+    def rotina(ctx):
+        ctx.texto = next(textos)
+        return "rodou"
+
+    agendador, _ = _agendador(cfg, monkeypatch, rotina)
+    for _ in range(3):                       # a do meio é "nada novo": não entra no histórico
+        agendador.executar("rotina_teste")
+    dia = _nota(cfg).with_suffix("") / f"{datetime.now():%Y-%m-%d}.md"
+    historico = dia.read_text(encoding="utf-8")
+    assert historico.count("# rotina de teste ·") == 1                     # cabeçalho só na primeira vez
+    assert "Primeiro resumo." in historico and "Segundo resumo." in historico
+    assert historico.count("\n## ") == 2
+    nota = _nota(cfg).read_text(encoding="utf-8")
+    assert "## Histórico dos dias" in nota and f"Rotinas/rotina_teste/{datetime.now():%Y-%m-%d}|" in nota
+
+
+def test_rotina_sem_texto_nao_cria_pasta_de_historico(cfg, monkeypatch):
+    agendador, _ = _agendador(cfg, monkeypatch, lambda ctx: "ok")
+    agendador.executar("rotina_teste")
+    assert not _nota(cfg).with_suffix("").exists() and "Histórico dos dias" not in _nota(cfg).read_text(encoding="utf-8")
