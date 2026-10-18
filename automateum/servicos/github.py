@@ -78,6 +78,18 @@ def issues_abertas(config: Config, repo: str, rotulo: str = "") -> list[dict]:
             for i in _get(config, f"/repos/{repo}/issues", **parametros) if "pull_request" not in i]
 
 
+def prs_para_revisar(config: Config, repo: str) -> list[dict]:
+    """PRs abertos de `dono/nome` que pedem a sua revisão, com o branch e a base de cada um."""
+    achados = _get(config, "/search/issues", q=f"is:pr is:open review-requested:@me repo:{repo}", per_page=30, sort="updated")
+    saida = []
+    for i in achados.get("items", []):
+        pr = _get(config, f"/repos/{repo}/pulls/{i['number']}")
+        saida.append({"numero": pr["number"], "titulo": pr["title"], "corpo": pr.get("body") or "", "url": pr["html_url"],
+                      "branch": pr["head"]["ref"], "base": pr["base"]["ref"], "rascunho": bool(pr.get("draft")),
+                      "de_fork": (pr["head"].get("repo") or {}).get("full_name", "").lower() != repo.lower()})
+    return saida
+
+
 def meu_login(config: Config) -> str:
     """O login dono do token, em minúsculas: serve para achar as issues atribuídas a você."""
     return str(_get(config, "/user").get("login", "")).lower()

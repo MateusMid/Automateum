@@ -45,7 +45,7 @@ class OrcaFalso:
         a = comando[1:]
         self.chamadas.append(a)
         if a[:2] == ["repo", "list"]:
-            r = {"repos": [{"id": "r1", "gitRemoteIdentity": {"canonicalKey": "github.com/Dono/Demo"}}]}
+            r = {"repos": [{"id": "r1", "path": "C:/repo", "gitRemoteIdentity": {"canonicalKey": "github.com/Dono/Demo", "remoteName": "pessoal"}}]}
         elif a[:2] == ["worktree", "create"]:
             nome = a[a.index("--name") + 1]
             r = {"worktree": {"id": f"r1::C:/wt/{nome}", "path": f"C:/wt/{nome}"}}
@@ -332,3 +332,60 @@ def test_fecha_o_terminal_vazio_que_o_orca_abre_na_worktree_nova(tmp_path, monke
     assert len(fechar) == 1 and fechar[0][fechar[0].index("--terminal") + 1] == "term_vazio"
     # fecha só depois de abrir o do Claude, e nunca o que acabou de abrir
     assert falso.chamadas.index(fechar[0]) > falso.chamadas.index(falso.com("terminal", "create")[0])
+
+
+# --- revisão de PR
+
+def _prs(monkeypatch, *itens, de_fork=False):
+    monkeypatch.setattr(github, "prs_para_revisar", lambda cfg, repo: [
+        {"numero": n, "titulo": t, "corpo": c, "url": f"https://github.com/dono/demo/pull/{n}", "branch": f"feat-{n}",
+         "base": "main", "rascunho": False, "de_fork": de_fork} for n, t, c in itens])
+    monkeypatch.setattr(orca, "buscar_branch", lambda repo, branch: f"pessoal/{branch}")
+
+
+def test_pr_que_pede_revisao_ganha_worktree_no_branch_e_prompt_sem_enviar(tmp_path, monkeypatch):
+    falso = OrcaFalso(monkeypatch)
+    _prs(monkeypatch, (9, "Novo login", "Muda o login"))
+    ctx = Ctx(tmp_path)
+    assert ROTINAS["preparar_revisoes"].func(ctx) == "1 revisão(ões) pronta(s)"
+    criar = falso.com("worktree", "create")[0]
+    assert criar[criar.index("--name") + 1] == "pr-9-novo-login" and criar[criar.index("--pr") + 1] == "9"
+    assert criar[criar.index("--base-branch") + 1] == "pessoal/feat-9" and "--issue" not in criar
+    envio = falso.com("terminal", "send")[0]
+    prompt = envio[envio.index("--text") + 1]
+    assert prompt.startswith("Revisão do PR #9: Novo login") and "git diff main...HEAD" in prompt
+    assert "não comente, aprove nem peça mudanças" in prompt
+    for c in falso.chamadas:
+        assert "--enter" not in c and "--prompt" not in c and "--agent" not in c
+    assert projetos.ler_texto(ctx.config, "demo", 9, "pr").startswith("Revisão do PR #9")
+    assert projetos.ler_texto(ctx.config, "demo", 9) is None      # separado do prompt de issue
+    assert projetos.situacao(ctx.config, ctx.estado)[0]["revisoes"][0]["numero"] == 9
+    ROTINAS["preparar_revisoes"].func(ctx)
+    assert len(falso.com("worktree", "create")) == 1              # não repete
+
+
+def test_pr_de_fork_e_projeto_sem_revisar_sao_ignorados(tmp_path, monkeypatch):
+    falso = OrcaFalso(monkeypatch)
+    _prs(monkeypatch, (9, "De fork", ""), de_fork=True)
+    assert ROTINAS["preparar_revisoes"].func(Ctx(tmp_path)) == "nenhum PR novo para revisar"
+    ctx = Ctx(tmp_path, projetos={"demo": {"nome": "Demo", "github": "dono/demo", "ativo": True, "revisar": False}})
+    assert ROTINAS["preparar_revisoes"].func(ctx) == "nenhum projeto ativo"
+    assert falso.com("worktree", "create") == []
+
+
+def test_revisao_digitar_de_novo_e_api_do_prompt(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from automateum.web.api import criar_app
+    falso = OrcaFalso(monkeypatch)
+    _prs(monkeypatch, (9, "Novo login", ""))
+    cfg = _cfg(tmp_path, obsidian={"cofre": str(tmp_path)})
+    ctx = SimpleNamespace(config=cfg, estado=Estado(tmp_path / "t.db"), log=lambda t: None, texto="")
+    ROTINAS["preparar_revisoes"].func(ctx)
+    falso.worktrees.clear()
+    projetos.pedir_de_novo(cfg, ctx.estado, "demo", 9, "pr")
+    ROTINAS["preparar_revisoes"].func(ctx)
+    assert len(falso.com("worktree", "create")) == 2 and len(falso.com("terminal", "send")) == 2
+    c = TestClient(criar_app(cfg))
+    c.headers.update({"host": "127.0.0.1:8765"})
+    assert c.get("/api/projeto/demo/prompt/9?tipo=pr").json()["texto"].startswith("Revisão do PR #9")
+    assert c.get("/api/projeto/demo/prompt/9").status_code == 404

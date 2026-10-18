@@ -78,13 +78,29 @@ def limpar(texto: str) -> str:
     return texto
 
 
-def repo_id(config: Config, github: str) -> str | None:
-    """O id que o Orca deu ao repositório `dono/nome` do GitHub (pelo remote dele), ou None se não estiver no Orca."""
+def repo_info(config: Config, github: str) -> dict | None:
+    """O repositório `dono/nome` do GitHub como o Orca o conhece (id, pasta, nome do remote), ou None se não estiver nele."""
     chave = f"github.com/{github}".lower()
     for repo in _rodar(config, "repo", "list").get("repos", []):
         if str((repo.get("gitRemoteIdentity") or {}).get("canonicalKey", "")).lower() == chave:
-            return repo["id"]
+            return repo
     return None
+
+
+def repo_id(config: Config, github: str) -> str | None:
+    """O id que o Orca deu ao repositório, ou None se não estiver no Orca."""
+    repo = repo_info(config, github)
+    return repo["id"] if repo else None
+
+
+def buscar_branch(repo: dict, branch: str) -> str:
+    """Traz do GitHub o branch de um PR para o clone do Orca (só leitura) e devolve o nome para usar de base."""
+    remoto = (repo.get("gitRemoteIdentity") or {}).get("remoteName") or "origin"
+    r = subprocess.run(["git", "-C", repo["path"], "fetch", "--quiet", remoto, branch], capture_output=True, text=True,
+                       encoding="utf-8", timeout=120, **_SEM_JANELA)
+    if r.returncode != 0:
+        raise RuntimeError(f"não consegui buscar o branch {branch}: {(r.stderr or r.stdout).strip()[:200]}")
+    return f"{remoto}/{branch}"
 
 
 def worktree_existe(config: Config, caminho: str) -> bool:
@@ -94,8 +110,15 @@ def worktree_existe(config: Config, caminho: str) -> bool:
                for w in _rodar(config, "worktree", "list").get("worktrees", []))
 
 
-def criar_worktree(config: Config, repo: str, nome: str, issue: int, comentario: str = "") -> dict:
-    args = ["worktree", "create", "--name", nome, "--repo", f"id:{repo}", "--issue", str(issue), "--setup", "skip"]
+def criar_worktree(config: Config, repo: str, nome: str, issue: int | None, comentario: str = "", *,
+                   pr: int | None = None, base: str = "") -> dict:
+    args = ["worktree", "create", "--name", nome, "--repo", f"id:{repo}", "--setup", "skip"]
+    if issue:
+        args += ["--issue", str(issue)]
+    if pr:   # `--pr` só liga a worktree ao PR; o código vem da base, que é o branch do PR
+        args += ["--pr", str(pr)]
+    if base:
+        args += ["--base-branch", base]
     if comentario:
         args += ["--comment", comentario]
     return _rodar(config, *args, timeout=120)["worktree"]
