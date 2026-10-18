@@ -337,7 +337,7 @@ def test_fecha_o_terminal_vazio_que_o_orca_abre_na_worktree_nova(tmp_path, monke
 # --- revisão de PR
 
 def _prs(monkeypatch, *itens, de_fork=False):
-    monkeypatch.setattr(github, "prs_para_revisar", lambda cfg, repo: [
+    monkeypatch.setattr(github, "prs_para_revisar", lambda cfg, repo, todos=False: [
         {"numero": n, "titulo": t, "corpo": c, "url": f"https://github.com/dono/demo/pull/{n}", "branch": f"feat-{n}",
          "base": "main", "rascunho": False, "de_fork": de_fork} for n, t, c in itens])
     monkeypatch.setattr(orca, "buscar_branch", lambda repo, branch: f"pessoal/{branch}")
@@ -389,3 +389,32 @@ def test_revisao_digitar_de_novo_e_api_do_prompt(tmp_path, monkeypatch):
     c.headers.update({"host": "127.0.0.1:8765"})
     assert c.get("/api/projeto/demo/prompt/9?tipo=pr").json()["texto"].startswith("Revisão do PR #9")
     assert c.get("/api/projeto/demo/prompt/9").status_code == 404
+
+
+def test_chave_de_todos_os_prs_muda_a_busca_e_pela_acao_do_mapa(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from automateum.web.api import criar_app
+    consultas = []
+
+    def falso_get(cfg, caminho, **p):
+        if "search" in caminho:
+            consultas.append(p["q"])
+            return {"items": [{"number": 3}]}
+        return {"number": 3, "title": "T", "html_url": "u", "head": {"ref": "b", "repo": {"full_name": "dono/demo"}},
+                "base": {"ref": "main"}}
+    monkeypatch.setattr(github, "_get", falso_get)
+    github.prs_para_revisar(_cfg(tmp_path), "dono/demo")
+    github.prs_para_revisar(_cfg(tmp_path), "dono/demo", todos=True)
+    assert consultas == ["is:pr is:open review-requested:@me repo:dono/demo", "is:pr is:open repo:dono/demo"]
+
+    cfg = _cfg(tmp_path, obsidian={"cofre": str(tmp_path)})
+    c = TestClient(criar_app(cfg))
+    c.headers.update({"host": "127.0.0.1:8765"})
+    token = c.get("/dados/acoes.js").text.split('"token": "', 1)[1].split('"', 1)[0]
+    cab = {"X-Mapa-Token": token, "Origin": "http://127.0.0.1:8765"}
+    assert '"revisar_todos": false' in c.get("/dados/estado.js").text
+    assert c.post("/acao", json={"acao": "revisao-todos-ligar:nao_existe"}, headers=cab).status_code == 400
+    assert c.post("/acao", json={"acao": "revisao-todos-ligar:demo"}, headers=cab).status_code == 200
+    assert '"revisar_todos": true' in c.get("/dados/estado.js").text
+    assert c.post("/acao", json={"acao": "revisao-todos-desligar:demo"}, headers=cab).json() == {"id": 0}
+    assert '"revisar_todos": false' in c.get("/dados/estado.js").text
