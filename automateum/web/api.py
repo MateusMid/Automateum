@@ -26,6 +26,7 @@ from ..nucleo.eventos import Barramento
 from ..nucleo.registro import ATENCAO, FALHA, OK, ROTINAS, SERVICOS, quando_texto
 from ..servicos import ia, maquina
 from . import celular as acesso_celular
+from . import pagina_celular as html_celular
 
 _ESTATICOS = Path(__file__).parent / "static"
 _LOCAIS = {"127.0.0.1", "localhost"}
@@ -134,23 +135,15 @@ def criar_app(config: Config) -> FastAPI:
     def pagina_celular():
         """Só no computador: o endereço (com a chave) e o QR code para abrir o painel no celular."""
         if celular is None:
-            return _recusa(200, "O acesso pelo celular está desligado. No <code>config.local.toml</code> ponha "
-                                "<code>celular = true</code> em <code>[painel]</code> e reinicie o Automateum.")
+            return HTMLResponse(html_celular.desligado())
         chave = celular.chave()
         links = [f"http://{ip}:{porta}/?chave={chave}" for ip in acesso_celular.ips_da_maquina()]
         try:
             import segno
-            qrs = [segno.make(l, error="m").svg_inline(scale=6, dark="#000", light="#fff", border=2) for l in links]
+            qr = segno.make(links[0], error="m").svg_inline(scale=6, dark="#000", light="#fff", border=0) if links else ""
         except ImportError:
-            qrs = ["" for _ in links]
-        corpo = "<h2>Painel no celular</h2><p>O celular precisa estar no mesmo Wi-Fi que este computador. Só leitura.</p>"
-        for l, q in zip(links, qrs):
-            corpo += f"<div style='margin:16px 0'>{q}</div><p><code style='word-break:break-all'>{l}</code></p>"
-        if not links:
-            corpo += "<p>Não achei o endereço de rede deste computador. Conecte-se a uma rede e recarregue.</p>"
-        corpo += ("<p style='color:#8d8b84'>A chave fica só neste computador (dados/celular.chave). Quem tiver o endereço acima "
-                  "lê o painel enquanto estiver na sua rede. Para invalidar, apague esse arquivo e reinicie.</p>")
-        return _recusa(200, corpo)
+            qr = ""
+        return HTMLResponse(html_celular.principal(links, qr, celular.conectados()))
 
     @app.get("/")
     def painel():
