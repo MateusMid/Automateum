@@ -9,9 +9,9 @@ _POR_RODADA = 2
 _ACEITAS_POR_RODADA = 5
 
 
-def _nome(numero: int, titulo: str) -> str:
+def _nome(numero: int, titulo: str, prefixo: str = "issue") -> str:
     base = unicodedata.normalize("NFKD", titulo).encode("ascii", "ignore").decode()
-    return f"issue-{numero}-" + (re.sub(r"[^a-z0-9]+", "-", base.lower()).strip("-")[:40].strip("-") or "task")
+    return f"{prefixo}-{numero}-" + (re.sub(r"[^a-z0-9]+", "-", base.lower()).strip("-")[:40].strip("-") or "task")
 
 
 def _prompt(projeto: dict, issue: dict) -> str:
@@ -27,7 +27,7 @@ def _abertos(cfg, seletor) -> list[str]:
         return []
 
 
-def _digitar(ctx, pid, projeto, issue, seletor, guardados, feitos, problemas, vazios=()):
+def _digitar(ctx, pid, projeto, issue, seletor, guardados, feitos, problemas, vazios=(), tipo="issue", montar=_prompt):
     """Abre o Claude Code na worktree e deixa o prompt digitado. Nunca envia."""
     cfg = ctx.config
     try:
@@ -36,11 +36,11 @@ def _digitar(ctx, pid, projeto, issue, seletor, guardados, feitos, problemas, va
         if not orca.esperar_pronto(cfg, handle):
             problemas.append(f"#{issue['numero']}: o Claude Code demorou para abrir; use Digitar de novo")
             return
-        texto = _prompt(projeto, issue)
-        projetos.guardar_texto(cfg, pid, issue["numero"], orca.limpar(texto))
+        texto = montar(projeto, issue)
+        projetos.guardar_texto(cfg, pid, issue["numero"], orca.limpar(texto), tipo)
         orca.digitar(cfg, handle, texto)
         guardados[str(issue["numero"])]["digitado"] = True
-        projetos.guardar_preparados(ctx.estado, pid, guardados)
+        projetos.guardar_preparados(ctx.estado, pid, guardados, tipo)
         feitos.append(f"#{issue['numero']} {issue['titulo']}")
         ctx.log(f"#{issue['numero']}: prompt digitado (sem enviar)")
     except (RuntimeError, OSError, KeyError, IndexError, ValueError) as e:   # inclui `modelo` com chave desconhecida

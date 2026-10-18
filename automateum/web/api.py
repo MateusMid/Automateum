@@ -190,13 +190,14 @@ def criar_app(config: Config) -> FastAPI:
             projetos.aceitar(config, estado, pid, int(numero))
             exec_id = agendador.disparar("preparar_prompts")   # prepara já, sem esperar os 15 minutos
             return {"id": exec_id if exec_id is not None else 0}
-        if tipo == "projeto-refazer":
+        if tipo in ("projeto-refazer", "revisao-refazer"):
             pid, _, numero = alvo.partition(":")
+            revisao = tipo == "revisao-refazer"
             try:
-                projetos.pedir_de_novo(config, estado, pid, int(numero))
+                projetos.pedir_de_novo(config, estado, pid, int(numero), "pr" if revisao else "issue")
             except ValueError:
                 return _erro(400, f"ação desconhecida: {nome}")
-            exec_id = agendador.disparar("preparar_prompts")
+            exec_id = agendador.disparar("preparar_revisoes" if revisao else "preparar_prompts")
             return {"id": exec_id if exec_id is not None else 0}
         if tipo == "rodar" and alvo in ROTINAS:
             exec_id = agendador.disparar(alvo)
@@ -225,9 +226,9 @@ def criar_app(config: Config) -> FastAPI:
         return grafo.montar(config, estado, agendador)
 
     @app.get("/api/projeto/{pid}/prompt/{numero}")
-    def ver_prompt(pid: str, numero: int):
+    def ver_prompt(pid: str, numero: int, tipo: str = "issue"):
         """O texto do prompt deixado no Orca, para ler na gaveta (fora da lista do celular: só no computador)."""
-        texto = projetos.ler_texto(config, pid, numero)
+        texto = projetos.ler_texto(config, pid, numero, "pr" if tipo == "pr" else "issue")
         if texto is None:
             return _erro(404, "prompt desconhecido")
         return {"texto": texto}

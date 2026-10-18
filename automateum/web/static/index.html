@@ -1646,7 +1646,7 @@ button.pil:hover { border-color: var(--c); }
   // a gaveta e a mesma das quatro paginas; clicar numa linha dela acende o cartao correspondente aqui
   if (window.Gaveta) {
     Gaveta.iniciar({encolher: '#palco', ancora: '#palco',
-      aoAgir: function (acao, est) { if (est === 'ok' && /^(motor|projeto-ligar|projeto-desligar|projeto-comecar|projeto-refazer):/.test(acao)) setTimeout(recarregar, 300); },
+      aoAgir: function (acao, est) { if (est === 'ok' && /^(motor|projeto-ligar|projeto-desligar|projeto-comecar|projeto-refazer|revisao-refazer):/.test(acao)) setTimeout(recarregar, 300); },
       aoAbrir: function (id) { if (id && G && G.por[id] && G.por[id] !== ativo()) selecionar(G.por[id]); },
       aoFechar: function () { selecionar(null); }});
     Gaveta.receber(M);
