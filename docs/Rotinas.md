@@ -44,7 +44,7 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 
 | Rotina | Quando | Depende de | O que faz |
 |---|---|---|---|
-| `coletar_slack` | a cada 15 min | Slack | Guarda as mensagens novas das conversas configuradas desde a última coleta. Na primeira execução busca as últimas 24h. |
+| `coletar_slack` | a cada 15 min | Slack | Guarda as mensagens novas das conversas configuradas desde a última coleta. Na primeira execução busca as últimas 24h. **Só alguns canais:** `[slack] canais = ["geral", "dev"]` (nome sem `#`, vale nos dois modos) mantém só esses canais; vazio = todos. No modo `navegador`, DMs e suas anotações seguem entrando; `dms = false` deixa só os canais. `canais_marcados = ["canal-movimentado"]` (modo `navegador`) guarda de um canal **só o que cita você** (`@seu nome`, vindo de `meu_nome` ou de `marcas`) e apenas o trecho em volta da citação (~160 caracteres antes e ~240 depois). O que já estava guardado de um canal que saiu da lista, ou de um canal marcado sem citar você, é apagado na próxima coleta. |
 | `coletar_gmail` | a cada 15 min | Gmail | Captura e-mails não lidos da caixa de entrada ainda não processados. |
 | `resumo_mensagens` | de hora em hora, 9h às 18h, seg a sex | Claude, Obsidian | Resume as comunicações recebidas no período e registra em `Automateum/Saídas/Mensagens/AAAA-MM-DD.md`. |
 

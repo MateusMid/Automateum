@@ -72,7 +72,51 @@ def _quando(texto: str, hoje: date) -> str:
         return datetime(data.year, data.month, data.day).isoformat(timespec="seconds")
 
 
-def converter(texto: str, links: dict, hoje: date, eu: str = "") -> tuple[list[dict], str | None]:
+def marcas(secao: dict) -> list[str]:
+    """Como você aparece quando alguém te marca (`@Nome`): `marcas` no config, ou o `meu_nome`."""
+    return list(secao.get("marcas") or ([secao["meu_nome"]] if secao.get("meu_nome") else []))
+
+
+def _nomes(lista) -> set[str]:
+    return {c.lstrip("#").strip().lower() for c in lista or []}
+
+
+def modo_da_conversa(conversa: str, canais, marcados=(), dms: bool = True) -> str | None:
+    """Como a conversa entra: "tudo", "marcado" (só o que cita você) ou None (fora).
+
+    Canal (`#nome`): em `marcados` só o que cita você; em `canais` tudo; `canais` vazio = todos os outros.
+    DM e suas anotações seguem `dms`.
+    """
+    if not conversa.startswith("#"):
+        return "tudo" if dms else None
+    nome = conversa[1:].strip().lower()
+    if nome in _nomes(marcados):
+        return "marcado"
+    return "tudo" if not canais or nome in _nomes(canais) else None
+
+
+def permitida(conversa: str, canais, dms: bool = True, marcados=()) -> bool:
+    return modo_da_conversa(conversa, canais, marcados, dms) is not None
+
+
+def cita(texto: str, marcas) -> bool:
+    baixo = texto.lower()
+    return any(f"@{m.lower()}" in baixo for m in marcas if m)
+
+
+def recorte(texto: str, marcas, antes: int = 160, depois: int = 240) -> str:
+    """O trecho da mensagem em volta da primeira vez que ela cita você, com reticências nas pontas cortadas."""
+    baixo = texto.lower()
+    pos = [(baixo.find(f"@{m.lower()}"), len(m) + 1) for m in marcas if m and f"@{m.lower()}" in baixo]
+    if not pos:
+        return texto
+    ini, tam = min(pos)
+    de, ate = max(0, ini - antes), min(len(texto), ini + tam + depois)
+    return ("…" if de else "") + texto[de:ate].strip() + ("…" if ate < len(texto) else "")
+
+
+def converter(texto: str, links: dict, hoje: date, eu: str = "", canais=None, dms: bool = True, marcados=(),
+              marcas=()) -> tuple[list[dict], str | None]:
     """Texto do coletor -> (itens, aviso de fonte incompleta).
 
     Formato: blocos `## conversa`, linhas `- dia hora autor [sN]: texto` e respostas de thread
@@ -86,7 +130,8 @@ def converter(texto: str, links: dict, hoje: date, eu: str = "") -> tuple[list[d
         if linha.startswith("## "):
             conversa = linha[3:].strip()
             continue
-        if conversa is None:
+        como = modo_da_conversa(conversa, canais, marcados, dms) if conversa is not None else None
+        if como is None:
             continue
         m = _MENSAGEM.match(linha) or _RESPOSTA.match(linha)
         if not m:
@@ -94,8 +139,12 @@ def converter(texto: str, links: dict, hoje: date, eu: str = "") -> tuple[list[d
         autor, corpo = m["autor"].strip() or "?", m["texto"].strip()
         if not corpo or corpo == "[omitida]" or (eu and autor.lower() == eu.lower()):
             continue
+        if como == "marcado" and not cita(corpo, marcas):
+            continue
         quando = _quando(m["q"], hoje)
         chave = "nav:" + hashlib.sha1(f"{conversa}|{quando}|{autor}|{corpo[:120]}".encode()).hexdigest()[:16]
+        if como == "marcado":
+            corpo = recorte(corpo, marcas)
         if chave in vistos:
             continue
         vistos.add(chave)
@@ -158,7 +207,8 @@ def colher(config: Config, log=print) -> tuple[list[dict], str | None]:
         texto = arquivo.read_text(encoding="utf-8")
     except (IndexError, OSError, ValueError):
         raise RuntimeError("a colheita terminou, mas não gerou o texto esperado em dados/slack") from None
-    itens, aviso = converter(texto, links, date.today(), secao.get("meu_nome", ""))
+    itens, aviso = converter(texto, links, date.today(), secao.get("meu_nome", ""), secao.get("canais", []),
+                              bool(secao.get("dms", True)), secao.get("canais_marcados", []), marcas(secao))
     _limpar(pasta)
     log(f"{len(itens)} mensagens lidas do texto do coletor")
     return itens, aviso

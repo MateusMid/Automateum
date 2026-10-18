@@ -24,8 +24,13 @@ timeout_segundos = 240
 # "app" lê pela API com o SLACK_TOKEN do .env (padrão). "navegador" roda um coletor externo que lê o
 # Slack web com a sua conta logada; as chaves dele ficam no config.local.toml (veja o exemplo).
 modo = "app"
-# Vazio = todas as conversas em que você está. Ou liste nomes: ["geral", "dev"]. Só vale no modo "app".
+# Vazio = todos os canais em que você está. Ou liste só os que importam: ["geral", "dev"] (vale nos dois modos).
 canais = []
+# Canais em que só entra o que cita você (@seu nome), e só o trecho em volta da citação. O nome vem de
+# `meu_nome` ou de `marcas = ["Seu Nome"]`. Só vale no modo "navegador".
+# canais_marcados = ["canal-movimentado"]
+# DMs e anotações para você mesmo: true (padrão) mantém; false deixa só os canais. Só vale no modo "navegador".
+# dms = true
 tipos = ["public_channel", "private_channel", "im", "mpim"]
 max_conversas = 60
 
