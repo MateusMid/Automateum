@@ -1,6 +1,7 @@
 """O resultado de cada rotina numa nota só, em Automateum/Saídas/Rotinas/<rotina>.md no cofre.
 
 A nota é reescrita a cada rodada com o último resultado: estado, resumo, texto gerado, log e itens.
+Todo texto novo também é guardado, com a hora, em Rotinas/<rotina>/AAAA-MM-DD.md: o histórico dos dias.
 O painel mostra o mesmo e tem um link que abre a nota no Obsidian.
 """
 from __future__ import annotations
@@ -50,6 +51,25 @@ def _linha_item(i: dict) -> str:
     return f"- {titulo}" + (f" — {detalhe}" if detalhe else "")
 
 
+def _pasta_historico(config: Config, rotina_id: str):
+    return _caminho(config, rotina_id).with_suffix("")
+
+
+def _guardar_no_historico(config: Config, rotina, texto: str) -> None:
+    """Acrescenta o texto novo ao arquivo do dia (Rotinas/<rotina>/AAAA-MM-DD.md), um bloco por rodada."""
+    agora = datetime.now()
+    relativo = f"Rotinas/{rotina.id}/{agora:%Y-%m-%d}.md"
+    bloco = f"## {agora:%H:%M}\n\n{texto.strip()}"
+    if not (_pasta_historico(config, rotina.id) / f"{agora:%Y-%m-%d}.md").exists():
+        bloco = f"# {rotina.nome} · {agora:%d/%m/%Y}\n\n" + bloco
+    obsidian.escrever_proprio(config, relativo, bloco, acrescentar=True)
+
+
+def _dias_guardados(config: Config, rotina_id: str, limite: int = 14) -> list[str]:
+    pasta = _pasta_historico(config, rotina_id)
+    return sorted((a.stem for a in pasta.glob("????-??-??.md")), reverse=True)[:limite] if pasta.is_dir() else []
+
+
 def _conteudo(config: Config, estado: Estado, rotina, exec_id: int, status: str, resumo: str, texto: str) -> str:
     execucao = estado.execucao(exec_id) or {}
     agora = datetime.now().isoformat(timespec="seconds")
@@ -63,6 +83,9 @@ def _conteudo(config: Config, estado: Estado, rotina, exec_id: int, status: str,
         quando = datetime.fromisoformat(ultimo["quando"]).strftime("%d/%m %H:%M")
         partes.append(f"> Último texto gerado, em {quando}. A rodada de agora não trouxe nada novo.\n\n"
                       + ultimo["conteudo"])
+    if dias := _dias_guardados(config, rotina.id):
+        base = config.secao("obsidian").get("pasta_automateum", "Automateum")
+        partes.append("## Histórico dos dias\n" + "\n".join(f"- [[{base}/Rotinas/{rotina.id}/{d}|{d}]]" for d in dias))
     fonte = FONTES.get(rotina.id)
     if fonte and rotina.id in SO_CONTAGEM:
         partes.append(f"## Itens\n{estado.contar_itens(fonte)} guardados. O conteúdo fica no painel, não no cofre.")
@@ -97,6 +120,8 @@ def gravar(config: Config, estado: Estado, rotina, exec_id: int, status: str, re
             {"quando": datetime.now().isoformat(timespec="seconds"), "conteudo": texto.strip()}, ensure_ascii=False))
     if obsidian.configurado(config):
         return
+    if texto.strip():
+        _guardar_no_historico(config, rotina, texto)
     assinatura = hashlib.sha1(f"{status}|{resumo}|{texto}".encode()).hexdigest()
     chave = f"nota:{rotina.id}"
     anterior, _, quando = estado.cursor(chave).partition("|")

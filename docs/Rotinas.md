@@ -8,6 +8,7 @@ Parte da [Documentação](README.md). Os horários e frequências podem ser pers
 - **Rodar na hora:** o botão **Rodar agora** fica no topo da seção Resultado (e de novo no fim da gaveta). Ao terminar, o resultado se atualiza sozinho. Funciona em qualquer dia e hora, independente do horário agendado.
 - **Todos os dias:** os horários padrão de algumas rotinas são só de segunda a sexta. Para rodar também no fim de semana, troque `mon-fri` por `*` em `[horarios]` do `config.local.toml`, por exemplo `resumo_mensagens = "cron: 0 9-18 * * *"`.
 - **No cofre:** cada rotina mantém uma nota com o último resultado em `Automateum/Saídas/Rotinas/<rotina>.md` (a pasta vem de `[obsidian] pasta_automateum`). A nota traz estado, resumo, o texto gerado (briefing, fechamento, resumo de mensagens), os itens (tasks) e o log. Coletas de Slack e Gmail só registram quantas mensagens guardaram: o conteúdo delas não vai para o cofre.
+- **Histórico dos dias:** todo texto novo que uma rotina gera (briefing, resumo de mensagens, fechamento) também é guardado, com a hora, em `Automateum/Saídas/Rotinas/<rotina>/AAAA-MM-DD.md`, um arquivo por dia, e a nota da rotina lista os últimos dias com link. Rodada sem nada novo não entra.
 - A nota só é reescrita quando o resultado muda, ou no máximo de hora em hora, para não agitar a sincronização do cofre. O `meu_dia` e o `dia_fechado` continuam escrevendo também o bloco na nota do dia.
 
 ## Projetos e prompts prontos no Orca
