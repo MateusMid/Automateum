@@ -204,6 +204,12 @@ def criar_app(config: Config) -> FastAPI:
             except OSError as e:
                 return _erro(500, f"não consegui abrir o Obsidian: {e}")
             return {"id": 0}
+        if tipo in ("revisao-todos-ligar", "revisao-todos-desligar") and alvo in projetos.lista(config):
+            projetos.definir_revisar_todos(config, estado, alvo, tipo == "revisao-todos-ligar")
+            if tipo == "revisao-todos-ligar":   # procura já, sem esperar os 15 minutos
+                exec_id = agendador.disparar("preparar_revisoes")
+                return {"id": exec_id if exec_id is not None else 0}
+            return {"id": 0}
         if tipo == "projeto-comecar":
             pid, _, numero = alvo.partition(":")
             if pid not in projetos.lista(config) or not numero.isdigit():

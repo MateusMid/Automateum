@@ -443,6 +443,8 @@
     var p = a.split(':'), d = p[1] && /^\d{4}-\d\d-\d\d$/.test(p[1]) ? p[1].slice(8, 10) + '/' + p[1].slice(5, 7) : '';
     if (p[0] === 'rodar') return 'Rodar agora';
     if (p[0] === 'abrir-nota') return 'Abrir no Obsidian';
+    if (p[0] === 'revisao-todos-ligar') return 'Ligar';
+    if (p[0] === 'revisao-todos-desligar') return 'Desligar';
     if (p[0] === 'projeto-comecar') return 'Começar';
     if (p[0] === 'projeto-refazer' || p[0] === 'revisao-refazer') return 'Digitar de novo';
     if (p[0] === 'projeto-ligar') return 'Ativar';
@@ -470,8 +472,11 @@
             '<span class="gv-acoes gv-e-bom">' + botaoAcao('projeto-refazer:' + p.id + ':' + q.numero) + '</span><pre class="gv-prompt" hidden></pre></li>';
         }).join('') + '</ul>';
       }
+      h += '<div class="gv-sw"><span>Procurar <b>todos</b> os PRs abertos para revisar, inclusive os seus: <b>' + (p.revisar_todos ? 'ligado' : 'desligado') +
+        '</b>. Desligado, só os que pedem a sua revisão.</span><div class="gv-acoes gv-e-' + (p.revisar_todos ? 'bom' : 'desligado') + '">' +
+        botaoAcao((p.revisar_todos ? 'revisao-todos-desligar:' : 'revisao-todos-ligar:') + p.id) + '</div></div>';
       if (p.revisoes && p.revisoes.length) {
-        h += '<p class="gv-nota">PRs que pedem a sua revisão (prompt de revisão pronto):</p><ul class="gv-linhas">' + p.revisoes.map(function (q) {
+        h += '<p class="gv-nota">PRs para revisar (prompt de revisão pronto):</p><ul class="gv-linhas">' + p.revisoes.map(function (q) {
           return '<li class="gv-pronto">PR #' + q.numero + ' ' + esc(q.titulo) + (q.digitado ? '' : ' (use Digitar de novo)') +
             ' <button type="button" class="gv-ver" data-gv-prompt="' + esc(p.id + '/' + q.numero + '/pr') + '">Ver prompt</button>' +
             '<span class="gv-acoes gv-e-bom">' + botaoAcao('revisao-refazer:' + p.id + ':' + q.numero) + '</span><pre class="gv-prompt" hidden></pre></li>';
@@ -820,6 +825,8 @@
     '.gv-livres .gv-acoes { margin: 0; flex: none; }',
     '.gv-ver { margin-left: 6px; font: inherit; font-size: 11.5px; cursor: pointer; }',
     '.gv-prompt { white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow: auto; margin: 6px 0; padding: 8px; font-size: 12px; border: 1px solid var(--gv-linha, #444); border-radius: 6px; }',
+    '.gv-sw { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 8px 0; font-size: 12.5px; }',
+    '.gv-sw .gv-acoes { margin: 0; flex: none; }',
     '.gv-proj-t small { color: var(--gv-mudo); font-size: 11.5px; }',
     '.gv-linhas { margin: 0 0 6px; padding: 9px 11px; list-style: none; background: var(--gv-fundo); border: 1px solid var(--gv-linha); border-radius: 7px; font: 11.5px/1.55 var(--gv-mono); color: var(--gv-texto2); overflow-wrap: anywhere; }',
     '.gv-linhas li + li { margin-top: 3px; }',

@@ -45,6 +45,20 @@ MODELO_REVISAO = (
 _CURSOR = {"issue": "prompts", "pr": "revisoes"}
 
 
+def revisar_todos(config: Config, estado, pid: str) -> bool:
+    """A chave "todos os PRs" do projeto: ligada, a revisão pega todo PR aberto (inclusive os seus), não só os que pedem a sua."""
+    guardado = estado.cursor(f"projeto:{pid}:revisar_todos")
+    if guardado:
+        return guardado == "1"
+    return lista(config).get(pid, {}).get("revisar_quais") == "todos"
+
+
+def definir_revisar_todos(config: Config, estado, pid: str, ligado: bool) -> None:
+    if pid not in lista(config):
+        raise ValueError(f"projeto desconhecido: {pid}")
+    estado.definir_cursor(f"projeto:{pid}:revisar_todos", "1" if ligado else "0")
+
+
 def preparados(estado, pid: str, tipo: str = "issue") -> dict[str, dict]:
     try:
         return json.loads(estado.cursor(f"{_CURSOR[tipo]}:{pid}") or "{}")
@@ -119,6 +133,7 @@ def situacao(config: Config, estado) -> list[dict]:
         prontos = [{"numero": int(n), **d} for n, d in sorted(preparados(estado, pid).items(), key=lambda kv: int(kv[0]))]
         feitos = {d["numero"] for d in prontos}
         saida.append({"id": pid, "nome": p.get("nome", pid), "github": p["github"], "ativo": ativo(config, estado, pid),
+                      "revisar_todos": revisar_todos(config, estado, pid),
                       "revisoes": [{"numero": int(n), **d} for n, d in sorted(preparados(estado, pid, "pr").items(), key=lambda kv: int(kv[0]))],
                       "prontos": prontos, "disponiveis": [i for i in abertas(estado, pid) if i["numero"] not in feitos]})
     return saida

@@ -32,7 +32,7 @@ def rodar(ctx):
             problemas.append(f"{projeto.get('nome', pid)}: o repositório {projeto['github']} não está no Orca")
             continue
         repo = info["id"]
-        prs = [p for p in github.prs_para_revisar(cfg, projeto["github"]) if not p["de_fork"]]   # fork: sem branch para buscar
+        prs = [p for p in github.prs_para_revisar(cfg, projeto["github"], projetos.revisar_todos(cfg, ctx.estado, pid)) if not p["de_fork"]]   # fork: sem branch para buscar
         abertos = {str(p["numero"]) for p in prs}
         guardados = {n: d for n, d in projetos.preparados(ctx.estado, pid, "pr").items() if n in abertos}
         vagas = max(0, int(projeto.get("max_revisoes", 3)) - len(guardados))

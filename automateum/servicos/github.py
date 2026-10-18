@@ -78,9 +78,10 @@ def issues_abertas(config: Config, repo: str, rotulo: str = "") -> list[dict]:
             for i in _get(config, f"/repos/{repo}/issues", **parametros) if "pull_request" not in i]
 
 
-def prs_para_revisar(config: Config, repo: str) -> list[dict]:
-    """PRs abertos de `dono/nome` que pedem a sua revisão, com o branch e a base de cada um."""
-    achados = _get(config, "/search/issues", q=f"is:pr is:open review-requested:@me repo:{repo}", per_page=30, sort="updated")
+def prs_para_revisar(config: Config, repo: str, todos: bool = False) -> list[dict]:
+    """PRs abertos de `dono/nome` que pedem a sua revisão (ou todos, com `todos`), com o branch e a base de cada um."""
+    filtro = "is:pr is:open" + ("" if todos else " review-requested:@me")
+    achados = _get(config, "/search/issues", q=f"{filtro} repo:{repo}", per_page=30, sort="updated")
     saida = []
     for i in achados.get("items", []):
         pr = _get(config, f"/repos/{repo}/pulls/{i['number']}")
