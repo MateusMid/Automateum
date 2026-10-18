@@ -25,10 +25,13 @@ def _por_navegador(ctx):
     ctx.estado.podar_itens("slack", dias=14)
     # canal que saiu da lista permitida: some também o que já estava guardado, para não entrar nos resumos
     secao = ctx.config.secao("slack")
-    fora = [o for o in ctx.estado.origens("slack")
-            if not slack_navegador.permitida(o, secao.get("canais", []), bool(secao.get("dms", True)))]
+    canais, marcados, dms = secao.get("canais", []), secao.get("canais_marcados", []), bool(secao.get("dms", True))
+    fora = [o for o in ctx.estado.origens("slack") if slack_navegador.modo_da_conversa(o, canais, marcados, dms) is None]
     if fora:
         ctx.log(f"{ctx.estado.remover_origens('slack', fora)} mensagens guardadas de canais fora da lista foram apagadas")
+    for o in ctx.estado.origens("slack"):   # canal "só o que me marcar": o que já estava guardado sem citar você sai
+        if slack_navegador.modo_da_conversa(o, canais, marcados, dms) == "marcado":
+            ctx.estado.remover_sem_marca("slack", o, slack_navegador.marcas(secao))
     conversas = len({i["origem"] for i in itens})
     resumo = f"{novas} novas em {conversas} conversas" if novas else "nada novo"
     if aviso:

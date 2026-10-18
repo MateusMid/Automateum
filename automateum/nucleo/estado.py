@@ -172,6 +172,14 @@ class Estado:
         marcas = ",".join("?" * len(origens))
         return self._exec(f"DELETE FROM itens WHERE fonte=? AND origem IN ({marcas})", (fonte, *origens)).rowcount
 
+    def remover_sem_marca(self, fonte: str, origem: str, marcas: list[str]) -> int:
+        """Apaga os itens dessa origem cujo texto não cita nenhuma das marcas (`@Nome`)."""
+        sobra = [r for r in self._exec("SELECT chave, titulo FROM itens WHERE fonte=? AND origem=?", (fonte, origem)).fetchall()
+                 if not any(f"@{m.lower()}" in (r[1] or "").lower() for m in marcas if m)]
+        for chave, _ in sobra:
+            self._exec("DELETE FROM itens WHERE fonte=? AND chave=?", (fonte, chave))
+        return len(sobra)
+
     def origens(self, fonte: str) -> list[str]:
         return [r[0] for r in self._exec("SELECT DISTINCT origem FROM itens WHERE fonte=?", (fonte,)).fetchall() if r[0]]
 

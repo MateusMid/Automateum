@@ -189,3 +189,35 @@ def test_rotina_apaga_o_que_ja_estava_guardado_de_canal_que_saiu_da_lista(cfg, t
     cfg.dados["slack"]["canais"] = ["outro"]
     coletar_slack.rodar(ctx)
     assert "#geral" not in estado.origens("slack") and "DM Eva" in estado.origens("slack")
+
+
+TEXTO_MARCADO = """## #movimentado
+- 17/10 9h Ana [s1]: bom dia pessoal, nada de novo por aqui
+- 17/10 9h05 Bia [s2]: ontem o deploy falhou por causa do cache e depois de muita investigação descobrimos o motivo, então @Mateus Borges pode revisar o PR com calma quando puder? obrigada
+    > 17/10 9h10 Caio [s2]: eu também preciso do @mateus borges nessa
+## #geral
+- 17/10 9h Dani [s3]: aviso geral sem citar ninguém
+"""
+
+
+def test_canal_marcado_so_guarda_o_que_cita_voce_e_so_o_trecho():
+    itens, _ = slack_navegador.converter(TEXTO_MARCADO, {}, HOJE, canais=["geral"], marcados=["movimentado"],
+                                         marcas=["Mateus Borges"])
+    por_origem = {}
+    for i in itens:
+        por_origem.setdefault(i["origem"], []).append(i["titulo"])
+    assert len(por_origem["#movimentado"]) == 2                      # a mensagem de Ana, sem citar, ficou de fora
+    assert all("@" in t.lower() and "Ana" not in t for t in por_origem["#movimentado"])
+    assert por_origem["#geral"] == ["Dani: aviso geral sem citar ninguém"]   # canal comum guarda tudo
+    assert slack_navegador.recorte("x" * 500 + " @Mateus Borges " + "y" * 500, ["Mateus Borges"]).startswith("…")
+    assert len(slack_navegador.recorte("x" * 500 + " @Mateus Borges " + "y" * 500, ["Mateus Borges"])) < 450
+    assert slack_navegador.marcas({"meu_nome": "Mateus Borges"}) == ["Mateus Borges"]
+
+
+def test_rotina_tira_do_canal_marcado_o_que_ja_estava_guardado_sem_citar_voce(cfg, tmp_path, monkeypatch):
+    estado = Estado(cfg.banco)
+    estado.juntar_itens("slack", [
+        {"chave": "a", "titulo": "Ana: nada de novo", "origem": "#movimentado", "quando": "2026-10-17T09:00:00"},
+        {"chave": "b", "titulo": "Bia: oi @Mateus Borges olha isso", "origem": "#movimentado", "quando": "2026-10-17T09:00:00"}])
+    assert estado.remover_sem_marca("slack", "#movimentado", ["Mateus Borges"]) == 1
+    assert [i["chave"] for i in estado.itens(["slack"])] == ["b"]
