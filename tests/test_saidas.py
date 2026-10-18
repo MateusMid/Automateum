@@ -203,3 +203,21 @@ def test_api_da_rotina_traz_o_ultimo_texto(cfg, monkeypatch):
 
     d = cliente.get("/api/no/rotina/resumo_x").json()
     assert d["texto"]["conteudo"] == "Resumo do dia" and d["texto"]["quando"]
+
+
+def test_botao_abre_a_nota_no_obsidian_pelo_servidor(cfg, monkeypatch):
+    from automateum.web import api
+    abertos = []
+    monkeypatch.setattr(api, "_abrir_no_sistema", abertos.append)
+    cliente = TestClient(criar_app(cfg))
+    cliente.headers.update({"host": "127.0.0.1:8765"})
+    monkeypatch.setitem(ROTINAS, "saude_x", Rotina("saude_x", "saúde x", "Teste", "nunca", lambda ctx: "ok"))
+    cliente.app.state.agendador._travas["saude_x"] = threading.Lock()
+    token = cliente.get("/dados/acoes.js").text.split('"token": "', 1)[1].split('"', 1)[0]
+    cab = {"X-Mapa-Token": token, "Origin": "http://127.0.0.1:8765"}
+    assert cliente.post("/acao", json={"acao": "abrir-nota:saude_x"}, headers=cab).status_code == 404   # ainda sem nota
+    cliente.app.state.agendador.executar("saude_x")
+    assert cliente.post("/acao", json={"acao": "abrir-nota:saude_x"}, headers=cab).json() == {"id": 0}
+    assert len(abertos) == 1 and abertos[0].startswith("obsidian://open?vault=")
+    assert cliente.post("/acao", json={"acao": "abrir-nota:saude_x"}).status_code == 403             # sem token, nada abre
+    assert len(abertos) == 1
