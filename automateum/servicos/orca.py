@@ -101,6 +101,20 @@ def criar_worktree(config: Config, repo: str, nome: str, issue: int, comentario:
     return _rodar(config, *args, timeout=120)["worktree"]
 
 
+def terminais(config: Config, seletor: str) -> list[str]:
+    """Os handles dos terminais abertos numa worktree."""
+    return [t["handle"] for t in _rodar(config, "terminal", "list", "--worktree", seletor).get("terminals", [])]
+
+
+def fechar_terminais(config: Config, handles: list[str]) -> None:
+    """Fecha as abas desses terminais (o shell vazio que o Orca abre sozinho numa worktree nova)."""
+    for h in handles:
+        try:
+            _rodar(config, "terminal", "close", "--terminal", h, "--tab")
+        except RuntimeError:
+            pass   # já fechado: tanto faz
+
+
 def abrir_agente(config: Config, seletor: str, titulo: str, comando: str = "claude") -> str:
     """Abre um terminal com o agente na worktree (`id:...` ou `path:...`) e devolve o handle do terminal."""
     r = _rodar(config, "terminal", "create", "--worktree", seletor, "--title", titulo,

@@ -20,11 +20,19 @@ def _prompt(projeto: dict, issue: dict) -> str:
                          corpo=(issue["corpo"] or "(sem descrição)").strip())
 
 
-def _digitar(ctx, pid, projeto, issue, seletor, guardados, feitos, problemas):
+def _abertos(cfg, seletor) -> list[str]:
+    try:
+        return orca.terminais(cfg, seletor)
+    except RuntimeError:
+        return []
+
+
+def _digitar(ctx, pid, projeto, issue, seletor, guardados, feitos, problemas, vazios=()):
     """Abre o Claude Code na worktree e deixa o prompt digitado. Nunca envia."""
     cfg = ctx.config
     try:
         handle = orca.abrir_agente(cfg, seletor, f"#{issue['numero']}")
+        orca.fechar_terminais(cfg, list(vazios))   # o Orca abre um shell vazio na worktree nova; o do Claude fica sozinho
         if not orca.esperar_pronto(cfg, handle):
             problemas.append(f"#{issue['numero']}: o Claude Code demorou para abrir; use Digitar de novo")
             return
@@ -70,6 +78,7 @@ def rodar(ctx):
         refazer = [i for i in issues if guardados.get(str(i["numero"]), {}).get("refazer")]
         for issue in refazer:
             reg = guardados[str(issue["numero"])]
+            vazios = []
             reg["refazer"] = False   # uma tentativa por pedido: se falhar, é só pedir de novo
             try:
                 if orca.worktree_existe(cfg, reg["worktree"]):
@@ -78,11 +87,12 @@ def rodar(ctx):
                     wt = orca.criar_worktree(cfg, repo, _nome(issue["numero"], issue["titulo"]), issue["numero"],
                                              "Preparado pelo Automateum")
                     reg["worktree"], seletor = wt["path"], f"id:{wt['id']}"
+                    vazios = _abertos(cfg, seletor)
                     projetos.guardar_preparados(ctx.estado, pid, guardados)
             except (RuntimeError, OSError, KeyError, IndexError, ValueError) as e:
                 problemas.append(f"#{issue['numero']}: {e}")
                 continue
-            _digitar(ctx, pid, projeto, issue, seletor, guardados, feitos, problemas)
+            _digitar(ctx, pid, projeto, issue, seletor, guardados, feitos, problemas, vazios)
         for issue in novas:
             nome = _nome(issue["numero"], issue["titulo"])
             try:
@@ -91,10 +101,11 @@ def rodar(ctx):
                 guardados[str(issue["numero"])] = {"titulo": issue["titulo"], "url": issue["url"], "worktree": wt["path"],
                                                    "digitado": False}
                 projetos.guardar_preparados(ctx.estado, pid, guardados)
+                vazios = _abertos(cfg, f"id:{wt['id']}")
             except (RuntimeError, OSError, KeyError, IndexError, ValueError) as e:
                 problemas.append(f"#{issue['numero']}: {e}")
                 continue
-            _digitar(ctx, pid, projeto, issue, f"id:{wt['id']}", guardados, feitos, problemas)
+            _digitar(ctx, pid, projeto, issue, f"id:{wt['id']}", guardados, feitos, problemas, vazios)
         projetos.guardar_preparados(ctx.estado, pid, guardados)
     ctx.texto = ("Prompts prontos no Orca, esperando o seu Enter: " + "; ".join(feitos)) if feitos else ""
     resumo = f"{len(feitos)} prompt(s) pronto(s)" if feitos else "nada novo para preparar"

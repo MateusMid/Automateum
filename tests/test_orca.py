@@ -52,6 +52,10 @@ class OrcaFalso:
             self.worktrees.append(r["worktree"]["path"])
         elif a[:2] == ["worktree", "list"]:
             r = {"worktrees": [{"path": p} for p in self.worktrees]}
+        elif a[:2] == ["terminal", "list"]:
+            r = {"terminals": [{"handle": "term_vazio"}] if a[a.index("--worktree") + 1].startswith("id:") else []}
+        elif a[:2] == ["terminal", "close"]:
+            r = {"close": {}}
         elif a[:2] == ["terminal", "create"]:
             r = {"terminal": {"handle": "term_1"}}
         elif a[:2] == ["terminal", "wait"]:
@@ -318,3 +322,13 @@ def test_digitar_de_novo_recria_a_worktree_que_foi_removida(tmp_path, monkeypatc
     ultimo = falso.com("terminal", "create")[-1]
     assert ultimo[ultimo.index("--worktree") + 1] == "id:r1::C:/wt/issue-7-corrigir-o-login"
     assert all("--enter" not in e for e in falso.com("terminal", "send"))
+
+
+def test_fecha_o_terminal_vazio_que_o_orca_abre_na_worktree_nova(tmp_path, monkeypatch):
+    falso = OrcaFalso(monkeypatch)
+    _issues(monkeypatch, (7, "Corrigir o login", ""))
+    ROTINAS["preparar_prompts"].func(Ctx(tmp_path))
+    fechar = falso.com("terminal", "close")
+    assert len(fechar) == 1 and fechar[0][fechar[0].index("--terminal") + 1] == "term_vazio"
+    # fecha só depois de abrir o do Claude, e nunca o que acabou de abrir
+    assert falso.chamadas.index(fechar[0]) > falso.chamadas.index(falso.com("terminal", "create")[0])
