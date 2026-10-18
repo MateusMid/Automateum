@@ -172,4 +172,4 @@ def test_ip_da_placa_em_uso_vem_primeiro_e_a_pagina_so_tem_um_qr(ambiente, monke
     r = local.get("/celular")
     assert r.text.count("<svg") <= 1                                   # um QR só (sem o segno instalado, nenhum)
     assert r.text.index("192.168.0.104") < r.text.index("192.168.56.1")
-    assert "tente digitar um destes" in r.text
+    assert "Tente outro endereço" in r.text
