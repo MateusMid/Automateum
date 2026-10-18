@@ -34,8 +34,22 @@ def caminho_de_leitura(caminho: str) -> bool:
     return caminho in _LEITURA_EXATA or caminho.startswith(_LEITURA_PREFIXO)
 
 
+def _ip_da_saida() -> str | None:
+    """O endereço da placa que o computador usa para sair para a rede (o que o celular alcança). Não envia nada."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("192.0.2.1", 9))   # endereço de documentação: só pergunta ao sistema qual placa usaria
+            return s.getsockname()[0]
+    except OSError:
+        return None
+
+
 def ips_da_maquina() -> list[str]:
-    """Os endereços de rede privada desta máquina (o que o celular digita), sem repetir."""
+    """Os endereços de rede privada desta máquina (o que o celular digita), sem repetir.
+
+    O da placa em uso vem primeiro: adaptadores virtuais (VirtualBox, WSL, VPN) também aparecem na lista,
+    mas o celular não chega neles.
+    """
     achados: list[str] = []
     try:
         for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
@@ -44,6 +58,10 @@ def ips_da_maquina() -> list[str]:
                 achados.append(ip)
     except OSError:
         pass
+    principal = _ip_da_saida()
+    if principal in achados:
+        achados.remove(principal)
+        achados.insert(0, principal)
     return achados
 
 

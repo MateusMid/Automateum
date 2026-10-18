@@ -160,3 +160,16 @@ def test_celular_que_acessou_vira_cartao_ligado_a_maquina(ambiente):
 def test_sem_celular_conectado_nao_ha_cartao(ambiente):
     _, _, local = ambiente
     assert '"cel-' not in local.get("/dados/estado.js").text
+
+
+def test_ip_da_placa_em_uso_vem_primeiro_e_a_pagina_so_tem_um_qr(ambiente, monkeypatch):
+    import socket
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *a, **k: [
+        (2, 1, 6, "", ("192.168.56.1", 0)), (2, 1, 6, "", ("192.168.0.104", 0))])
+    monkeypatch.setattr(modulo_celular, "_ip_da_saida", lambda: "192.168.0.104")
+    assert modulo_celular.ips_da_maquina() == ["192.168.0.104", "192.168.56.1"]
+    _, pasta, local = ambiente
+    r = local.get("/celular")
+    assert r.text.count("<svg") <= 1                                   # um QR só (sem o segno instalado, nenhum)
+    assert r.text.index("192.168.0.104") < r.text.index("192.168.56.1")
+    assert "tente digitar um destes" in r.text

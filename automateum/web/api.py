@@ -144,8 +144,12 @@ def criar_app(config: Config) -> FastAPI:
         except ImportError:
             qrs = ["" for _ in links]
         corpo = "<h2>Painel no celular</h2><p>O celular precisa estar no mesmo Wi-Fi que este computador. Só leitura.</p>"
-        for l, q in zip(links, qrs):
+        # o QR é só do endereço da placa em uso (o primeiro); os outros são adaptadores virtuais, que o celular não alcança
+        for l, q in list(zip(links, qrs))[:1]:
             corpo += f"<div style='margin:16px 0'>{q}</div><p><code style='word-break:break-all'>{l}</code></p>"
+        if len(links) > 1:
+            corpo += ("<p style='color:#8d8b84'>Se esse não abrir (o computador pode ter outra placa de rede), tente digitar um destes: "
+                      + " · ".join(f"<code>{l}</code>" for l in links[1:]) + "</p>")
         if not links:
             corpo += "<p>Não achei o endereço de rede deste computador. Conecte-se a uma rede e recarregue.</p>"
         corpo += ("<p style='color:#8d8b84'>A chave fica só neste computador (dados/celular.chave). Quem tiver o endereço acima "
