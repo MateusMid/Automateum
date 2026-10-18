@@ -460,7 +460,8 @@
         '<div class="gv-acoes gv-e-' + (p.ativo ? 'bom' : 'desligado') + '">' + botaoAcao((p.ativo ? 'projeto-desligar:' : 'projeto-ligar:') + p.id) + '</div>';
       if (p.prontos && p.prontos.length) {
         h += '<ul class="gv-linhas">' + p.prontos.map(function (q) {
-          return '<li>#' + q.numero + ' ' + esc(q.titulo) + (q.digitado ? '' : ' (abra o Claude Code e digite o prompt à mão)') + '</li>';
+          return '<li class="gv-pronto">#' + q.numero + ' ' + esc(q.titulo) + (q.digitado ? '' : ' (abra o Claude Code e digite o prompt à mão)') +
+            ' <button type="button" class="gv-ver" data-gv-prompt="' + esc(p.id + '/' + q.numero) + '">Ver prompt</button><pre class="gv-prompt" hidden></pre></li>';
         }).join('') + '</ul>';
       }
       if (p.ativo && p.disponiveis && p.disponiveis.length) {
@@ -472,6 +473,18 @@
       h += '</div>';
     });
     return secao('Projetos', h);
+  }
+  // Abre e fecha o texto do prompt de uma issue, lido do servidor local (nunca vai no estado do mapa)
+  function verPrompt(b) {
+    var pre = b.nextElementSibling;
+    if (!pre) return;
+    if (!pre.hidden) { pre.hidden = true; b.textContent = 'Ver prompt'; return; }
+    var chave = b.getAttribute('data-gv-prompt').split('/');
+    pre.hidden = false; b.textContent = 'Esconder'; pre.textContent = 'Carregando…';
+    fetch('/api/projeto/' + encodeURIComponent(chave[0]) + '/prompt/' + encodeURIComponent(chave[1]), {headers: {'Accept': 'application/json'}})
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (d) { pre.textContent = d.texto; })
+      .catch(function () { pre.textContent = 'Não achei o texto deste prompt (ele é guardado a partir de agora; os antigos não têm cópia).'; });
   }
   // Qual IA escreve os resumos: o botao inverte principal e reserva (o servidor guarda a escolha)
   function motor(x) {
@@ -607,6 +620,7 @@
       var t = ev.target, b;
       if (!t || !t.closest) return;
       if (t.closest('[data-gv-fechar]')) { fechar(); return; }
+      if ((b = t.closest('[data-gv-prompt]'))) { verPrompt(b); return; }
       if ((b = t.closest('[data-gv-acao]'))) { if (!b.disabled) agir(b.getAttribute('data-gv-acao')); return; }
       if ((b = t.closest('[data-gv-abrir]'))) abrir(b.getAttribute('data-gv-abrir'));
     });
@@ -791,6 +805,8 @@
     '.gv-proj-t { display: flex; flex-direction: column; gap: 1px; margin: 0 0 6px; }',
     '.gv-livres li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }',
     '.gv-livres .gv-acoes { margin: 0; flex: none; }',
+    '.gv-ver { margin-left: 6px; font: inherit; font-size: 11.5px; cursor: pointer; }',
+    '.gv-prompt { white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow: auto; margin: 6px 0; padding: 8px; font-size: 12px; border: 1px solid var(--gv-linha, #444); border-radius: 6px; }',
     '.gv-proj-t small { color: var(--gv-mudo); font-size: 11.5px; }',
     '.gv-linhas { margin: 0 0 6px; padding: 9px 11px; list-style: none; background: var(--gv-fundo); border: 1px solid var(--gv-linha); border-radius: 7px; font: 11.5px/1.55 var(--gv-mono); color: var(--gv-texto2); overflow-wrap: anywhere; }',
     '.gv-linhas li + li { margin-top: 3px; }',

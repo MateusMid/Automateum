@@ -59,7 +59,9 @@ def rodar(ctx):
                 if not orca.esperar_pronto(cfg, handle):
                     problemas.append(f"#{issue['numero']}: o Claude Code demorou para abrir; digite o prompt à mão")
                     continue
-                orca.digitar(cfg, handle, _prompt(projeto, issue))
+                texto = _prompt(projeto, issue)
+                projetos.guardar_texto(cfg, pid, issue["numero"], orca.limpar(texto))
+                orca.digitar(cfg, handle, texto)
                 guardados[str(issue["numero"])]["digitado"] = True
                 projetos.guardar_preparados(ctx.estado, pid, guardados)
                 feitos.append(f"#{issue['numero']} {issue['titulo']}")

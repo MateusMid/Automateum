@@ -252,3 +252,32 @@ def test_erro_da_cli_vira_runtime_error(tmp_path, monkeypatch):
         returncode=1, stdout=json.dumps({"ok": False, "error": {"message": "repo desconhecido"}}), stderr=""))
     with pytest.raises(RuntimeError, match="repo desconhecido"):
         orca.repo_id(_cfg(tmp_path), "dono/demo")
+
+
+# --- o cartão de cada projeto e o "Ver prompt"
+
+def test_prompt_fica_guardado_e_a_gaveta_le_pela_api(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from automateum.web.api import criar_app
+    OrcaFalso(monkeypatch)
+    _issues(monkeypatch, (7, "Corrigir o login", "Ao clicar nada acontece"))
+    cfg = _cfg(tmp_path, obsidian={"cofre": str(tmp_path)})
+    ctx = SimpleNamespace(config=cfg, estado=Estado(tmp_path / "t.db"), log=lambda t: None, texto="")
+    ROTINAS["preparar_prompts"].func(ctx)
+    c = TestClient(criar_app(cfg))
+    c.headers.update({"host": "127.0.0.1:8765"})
+    texto = c.get("/api/projeto/demo/prompt/7").json()["texto"]
+    assert texto.startswith("Task #7: Corrigir o login") and "Ao clicar nada acontece" in texto
+    assert c.get("/api/projeto/demo/prompt/8").status_code == 404
+    assert c.get("/api/projeto/../prompt/7").status_code in (404, 422)
+
+
+def test_cada_projeto_vira_um_cartao_no_mapa_sem_o_texto(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from automateum.web.api import criar_app
+    cfg = _cfg(tmp_path, obsidian={"cofre": str(tmp_path)})
+    c = TestClient(criar_app(cfg))
+    c.headers.update({"host": "127.0.0.1:8765"})
+    js = c.get("/dados/estado.js").text
+    assert '"id": "proj-demo"' in js and '"id": "frente-projetos~proj-demo"' in js
+    assert "Ao clicar" not in js

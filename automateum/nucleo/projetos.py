@@ -74,6 +74,24 @@ def abertas(estado, pid: str) -> list[dict]:
         return []
 
 
+def _arquivo(config: Config, pid: str, numero: int):
+    return config.pasta_dados / "prompts" / f"{pid}-{int(numero)}.md"
+
+
+def guardar_texto(config: Config, pid: str, numero: int, texto: str) -> None:
+    """O prompt inteiro fica só neste computador, para a gaveta mostrar; o estado do mapa leva só o título."""
+    arq = _arquivo(config, pid, numero)
+    arq.parent.mkdir(parents=True, exist_ok=True)
+    arq.write_text(texto, encoding="utf-8")
+
+
+def ler_texto(config: Config, pid: str, numero: int) -> str | None:
+    if pid not in lista(config):
+        return None
+    arq = _arquivo(config, pid, numero)
+    return arq.read_text(encoding="utf-8") if arq.is_file() else None
+
+
 def situacao(config: Config, estado) -> list[dict]:
     """O que o mapa mostra de cada projeto: se está ativo e os prompts que já ficaram prontos."""
     saida = []
