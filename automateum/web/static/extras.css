@@ -114,3 +114,58 @@ body.leitura .gv-acoes { display: none !important; }
 .zoom .zoom-link { align-self: center; padding: 0 9px; font-size: 12px; color: var(--mudo); text-decoration: none; }
 .zoom .zoom-link:hover { color: var(--texto); }
 body.parede .zoom-link { display: none; }
+
+/* ---- topo enxuto: estilo e legenda em painéis ---- */
+.marca small, .barra #desc { display: none; }
+.pop { position: relative; flex: none; }
+.topo > .pop { margin-left: auto; }
+.barra > .pop { margin-left: auto; }
+.pop-bt { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; font: inherit; font-size: 12px; color: var(--texto); cursor: pointer;
+  background: var(--painel); border: 1px solid var(--linha); border-radius: var(--raio); white-space: nowrap; }
+.pop-bt:hover, .pop-bt[aria-expanded="true"] { background: var(--painel2); border-color: color-mix(in srgb, var(--texto) 30%, transparent); }
+.pop-bt i { font-style: normal; font-size: 10px; color: var(--mudo); }
+.pop-painel { position: absolute; z-index: 40; right: 0; top: calc(100% + 6px); min-width: 260px; max-width: min(92vw, 560px); padding: 12px 14px 14px;
+  background: var(--ficha-bg); border: 1px solid var(--ficha-borda); border-radius: var(--raio); box-shadow: var(--ficha-sombra); }
+.pop-painel[hidden] { display: none; }
+.pop-painel h4 { margin: 0 0 6px; font: 500 9.5px/1 var(--fontT); letter-spacing: var(--esp); text-transform: var(--caixa); color: var(--mudo); }
+.pop-painel h4:not(:first-child) { margin-top: 14px; }
+.pop-painel .abas, .pop-painel .ritmo { flex-wrap: wrap; overflow: visible; }
+.pop-painel .ritmo .rk { display: none; }
+.pop-leg .pop-painel .leg { margin: 0; flex-direction: column; align-items: flex-start; gap: 8px; }
+.pop-estilo + .gv-chip { margin-left: 0; }
+@media (max-width: 760px) { .pop { display: none !important; } }
+body.parede .pop { display: none !important; }
+
+/* ---- o sininho: os textos do dia numa lista vertical ---- */
+.pop-sino .pop-bt { position: relative; padding: 6px 9px; }
+.pop-sino .pop-bt svg { display: block; }
+.sino-n { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; display: grid; place-items: center;
+  font: 600 10px/1 var(--fontT); color: var(--bg); background: var(--atencao); }
+.sino-n[hidden] { display: none; }
+.topo > .pop-sino { margin-left: auto; }
+.topo > .pop-sino + .pop-estilo { margin-left: 0; }
+.pop-sino .pop-painel { width: min(420px, 92vw); max-height: min(70vh, 640px); overflow: auto; padding: 0; }
+.sino-cab { display: flex; gap: 14px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--linha); }
+.sino-vazio { margin: 0; padding: 18px 16px; color: var(--mudo); font-size: 12.5px; }
+.sino-lista { margin: 0; padding: 0; list-style: none; }
+.sino-item { border-bottom: 1px solid var(--linha); }
+.sino-item:last-child { border-bottom: 0; }
+.sino-item > button { width: 100%; display: grid; grid-template-columns: 8px 1fr; column-gap: 10px; align-items: start; padding: 12px 16px; text-align: left;
+  color: var(--texto); background: none; border: 0; border-radius: 0; cursor: pointer; font: inherit; }
+.sino-item > button:hover { background: var(--painel2); }
+.sino-ponto { width: 7px; height: 7px; margin-top: 6px; border-radius: 50%; background: transparent; }
+.sino-item.novo .sino-ponto { background: var(--atencao); }
+.sino-t { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.sino-t b { font-size: 13px; font-weight: 600; }
+.sino-t small { color: var(--mudo); font-size: 11px; white-space: nowrap; }
+.sino-linha { grid-column: 2; margin-top: 2px; color: var(--mudo); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sino-item.aberto .sino-linha { display: none; }
+.sino-corpo { padding: 0 16px 14px 34px; font-size: 12.5px; line-height: 1.55; }
+.sino-corpo[hidden] { display: none; }
+.sino-corpo h4 { margin: 10px 0 4px; font: 600 10px/1.2 var(--fontT); letter-spacing: var(--esp); text-transform: var(--caixa); color: var(--mudo); }
+.sino-corpo p { margin: 4px 0; }
+.sino-corpo ul { margin: 4px 0; padding-left: 16px; }
+/* a faixa Hoje sai do mapa: o sininho a substitui (ela segue valendo no modo painel, que mostra o relógio) */
+body:not(.parede) .hoje { display: none; }
+body:not(.parede) { grid-template-rows: auto auto minmax(0, 1fr); }   /* sem a faixa, o mapa ocupa o resto */
+@media (max-width: 760px) { .pop.pop-sino { display: block !important; } }

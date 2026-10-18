@@ -9,7 +9,8 @@
   var GRAV = {ruim: 5, duvida: 4, atencao: 3, dele: 2, bom: 1, desligado: 0, construcao: 0};
   var NOME = {ruim: 'quebrado', duvida: 'dúvida', atencao: 'atenção', dele: 'com você', bom: 'em dia', desligado: 'desligado', construcao: 'em construção'};
   var raiz = document.documentElement;
-  var dens = 1, ft = 1, parede = false, hoje = null, painelAberto = '';
+  var dens = 1, ft = 1, parede = false, hoje = null, painelAberto = '', sinoEl = null, sinoAberto = {};
+  var SINO_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>';
 
   function $(s, r) { return (r || document).querySelector(s); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
@@ -173,6 +174,39 @@
       (aberto ? '<button type="button" class="hoje-x" data-hoje-fechar aria-label="Fechar">×</button><h3>' + esc(aberto.titulo) + ' <small>' + esc(dia(aberto.quando)) + '</small></h3>' + md(aberto.conteudo) : '') + '</div>';
     hoje.innerHTML = h;
     relogio();
+    desenharSino();
+  }
+  // ------------------------------------------------------------ o sininho --
+  function vistos() { try { return JSON.parse(ler('fluxo.sino') || '{}') || {}; } catch (e) { return {}; } }
+  function marcarVisto(id) {
+    var v = vistos(), t = textos.filter(function (x) { return x.id === id; })[0];
+    if (t) { v[id] = t.quando; guardar('fluxo.sino', JSON.stringify(v)); }
+  }
+  function ehNovo(t) { return vistos()[t.id] !== t.quando; }
+  function contarSino() {
+    var n = textos.filter(ehNovo).length, b = document.querySelector('.sino-n');
+    if (!b) return;
+    b.hidden = !n;
+    b.textContent = n > 9 ? '9+' : String(n);
+  }
+  function desenharSino() {
+    if (!sinoEl) return;
+    var r = resumo(), m = mapa();
+    var estado = r.parado ? 'o mapa parou de atualizar' : r.n ? r.n + (r.n === 1 ? ' pede atenção' : ' pedem atenção') : 'tudo em dia';
+    var dele = m ? m.nos.filter(function (x) { return x.estado === 'dele'; }).length : 0;
+    var h = '<div class="sino-cab"><span class="hoje-estado e-' + r.pior + '"><i></i>' + esc(estado) + '</span>' +
+      (dele ? '<span class="hoje-dele">' + dele + ' esperando você</span>' : '') + '</div>';
+    if (!textos.length) h += '<p class="sino-vazio">Nada por enquanto. O briefing, o resumo das mensagens e o fechamento do dia aparecem aqui quando forem gerados.</p>';
+    else h += '<ul class="sino-lista">' + textos.map(function (t) {
+      var aberto = !!sinoAberto[t.id];
+      return '<li class="sino-item' + (ehNovo(t) && !aberto ? ' novo' : '') + (aberto ? ' aberto' : '') + '">' +
+        '<button type="button" data-sino="' + esc(t.id) + '" aria-expanded="' + aberto + '"><i class="sino-ponto"></i>' +
+        '<span class="sino-t"><b>' + esc(t.titulo) + '</b><small>' + esc(dia(t.quando)) + '</small></span>' +
+        '<span class="sino-linha">' + esc(primeiraLinha(t.conteudo)) + '</span></button>' +
+        '<div class="sino-corpo"' + (aberto ? '' : ' hidden') + '>' + md(t.conteudo) + '</div></li>';
+    }).join('') + '</ul>';
+    sinoEl.innerHTML = h;
+    contarSino();
   }
   function carregarHoje(forca) {
     if (!forca && Date.now() - hojeT < 60000) return;
@@ -265,7 +299,79 @@
     desenharHoje(); carregarHoje(false);
     preencherSparks(); lista();
   }
+  // Enxuga o topo: o seletor de estilo e o ritmo dos impulsos vão para um painel "Estilo", e a legenda das cores para
+  // outro. Os elementos são os mesmos (só mudam de lugar), então o resto do mapa segue falando com eles.
+  function enxugarTopo() {
+    var topo = document.querySelector('.topo'), barra = document.querySelector('.barra');
+    var abas = $('#abas'), ritmo = $('#ritmo'), leg = $('#leg');
+    if (!topo || !barra || !abas || !ritmo || !leg) return;
+    function painel(classe, rotulo, titulo, conteudo) {
+      var el = document.createElement('div');
+      el.className = 'pop ' + classe;
+      el.innerHTML = '<button type="button" class="pop-bt" aria-expanded="false" aria-haspopup="true"><span data-pop-rot>' + rotulo + '</span><i aria-hidden="true">▾</i></button>' +
+        '<div class="pop-painel" hidden></div>';
+      var corpo = el.querySelector('.pop-painel');
+      conteudo.forEach(function (c) {
+        if (c.titulo) corpo.insertAdjacentHTML('beforeend', '<h4>' + c.titulo + '</h4>');
+        corpo.appendChild(c.no);
+      });
+      return el;
+    }
+    var estilo = painel('pop-estilo', 'Estilo', '', [{titulo: 'Estilo do mapa', no: abas}, {titulo: 'Ritmo dos impulsos', no: ritmo}]);
+    var chip = topo.querySelector('.gv-chip');
+    // o sininho: os textos do dia (briefing, resumo das mensagens, fechamento) numa lista vertical que abre sob ele
+    var sino = painel('pop-sino', '', '', [{no: document.createElement('div')}]);
+    sino.querySelector('.pop-bt').innerHTML = SINO_SVG + '<b class="sino-n" hidden></b>';
+    sino.querySelector('.pop-bt').setAttribute('aria-label', 'Notificações');
+    sino.querySelector('.pop-painel > div').className = 'sino-corpo-lista';
+    topo.insertBefore(sino, chip || null);
+    topo.insertBefore(estilo, chip || null);
+    sinoEl = sino.querySelector('.sino-corpo-lista');
+    // abrir e fechar um texto não redesenha a lista: redesenhar no meio do clique fecharia o painel
+    sinoEl.addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-sino]');
+      if (!b) return;
+      var li = b.closest('.sino-item'), corpo = li.querySelector('.sino-corpo'), abrir = corpo.hidden, id = b.getAttribute('data-sino');
+      corpo.hidden = !abrir;
+      li.classList.toggle('aberto', abrir);
+      b.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+      if (abrir) { sinoAberto[id] = 1; marcarVisto(id); li.classList.remove('novo'); contarSino(); }
+      else delete sinoAberto[id];
+    });
+    desenharSino();
+    var legenda = painel('pop-leg', 'Legenda', '', [{no: leg}]);
+    barra.appendChild(legenda);
+    function fechar(menos) {
+      [].forEach.call(document.querySelectorAll('.pop'), function (p) {
+        if (p === menos) return;
+        p.querySelector('.pop-painel').hidden = true;
+        p.querySelector('.pop-bt').setAttribute('aria-expanded', 'false');
+      });
+    }
+    document.addEventListener('click', function (ev) {
+      var bt = ev.target.closest && ev.target.closest('.pop-bt');
+      if (!bt) { if (!(ev.target.closest && ev.target.closest('.pop-painel'))) fechar(null); return; }
+      var p = bt.parentNode, pn = p.querySelector('.pop-painel'), abrir = pn.hidden;
+      fechar(p);
+      pn.hidden = !abrir;
+      bt.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+    });
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') fechar(null); });
+    // o botão mostra o estilo em uso
+    var rot = estilo.querySelector('[data-pop-rot]');
+    function nomeDoEstilo() {
+      var s = abas.querySelector('[aria-selected="true"]');
+      if (!s) return;
+      var c = s.cloneNode(true);
+      [].forEach.call(c.querySelectorAll('.k'), function (k) { k.remove(); });
+      rot.textContent = c.textContent.trim() || 'Estilo';
+    }
+    nomeDoEstilo();
+    new MutationObserver(nomeDoEstilo).observe(abas, {subtree: true, childList: true, attributes: true, attributeFilter: ['aria-selected']});
+  }
+
   function iniciar() {
+    enxugarTopo();
     var s = parseFloat(ler('fluxo.dens')), t = parseFloat(ler('fluxo.ft'));
     if (DENS.some(function (d) { return d.f === s; })) dens = s;
     if (TEXTO.indexOf(t) >= 0) ft = t;
