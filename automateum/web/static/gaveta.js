@@ -297,7 +297,10 @@
       if (itens.length > 12) h += '<p class="gv-nota">e mais ' + (itens.length - 12) + ' itens guardados.</p>';
     }
     if (d.nota && /^obsidian:\/\/open\?/.test(d.nota.obsidian || '')) {
-      h += '<a class="gv-obs" href="' + esc(d.nota.obsidian) + '">Abrir no Obsidian</a>' +
+      // com o servidor dos botões no ar ele abre a nota no computador (o navegador do Orca bloqueia obsidian://)
+      h += (servidor.token && servidor.vivo && d.nota.rotina
+        ? '<div class="gv-acoes gv-e-bom">' + botaoAcao('abrir-nota:' + d.nota.rotina) + '</div>'
+        : '<a class="gv-obs" href="' + esc(d.nota.obsidian) + '">Abrir no Obsidian</a>') +
         '<p class="gv-nota">' + esc(d.nota.arquivo) + '</p>';
     }
     return h;
@@ -439,6 +442,7 @@
   function rotAcao(a) {
     var p = a.split(':'), d = p[1] && /^\d{4}-\d\d-\d\d$/.test(p[1]) ? p[1].slice(8, 10) + '/' + p[1].slice(5, 7) : '';
     if (p[0] === 'rodar') return 'Rodar agora';
+    if (p[0] === 'abrir-nota') return 'Abrir no Obsidian';
     if (p[0] === 'projeto-comecar') return 'Começar';
     if (p[0] === 'projeto-refazer' || p[0] === 'revisao-refazer') return 'Digitar de novo';
     if (p[0] === 'projeto-ligar') return 'Ativar';

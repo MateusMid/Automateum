@@ -4,7 +4,10 @@ from __future__ import annotations
 import asyncio
 import hmac
 import json
+import os
 import secrets
+import subprocess
+import sys
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -46,6 +49,14 @@ def _erro(status: int, mensagem: str) -> JSONResponse:
 
 # Código que o mapa espera para cada estado de execução: 0 ok, -1 aviso, 1 falha.
 _CODIGO = {OK: 0, ATENCAO: -1, FALHA: 1}
+
+
+def _abrir_no_sistema(uri: str) -> None:
+    """Entrega o endereço ao programa registrado para ele (o Obsidian, para obsidian://)."""
+    if sys.platform == "win32":
+        os.startfile(uri)  # noqa: S606
+    else:
+        subprocess.Popen(["open" if sys.platform == "darwin" else "xdg-open", uri])
 
 
 def criar_app(config: Config) -> FastAPI:
@@ -182,6 +193,16 @@ def criar_app(config: Config) -> FastAPI:
             return {"id": 0}
         if tipo in ("projeto-ligar", "projeto-desligar") and alvo in projetos.lista(config):
             projetos.definir(config, estado, alvo, tipo == "projeto-ligar")
+            return {"id": 0}
+        if tipo == "abrir-nota" and alvo in ROTINAS:
+            # o navegador embutido do Orca bloqueia links obsidian://; o servidor abre a nota neste computador
+            achada = saidas.nota(config, alvo)
+            if not achada or not achada["obsidian"].startswith("obsidian://open?"):
+                return _erro(404, "essa rotina ainda não tem nota no cofre")
+            try:
+                _abrir_no_sistema(achada["obsidian"])
+            except OSError as e:
+                return _erro(500, f"não consegui abrir o Obsidian: {e}")
             return {"id": 0}
         if tipo == "projeto-comecar":
             pid, _, numero = alvo.partition(":")

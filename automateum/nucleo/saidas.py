@@ -40,7 +40,7 @@ def nota(config: Config, rotina_id: str) -> dict | None:
     pasta = config.secao("obsidian").get("pasta_automateum", "Automateum")
     arquivo = f"{pasta}/{_relativo(rotina_id)}"
     uri = f"obsidian://open?vault={quote(config.cofre.name)}&file={quote(arquivo.removesuffix('.md'), safe='/')}"
-    return {"arquivo": arquivo, "obsidian": uri}
+    return {"arquivo": arquivo, "obsidian": uri, "rotina": rotina_id}
 
 
 def _linha_item(i: dict) -> str:
