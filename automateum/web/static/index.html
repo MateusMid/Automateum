@@ -375,6 +375,7 @@ button.pil:hover { border-color: var(--c); }
     {nome: DOMK.length > 1 ? 'Rotinas · ' + DOMS[DOMK[0]] : 'Rotinas', w: 204},
     {nome: DOMK.length > 1 ? 'Rotinas · ' + nomesDom(DOMK.slice(1)) : 'Rotinas', w: 204}, {nome: 'Com você', w: 176}
   ];
+  var COLS_V = COLS.map(function (c, i) { return {nome: c.nome, w: [236, 200, 170, 188, 204, 204, 236][i]}; });
   var PESO = [1, 1.3, 1.65, 1.5, .45, 1.1];
   var FOLGA = [64, 40, 20, 14, 10, 10, 40];
 
@@ -435,15 +436,18 @@ button.pil:hover { border-color: var(--c); }
       cols: [{nome: 'Quebrado', w: 196}, {nome: 'Dúvida', w: 196}, {nome: 'Atenção', w: 196}, {nome: 'Com você', w: 196},
         {nome: 'Em dia', w: 196}, {nome: 'Desligado', w: 176}],
       faixa: function (n) { return n.tipo === 'voce' ? 3 : ESTADO_FAIXA[n.estado] == null ? 5 : ESTADO_FAIXA[n.estado]; }},
+    {id: 'cascata', nome: 'Em cascata', vertical: true,
+      desc: 'de cima para baixo: máquina, rede, serviços, frentes, rotinas e o que espera você; os fios descem de uma faixa para a próxima'},
     {id: 'profundidade', nome: 'Por profundidade', desc: 'como uma rede neural: cada faixa é um passo a mais a partir da raiz, e o sinal corre da esquerda para a direita',
       faixa: function (n, g) { return g.prof[n.id]; }}
   ];
   var org = 0;
+  function vertical() { return !!ORGS[org].vertical; }
   function organizar(g) {
     var O = ORGS[org];
     g.nos.forEach(function (n, i) { if (n.camada == null) n.camada = n.col; n.ordem0 = i; });
-    if (O.id === 'tipo') {
-      g.COLS = COLS; g.PESO = PESO; g.FOLGA = FOLGA;
+    if (O.id === 'tipo' || O.id === 'cascata') {
+      g.COLS = O.id === 'cascata' ? COLS_V : COLS; g.PESO = PESO; g.FOLGA = FOLGA;
       g.cols = COLS.map(function () { return []; });
       g.nos.forEach(function (n) { n.col = n.camada; g.cols[n.col].push(n); });
       return g;
@@ -633,7 +637,11 @@ button.pil:hover { border-color: var(--c); }
       c.forEach(function (nd) { nd.x0 = colX[k]; nd.w = CO[k].w; nd.y0 = Math.round(y); nd.posto = true; y += nd.h + gap; });
       alto = Math.max(alto, top + tot + bot);
     }
-    if (ORGS[org].id === 'tipo') {
+    if (vertical()) {
+      var cs = colocarCascata(CO, ex);
+      alto = cs.alto;
+      WW = Math.max(WW, Math.round(cs.larg + 56));
+    } else if (ORGS[org].id === 'tipo') {
       colocar(3); colocar(4); colocar(5);
       G.cols[6].sort(function (a, b) { return media(a, 'chega') - media(b, 'chega'); });
       colocar(6);
@@ -660,7 +668,12 @@ button.pil:hover { border-color: var(--c); }
         : a.tipo === 'rotina' && G.por[a.x.pai] ? DOMCOR[G.por[a.x.pai].x.dominio] || MAQCOR : MAQCOR;
     });
     portas();
-    G.colEls.forEach(function (el, k) { el.style.left = colX[k] + 'px'; el.style.top = '22px'; });
+    if (vertical()) {
+      G.colEls.forEach(function (el, k) {
+        el.style.display = G.cols[k].length ? '' : 'none';
+        el.style.left = '28px'; el.style.top = Math.max(8, (G.faixaY[k] || 60) - 24) + 'px';
+      });
+    } else G.colEls.forEach(function (el, k) { el.style.left = colX[k] + 'px'; el.style.top = '22px'; });
     G.nos.forEach(function (n) {
       var s = n.el.style;
       s.left = n.x0 + 'px'; s.top = n.y0 + 'px'; s.width = n.w + 'px'; s.height = n.h + 'px';
@@ -668,8 +681,88 @@ button.pil:hover { border-color: var(--c); }
     mundo.style.width = WW + 'px'; mundo.style.height = HH + 'px';
   }
 
+  // A cascata: cada faixa vira uma linha, de cima para baixo; faixa comprida quebra em mais de uma linha.
+  function cx(n) { return n.x0 + n.w / 2; }
+  function mediaX(n) {
+    var t = 0, k = 0;
+    n.sai.concat(n.chega).forEach(function (e) {
+      if (e.tipo === 'bus') return;
+      var o = e.a === n ? e.b : e.a;
+      if (o.posto && o !== n) { t += cx(o); k++; }
+    });
+    return k ? t / k : cx(n);
+  }
+  function colocarCascata(CO, ex) {
+    var marg = 28, topo = 60, base = 84, entre = 74 * ex.dens, junto = 14 * ex.dens, disp = Math.max(W, MINW) - 2 * marg;
+    var larg = 0, y;
+    function linhas(k, ordem) {
+      var c = ordem || G.cols[k], w = CO[k].w, max = Math.max(1, Math.floor((disp + junto) / (w + junto))), L = [];
+      var por = Math.max(1, Math.ceil(c.length / Math.ceil(c.length / max)));
+      for (var i = 0; i < c.length; i += por) L.push(c.slice(i, i + por));
+      return L;
+    }
+    function colocarFaixa(k, ordem) {
+      linhas(k, ordem).forEach(function (L, j) {
+        var alto = 0, tot = L.length * CO[k].w + (L.length - 1) * junto, x = marg + Math.max(0, (disp - tot) / 2);
+        L.forEach(function (n) { alto = Math.max(alto, n.h); });
+        L.forEach(function (n) { n.x0 = Math.round(x); n.w = CO[k].w; n.y0 = Math.round(y + (alto - n.h) / 2); n.posto = true; x += n.w + junto; });
+        larg = Math.max(larg, tot);
+        y += alto + (j < linhas(k, ordem).length - 1 ? junto : 0);
+      });
+    }
+    function passada(ordenar) {
+      y = topo;
+      G.cols.forEach(function (c, k) {
+        if (!c.length) return;
+        if (ordenar) { c.forEach(function (n) { n.bari = mediaX(n); }); c.sort(function (a, b) { return a.bari - b.bari || a.camada - b.camada || a.ordem0 - b.ordem0; }); }
+        G.faixaY[k] = y;
+        colocarFaixa(k);
+        y += entre;
+      });
+    }
+    G.faixaY = [];
+    G.nos.forEach(function (n) { n.posto = false; });
+    passada(false);
+    passada(true);
+    passada(true);
+    return {larg: larg, alto: y - entre + base};
+  }
+
   // cada fio chega numa porta propria na borda do cartao, na ordem de onde ele vem, como no editor
+  function portasCascata() {
+    G.nos.forEach(function (n) { n.cima = []; n.baixo = []; n.esq = []; n.dir = []; n.vert = []; });
+    G.arestas.forEach(function (e) {
+      var ca = e.a.col, cb = e.b.col;
+      if (ca < cb) { e.a.baixo.push({e: e, ponta: 'a'}); e.b.cima.push({e: e, ponta: 'b'}); }
+      else if (ca > cb) { e.a.cima.push({e: e, ponta: 'a'}); e.b.baixo.push({e: e, ponta: 'b'}); }
+      else { e.a.baixo.push({e: e, ponta: 'a'}); e.b.baixo.push({e: e, ponta: 'b'}); }   // na mesma faixa: arco por baixo
+    });
+    G.nos.forEach(function (n) {
+      [].slice.call(n.el.querySelectorAll('.pt')).forEach(function (p) { p.remove(); });
+      var feitas = {};
+      [['cima', 't'], ['baixo', 'b']].forEach(function (q) {
+        var L = n[q[0]], k = L.length;
+        if (!k) return;
+        L.sort(function (u, v) { var a = u.ponta === 'a' ? u.e.b : u.e.a, b = v.ponta === 'a' ? v.e.b : v.e.a; return cx(a) - cx(b) || a.y0 - b.y0; });
+        var gap = k > 1 ? Math.min(9, (n.w - 20) / (k - 1)) : 0, junto = k > Math.floor((n.w - 20) / 6) + 1;
+        L.forEach(function (p, i) {
+          var ox = junto ? n.w / 2 : n.w / 2 + (i - (k - 1) / 2) * gap, pt = {side: q[1], ox: ox};
+          if (p.ponta === 'a') p.e.pa = pt; else p.e.pb = pt;
+          var chave = q[1] + Math.round(ox * 2), pior = feitas[chave];
+          if (!pior || GRAV[p.e.estado] > GRAV[pior.estado]) feitas[chave] = {ox: ox, side: q[1], estado: p.e.estado};
+        });
+      });
+      Object.keys(feitas).forEach(function (k) {
+        var f = feitas[k], i = document.createElement('i');
+        i.className = 'pt' + (PROB[f.estado] ? ' p e-' + f.estado : '');
+        i.style.left = f.ox.toFixed(1) + 'px'; i.style.top = f.side === 't' ? '0' : '100%';
+        n.el.appendChild(i);
+      });
+    });
+  }
+
   function portas() {
+    if (vertical()) { portasCascata(); return; }
     G.nos.forEach(function (n) { n.esq = []; n.dir = []; n.vert = []; });
     G.arestas.forEach(function (e) {
       if (e.tipo === 'lan' && e.a.col === e.b.col) {
@@ -779,7 +872,7 @@ button.pil:hover { border-color: var(--c); }
       el.className = 'col'; el.dataset.n = '0' + (k + 1);
       // nas organizacoes em que a esquerda sustenta a direita, as pontas dizem onde a leitura comeca e acaba
       var sentido = ORGS[org].id !== 'estado', ult = k === G.COLS.length - 1;
-      el.innerHTML = (sentido && k === 0 ? '<u>começa aqui</u>' : '') + esc(ORGS[org].id === 'tipo' && k === 0 && G.cols[0].length > 1 ? 'Máquinas' : c.nome) +
+      el.innerHTML = (sentido && k === 0 ? '<u>começa aqui</u>' : '') + esc((ORGS[org].id === 'tipo' || ORGS[org].id === 'cascata') && k === 0 && G.cols[0].length > 1 ? 'Máquinas' : c.nome) +
         ' <i>' + G.cols[k].length + '</i>' + (sentido && ult ? '<u>termina aqui</u>' : '');
       mundo.appendChild(el);
       return el;
@@ -801,7 +894,16 @@ button.pil:hover { border-color: var(--c); }
   }
   function geom(e) {
     var p0 = porta(e.a, e.pa), p1 = porta(e.b, e.pb), P = [];
-    if (e.tipo === 'lan') {
+    if (vertical()) {
+      if (e.pa.side === e.pb.side) {
+        // mesma faixa: arco por baixo
+        var vb = 26 + Math.abs(p1[0] - p0[0]) * .1, sv = e.pa.side === 'b' ? 1 : -1;
+        bez(P, p0[0], p0[1], p0[0], p0[1] + sv * vb, p1[0], p1[1] + sv * vb, p1[0], p1[1]);
+      } else {
+        var dv = p1[1] - p0[1], kv2 = clamp(Math.abs(dv) * .45, 26, 230) * (dv >= 0 ? 1 : -1);
+        bez(P, p0[0], p0[1], p0[0], p0[1] + kv2, p1[0], p1[1] - kv2, p1[0], p1[1]);
+      }
+    } else if (e.tipo === 'lan') {
       var sg = p1[1] >= p0[1] ? 1 : -1, kv = clamp(Math.abs(p1[1] - p0[1]) * .45, 14, 120);
       bez(P, p0[0], p0[1], p0[0], p0[1] + sg * kv, p1[0], p1[1] - sg * kv, p1[0], p1[1]);
     } else if (e.pa.side === e.pb.side) {
@@ -1601,7 +1703,7 @@ button.pil:hover { border-color: var(--c); }
     document.head.appendChild(s);
   }
 
-  var orgsEl = $('#orgs'), TECLA_ORG = ['q', 'w', 'e', 'r', 't'];
+  var orgsEl = $('#orgs'), TECLA_ORG = ['q', 'w', 'e', 'r', 'y', 't'];
   orgsEl.innerHTML = ORGS.map(function (o, i) {
     return '<button type="button" role="tab" data-o="' + i + '" title="' + esc(o.desc) + '"><span class="k">' + TECLA_ORG[i].toUpperCase() + '</span>' + esc(o.nome) + '</button>';
   }).join('');

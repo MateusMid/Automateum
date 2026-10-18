@@ -34,7 +34,9 @@ O fluxo visual propaga-se da esquerda para a direita. Um traço vermelho ou âmb
 
 ## Personalização e celular
 
-- **Faixa "Hoje"**, abaixo da barra de organização: contador de problemas (o mesmo do título da aba) e os últimos textos do briefing, do resumo de mensagens e do fechamento do dia. Clique num deles para ler inteiro. Os textos vêm de `/api/hoje`, lido na própria página (nunca do `estado.js`, que qualquer site poderia incluir).
+- **Sininho:** no topo, ao lado do estilo. Abre uma lista vertical com o estado geral e os últimos textos do briefing, do resumo de mensagens e do fechamento do dia; clicar num texto o abre ali mesmo, e o selo conta os que você ainda não leu (guardado no navegador). Os textos vêm de `/api/hoje`, lido na própria página (nunca do `estado.js`, que qualquer site poderia incluir). A faixa "Hoje" só aparece no modo painel.
+- **Topo enxuto:** o estilo do mapa e o ritmo dos impulsos ficam no painel **Estilo**; a legenda das cores, no painel **Legenda**.
+- **Organização "Em cascata" (tecla `Y`):** as mesmas faixas do "Por tipo", empilhadas de cima para baixo (máquina, rede, serviços, frentes, rotinas, você), com os fios descendo de uma faixa para a próxima. Faixa comprida quebra em mais de uma linha.
 - **Gráfico da máquina:** o cartão da máquina mostra CPU (azul) e memória (âmbar) das últimas 24 horas, e a gaveta da máquina mostra o gráfico maior. Os buracos (PC desligado) aparecem como buracos. Dados de `/api/maquina/historico?horas=24` (até 168).
 - **Título e ícone da aba** mudam com o estado: "Automateum (3 problemas)", ícone na cor do pior estado, e "mapa parado" se o estado tem mais de 15 min.
 - **Densidade e texto:** botões na base (ou teclas `D`, `[` e `]`): cartões compacto/normal/espaçado e texto de 90% a 130%. Ficam guardados no navegador.
