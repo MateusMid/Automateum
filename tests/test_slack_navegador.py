@@ -166,3 +166,26 @@ def test_rotina_guarda_itens_sem_duplicar_e_marca_atencao(cfg, tmp_path, monkeyp
 
     r2 = coletar_slack.rodar(ctx)
     assert estado.contar_itens("slack") == guardados and r2.resumo.startswith("nada novo")
+
+
+def test_converter_filtra_canais_e_mantem_dms_por_padrao():
+    so_geral, _ = slack_navegador.converter(TEXTO, LINKS, HOJE, canais=["geral"])
+    assert {i["origem"] for i in so_geral} == {"#geral", "DM Eva"}
+    outro, _ = slack_navegador.converter(TEXTO, LINKS, HOJE, canais=["#dev"])    # com ou sem o "#", sem diferenciar maiúsculas
+    assert {i["origem"] for i in outro} == {"DM Eva"}
+    so_canal, _ = slack_navegador.converter(TEXTO, LINKS, HOJE, canais=["GERAL"], dms=False)
+    assert {i["origem"] for i in so_canal} == {"#geral"}
+    todos, _ = slack_navegador.converter(TEXTO, LINKS, HOJE)
+    assert {i["origem"] for i in todos} == {"#geral", "DM Eva"}
+
+
+def test_rotina_apaga_o_que_ja_estava_guardado_de_canal_que_saiu_da_lista(cfg, tmp_path, monkeypatch):
+    (tmp_path / "perfil").mkdir()
+    _falso_executar(cfg, monkeypatch)
+    estado = Estado(cfg.banco)
+    ctx = Contexto(cfg, estado, ROTINAS["coletar_slack"], estado.iniciar_execucao("coletar_slack"))
+    coletar_slack.rodar(ctx)
+    assert "#geral" in estado.origens("slack")
+    cfg.dados["slack"]["canais"] = ["outro"]
+    coletar_slack.rodar(ctx)
+    assert "#geral" not in estado.origens("slack") and "DM Eva" in estado.origens("slack")

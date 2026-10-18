@@ -165,6 +165,16 @@ class Estado:
     def contar_itens(self, fonte: str) -> int:
         return self._exec("SELECT COUNT(*) FROM itens WHERE fonte=?", (fonte,)).fetchone()[0]
 
+    def remover_origens(self, fonte: str, origens: list[str]) -> int:
+        """Apaga os itens guardados dessas origens (conversas que saíram da lista permitida)."""
+        if not origens:
+            return 0
+        marcas = ",".join("?" * len(origens))
+        return self._exec(f"DELETE FROM itens WHERE fonte=? AND origem IN ({marcas})", (fonte, *origens)).rowcount
+
+    def origens(self, fonte: str) -> list[str]:
+        return [r[0] for r in self._exec("SELECT DISTINCT origem FROM itens WHERE fonte=?", (fonte,)).fetchall() if r[0]]
+
     def podar_itens(self, fonte: str, dias: int) -> None:
         corte = (datetime.now() - timedelta(days=dias)).isoformat(timespec="seconds")
         self._exec("DELETE FROM itens WHERE fonte=? AND coletado < ?", (fonte, corte))

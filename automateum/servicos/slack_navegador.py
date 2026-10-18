@@ -72,7 +72,15 @@ def _quando(texto: str, hoje: date) -> str:
         return datetime(data.year, data.month, data.day).isoformat(timespec="seconds")
 
 
-def converter(texto: str, links: dict, hoje: date, eu: str = "") -> tuple[list[dict], str | None]:
+def permitida(conversa: str, canais, dms: bool = True) -> bool:
+    """Se a conversa entra: canal (`#nome`) só se estiver em `canais` (vazio = todos); DM e suas anotações seguem `dms`."""
+    if conversa.startswith("#"):
+        quero = {c.lstrip("#").strip().lower() for c in canais or []}
+        return not quero or conversa[1:].strip().lower() in quero
+    return dms
+
+
+def converter(texto: str, links: dict, hoje: date, eu: str = "", canais=None, dms: bool = True) -> tuple[list[dict], str | None]:
     """Texto do coletor -> (itens, aviso de fonte incompleta).
 
     Formato: blocos `## conversa`, linhas `- dia hora autor [sN]: texto` e respostas de thread
@@ -86,7 +94,7 @@ def converter(texto: str, links: dict, hoje: date, eu: str = "") -> tuple[list[d
         if linha.startswith("## "):
             conversa = linha[3:].strip()
             continue
-        if conversa is None:
+        if conversa is None or not permitida(conversa, canais, dms):
             continue
         m = _MENSAGEM.match(linha) or _RESPOSTA.match(linha)
         if not m:
@@ -158,7 +166,8 @@ def colher(config: Config, log=print) -> tuple[list[dict], str | None]:
         texto = arquivo.read_text(encoding="utf-8")
     except (IndexError, OSError, ValueError):
         raise RuntimeError("a colheita terminou, mas não gerou o texto esperado em dados/slack") from None
-    itens, aviso = converter(texto, links, date.today(), secao.get("meu_nome", ""))
+    itens, aviso = converter(texto, links, date.today(), secao.get("meu_nome", ""), secao.get("canais", []),
+                              bool(secao.get("dms", True)))
     _limpar(pasta)
     log(f"{len(itens)} mensagens lidas do texto do coletor")
     return itens, aviso

@@ -5,7 +5,7 @@ from automateum.nucleo.agendador import Contexto
 from automateum.nucleo.estado import Estado
 from automateum.nucleo.registro import ROTINAS
 from automateum.rotinas import resumo_mensagens
-from automateum.servicos import claude
+from automateum.servicos import claude, copilot
 
 CURSOR = "resumo_mensagens:ate"
 
@@ -37,6 +37,7 @@ def _perguntas(monkeypatch, resposta="resumo pronto"):
         return resposta
 
     monkeypatch.setattr(claude, "perguntar", falso)
+    monkeypatch.setattr(copilot, "perguntar", falso)   # o reserva também: senão o teste chamaria o Copilot de verdade
     return chamadas
 
 
