@@ -114,3 +114,24 @@ body.leitura .gv-acoes { display: none !important; }
 .zoom .zoom-link { align-self: center; padding: 0 9px; font-size: 12px; color: var(--mudo); text-decoration: none; }
 .zoom .zoom-link:hover { color: var(--texto); }
 body.parede .zoom-link { display: none; }
+
+/* ---- topo enxuto: estilo e legenda em painéis ---- */
+.marca small, .barra #desc { display: none; }
+.pop { position: relative; flex: none; }
+.topo > .pop { margin-left: auto; }
+.barra > .pop { margin-left: auto; }
+.pop-bt { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; font: inherit; font-size: 12px; color: var(--texto); cursor: pointer;
+  background: var(--painel); border: 1px solid var(--linha); border-radius: var(--raio); white-space: nowrap; }
+.pop-bt:hover, .pop-bt[aria-expanded="true"] { background: var(--painel2); border-color: color-mix(in srgb, var(--texto) 30%, transparent); }
+.pop-bt i { font-style: normal; font-size: 10px; color: var(--mudo); }
+.pop-painel { position: absolute; z-index: 40; right: 0; top: calc(100% + 6px); min-width: 260px; max-width: min(92vw, 560px); padding: 12px 14px 14px;
+  background: var(--ficha-bg); border: 1px solid var(--ficha-borda); border-radius: var(--raio); box-shadow: var(--ficha-sombra); }
+.pop-painel[hidden] { display: none; }
+.pop-painel h4 { margin: 0 0 6px; font: 500 9.5px/1 var(--fontT); letter-spacing: var(--esp); text-transform: var(--caixa); color: var(--mudo); }
+.pop-painel h4:not(:first-child) { margin-top: 14px; }
+.pop-painel .abas, .pop-painel .ritmo { flex-wrap: wrap; overflow: visible; }
+.pop-painel .ritmo .rk { display: none; }
+.pop-leg .pop-painel .leg { margin: 0; flex-direction: column; align-items: flex-start; gap: 8px; }
+.pop-estilo + .gv-chip { margin-left: 0; }
+@media (max-width: 760px) { .pop { display: none !important; } }
+body.parede .pop { display: none !important; }
