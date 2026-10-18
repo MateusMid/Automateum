@@ -81,3 +81,5 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 - Sinalização visual no cofre para tasks com mais de N dias sem movimentação
 - Resumo executivo semanal
 
+
+<!-- PR de teste da revisao: nao mesclar, pode fechar. -->
