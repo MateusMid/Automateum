@@ -38,6 +38,7 @@ class OrcaFalso:
     def __init__(self, monkeypatch, esperar=True):
         self.chamadas = []
         self.esperar = esperar
+        self.worktrees = []
         monkeypatch.setattr(subprocess, "run", self._run)
 
     def _run(self, comando, **k):
@@ -48,6 +49,9 @@ class OrcaFalso:
         elif a[:2] == ["worktree", "create"]:
             nome = a[a.index("--name") + 1]
             r = {"worktree": {"id": f"r1::C:/wt/{nome}", "path": f"C:/wt/{nome}"}}
+            self.worktrees.append(r["worktree"]["path"])
+        elif a[:2] == ["worktree", "list"]:
+            r = {"worktrees": [{"path": p} for p in self.worktrees]}
         elif a[:2] == ["terminal", "create"]:
             r = {"terminal": {"handle": "term_1"}}
         elif a[:2] == ["terminal", "wait"]:
@@ -300,3 +304,17 @@ def test_digitar_de_novo_abre_outro_terminal_na_mesma_worktree(tmp_path, monkeyp
     assert len(falso.com("terminal", "create")) == 2
     with pytest.raises(ValueError):
         projetos.pedir_de_novo(ctx.config, ctx.estado, "demo", 99)
+
+
+def test_digitar_de_novo_recria_a_worktree_que_foi_removida(tmp_path, monkeypatch):
+    falso = OrcaFalso(monkeypatch)
+    _issues(monkeypatch, (7, "Corrigir o login", ""))
+    ctx = Ctx(tmp_path)
+    ROTINAS["preparar_prompts"].func(ctx)
+    falso.worktrees.clear()                                  # você removeu a worktree no Orca
+    projetos.pedir_de_novo(ctx.config, ctx.estado, "demo", 7)
+    assert ROTINAS["preparar_prompts"].func(ctx) == "1 prompt(s) pronto(s)"
+    assert len(falso.com("worktree", "create")) == 2
+    ultimo = falso.com("terminal", "create")[-1]
+    assert ultimo[ultimo.index("--worktree") + 1] == "id:r1::C:/wt/issue-7-corrigir-o-login"
+    assert all("--enter" not in e for e in falso.com("terminal", "send"))

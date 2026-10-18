@@ -87,6 +87,13 @@ def repo_id(config: Config, github: str) -> str | None:
     return None
 
 
+def worktree_existe(config: Config, caminho: str) -> bool:
+    """Se o Orca ainda tem uma worktree nesse caminho (quem remove a worktree no Orca a faz sumir daqui também)."""
+    alvo = caminho.replace("\\", "/").rstrip("/").lower()
+    return any(str(w.get("path", "")).replace("\\", "/").rstrip("/").lower() == alvo
+               for w in _rodar(config, "worktree", "list").get("worktrees", []))
+
+
 def criar_worktree(config: Config, repo: str, nome: str, issue: int, comentario: str = "") -> dict:
     args = ["worktree", "create", "--name", nome, "--repo", f"id:{repo}", "--issue", str(issue), "--setup", "skip"]
     if comentario:

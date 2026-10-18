@@ -69,8 +69,20 @@ def rodar(ctx):
         # as que você pediu para digitar de novo (fechou o terminal, por exemplo): a worktree já existe, só abre outro terminal
         refazer = [i for i in issues if guardados.get(str(i["numero"]), {}).get("refazer")]
         for issue in refazer:
-            guardados[str(issue["numero"])]["refazer"] = False   # uma tentativa por pedido: se falhar, é só pedir de novo
-            _digitar(ctx, pid, projeto, issue, f"path:{guardados[str(issue['numero'])]['worktree']}", guardados, feitos, problemas)
+            reg = guardados[str(issue["numero"])]
+            reg["refazer"] = False   # uma tentativa por pedido: se falhar, é só pedir de novo
+            try:
+                if orca.worktree_existe(cfg, reg["worktree"]):
+                    seletor = f"path:{reg['worktree']}"
+                else:   # você removeu a worktree no Orca: cria de novo
+                    wt = orca.criar_worktree(cfg, repo, _nome(issue["numero"], issue["titulo"]), issue["numero"],
+                                             "Preparado pelo Automateum")
+                    reg["worktree"], seletor = wt["path"], f"id:{wt['id']}"
+                    projetos.guardar_preparados(ctx.estado, pid, guardados)
+            except (RuntimeError, OSError, KeyError, IndexError, ValueError) as e:
+                problemas.append(f"#{issue['numero']}: {e}")
+                continue
+            _digitar(ctx, pid, projeto, issue, seletor, guardados, feitos, problemas)
         for issue in novas:
             nome = _nome(issue["numero"], issue["titulo"])
             try:
