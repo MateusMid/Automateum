@@ -281,3 +281,22 @@ def test_cada_projeto_vira_um_cartao_no_mapa_sem_o_texto(tmp_path, monkeypatch):
     js = c.get("/dados/estado.js").text
     assert '"id": "proj-demo"' in js and '"id": "frente-projetos~proj-demo"' in js
     assert "Ao clicar" not in js
+
+
+def test_digitar_de_novo_abre_outro_terminal_na_mesma_worktree(tmp_path, monkeypatch):
+    falso = OrcaFalso(monkeypatch)
+    _issues(monkeypatch, (7, "Corrigir o login", "Ao clicar nada acontece"))
+    ctx = Ctx(tmp_path)
+    ROTINAS["preparar_prompts"].func(ctx)                    # você fechou o terminal depois disso
+    projetos.pedir_de_novo(ctx.config, ctx.estado, "demo", 7)
+    assert ROTINAS["preparar_prompts"].func(ctx) == "1 prompt(s) pronto(s)"
+    assert len(falso.com("worktree", "create")) == 1         # não cria outra worktree
+    terminais = falso.com("terminal", "create")
+    assert len(terminais) == 2 and terminais[1][terminais[1].index("--worktree") + 1] == "path:C:/wt/issue-7-corrigir-o-login"
+    envios = falso.com("terminal", "send")
+    assert len(envios) == 2 and all("--enter" not in e for e in envios)
+    assert not projetos.preparados(ctx.estado, "demo")["7"].get("refazer")
+    ROTINAS["preparar_prompts"].func(ctx)                    # sem novo pedido, nada se repete
+    assert len(falso.com("terminal", "create")) == 2
+    with pytest.raises(ValueError):
+        projetos.pedir_de_novo(ctx.config, ctx.estado, "demo", 99)

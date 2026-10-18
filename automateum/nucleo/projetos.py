@@ -61,6 +61,15 @@ def aceitar(config: Config, estado, pid: str, numero: int) -> None:
         estado.definir_cursor(f"aceitas:{pid}", json.dumps(atuais + [numero]))
 
 
+def pedir_de_novo(config: Config, estado, pid: str, numero: int) -> None:
+    """Marca o prompt para ser digitado outra vez (a worktree já existe)."""
+    guardados = preparados(estado, pid)
+    if pid not in lista(config) or str(numero) not in guardados:
+        raise ValueError(f"prompt desconhecido: {pid} #{numero}")
+    guardados[str(numero)]["refazer"] = True
+    guardar_preparados(estado, pid, guardados)
+
+
 def guardar_abertas(estado, pid: str, issues: list[dict]) -> None:
     """Só número, título, link e se é sua: o corpo da issue não fica no estado do mapa."""
     enxutas = [{"numero": i["numero"], "titulo": i["titulo"], "url": i["url"], "minha": bool(i.get("minha"))} for i in issues]

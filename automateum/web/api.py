@@ -190,6 +190,14 @@ def criar_app(config: Config) -> FastAPI:
             projetos.aceitar(config, estado, pid, int(numero))
             exec_id = agendador.disparar("preparar_prompts")   # prepara já, sem esperar os 15 minutos
             return {"id": exec_id if exec_id is not None else 0}
+        if tipo == "projeto-refazer":
+            pid, _, numero = alvo.partition(":")
+            try:
+                projetos.pedir_de_novo(config, estado, pid, int(numero))
+            except ValueError:
+                return _erro(400, f"ação desconhecida: {nome}")
+            exec_id = agendador.disparar("preparar_prompts")
+            return {"id": exec_id if exec_id is not None else 0}
         if tipo == "rodar" and alvo in ROTINAS:
             exec_id = agendador.disparar(alvo)
             if exec_id is None:

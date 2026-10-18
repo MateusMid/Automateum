@@ -440,6 +440,7 @@
     var p = a.split(':'), d = p[1] && /^\d{4}-\d\d-\d\d$/.test(p[1]) ? p[1].slice(8, 10) + '/' + p[1].slice(5, 7) : '';
     if (p[0] === 'rodar') return 'Rodar agora';
     if (p[0] === 'projeto-comecar') return 'Começar';
+    if (p[0] === 'projeto-refazer') return 'Digitar de novo';
     if (p[0] === 'projeto-ligar') return 'Ativar';
     if (p[0] === 'projeto-desligar') return 'Desativar';
     if (p[0] === 'motor') return 'Usar o ' + (p[1] === 'copilot' ? 'Copilot' : 'Claude') + ' como principal';
@@ -461,7 +462,8 @@
       if (p.prontos && p.prontos.length) {
         h += '<ul class="gv-linhas">' + p.prontos.map(function (q) {
           return '<li class="gv-pronto">#' + q.numero + ' ' + esc(q.titulo) + (q.digitado ? '' : ' (abra o Claude Code e digite o prompt à mão)') +
-            ' <button type="button" class="gv-ver" data-gv-prompt="' + esc(p.id + '/' + q.numero) + '">Ver prompt</button><pre class="gv-prompt" hidden></pre></li>';
+            ' <button type="button" class="gv-ver" data-gv-prompt="' + esc(p.id + '/' + q.numero) + '">Ver prompt</button>' +
+            '<span class="gv-acoes gv-e-bom">' + botaoAcao('projeto-refazer:' + p.id + ':' + q.numero) + '</span><pre class="gv-prompt" hidden></pre></li>';
         }).join('') + '</ul>';
       }
       if (p.ativo && p.disponiveis && p.disponiveis.length) {
@@ -476,7 +478,7 @@
   }
   // Abre e fecha o texto do prompt de uma issue, lido do servidor local (nunca vai no estado do mapa)
   function verPrompt(b) {
-    var pre = b.nextElementSibling;
+    var li = b.closest('li'), pre = li && li.querySelector('.gv-prompt');
     if (!pre) return;
     if (!pre.hidden) { pre.hidden = true; b.textContent = 'Ver prompt'; return; }
     var chave = b.getAttribute('data-gv-prompt').split('/');
