@@ -216,6 +216,14 @@ def criar_app(config: Config) -> FastAPI:
     def ver_grafo():
         return grafo.montar(config, estado, agendador)
 
+    @app.get("/api/projeto/{pid}/prompt/{numero}")
+    def ver_prompt(pid: str, numero: int):
+        """O texto do prompt deixado no Orca, para ler na gaveta (fora da lista do celular: só no computador)."""
+        texto = projetos.ler_texto(config, pid, numero)
+        if texto is None:
+            return _erro(404, "prompt desconhecido")
+        return {"texto": texto}
+
     @app.get("/api/hoje")
     def ver_hoje():
         """Os últimos textos gerados (briefing, resumo de mensagens, fechamento) para a faixa "Hoje" do mapa."""

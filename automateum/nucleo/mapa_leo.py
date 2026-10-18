@@ -254,6 +254,24 @@ def montar_mapa_leo(config, estado: Estado, ag: Agendador, celulares: list[dict]
                         "frase": f"rotinas de {f_nome} comunicam com {s}",
                     })
 
+    # Um cartão por projeto, ligado à frente "Projetos"; a gaveta dele traz o botão, as issues e os prompts
+    fid_proj = next((n["id"] for n in nos if n["tipo"] == "grupo" and n["rotulo"] == "Projetos"), None)
+    for p in projetos.situacao(config, estado):
+        pid_no = f"proj-{p['id']}"
+        livres = [i for i in p["disponiveis"]]
+        frase_p = ("desativado" if not p["ativo"] else
+                   f"{len(p['prontos'])} prompt(s) pronto(s)" + (f" · {len(livres)} issue(s) esperando" if livres else ""))
+        nos.append({
+            "id": pid_no, "tipo": "externo", "zona": "internet", "rotulo": p["nome"], "sub": None,
+            "oque": f"Projeto {p['nome']} ({p['github']}): issues abertas viram prompt pronto no Orca, nunca enviado.",
+            "estado": "bom" if p["ativo"] else "desligado", "frase": frase_p, "ms": None,
+            "linhas": [], "esperando": [], "causa": None, "projetos": [p],
+        })
+        if fid_proj:
+            ligacoes.append({"id": f"{fid_proj}~{pid_no}", "tipo": "ligacao", "de": fid_proj, "para": pid_no,
+                             "rotulo": "projeto", "interna": False, "linhas": [], "esperando": [], "causa": None,
+                             "estado": "bom" if p["ativo"] else "desligado", "frase": f"issues de {p['github']}"})
+
     # Destino / Com você (Celular / Obsidian / Diário)
     nos.append({
         "id": "celular",
