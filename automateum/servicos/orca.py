@@ -94,9 +94,9 @@ def criar_worktree(config: Config, repo: str, nome: str, issue: int, comentario:
     return _rodar(config, *args, timeout=120)["worktree"]
 
 
-def abrir_agente(config: Config, worktree_id: str, titulo: str, comando: str = "claude") -> str:
-    """Abre um terminal com o agente na worktree e devolve o handle do terminal."""
-    r = _rodar(config, "terminal", "create", "--worktree", f"id:{worktree_id}", "--title", titulo,
+def abrir_agente(config: Config, seletor: str, titulo: str, comando: str = "claude") -> str:
+    """Abre um terminal com o agente na worktree (`id:...` ou `path:...`) e devolve o handle do terminal."""
+    r = _rodar(config, "terminal", "create", "--worktree", seletor, "--title", titulo,
                "--command", comando)
     return r["terminal"]["handle"]
 

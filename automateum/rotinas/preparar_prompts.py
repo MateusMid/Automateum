@@ -20,6 +20,25 @@ def _prompt(projeto: dict, issue: dict) -> str:
                          corpo=(issue["corpo"] or "(sem descrição)").strip())
 
 
+def _digitar(ctx, pid, projeto, issue, seletor, guardados, feitos, problemas):
+    """Abre o Claude Code na worktree e deixa o prompt digitado. Nunca envia."""
+    cfg = ctx.config
+    try:
+        handle = orca.abrir_agente(cfg, seletor, f"#{issue['numero']}")
+        if not orca.esperar_pronto(cfg, handle):
+            problemas.append(f"#{issue['numero']}: o Claude Code demorou para abrir; use Digitar de novo")
+            return
+        texto = _prompt(projeto, issue)
+        projetos.guardar_texto(cfg, pid, issue["numero"], orca.limpar(texto))
+        orca.digitar(cfg, handle, texto)
+        guardados[str(issue["numero"])]["digitado"] = True
+        projetos.guardar_preparados(ctx.estado, pid, guardados)
+        feitos.append(f"#{issue['numero']} {issue['titulo']}")
+        ctx.log(f"#{issue['numero']}: prompt digitado (sem enviar)")
+    except (RuntimeError, OSError, KeyError, IndexError, ValueError) as e:   # inclui `modelo` com chave desconhecida
+        problemas.append(f"#{issue['numero']}: {e}")
+
+
 @rotina(id="preparar_prompts", nome="prompts das tasks", frente="Projetos", quando="cada 15m",
         usa=["github", "orca"])
 def rodar(ctx):
@@ -47,6 +66,11 @@ def rodar(ctx):
         # as que você aceitou passam na frente e não gastam vaga; as atribuídas a você entram enquanto houver vaga
         novas = [i for i in livres if i["numero"] in aceitas][:_ACEITAS_POR_RODADA]
         novas += [i for i in livres if i["minha"] and i["numero"] not in aceitas][:min(vagas, _POR_RODADA)]
+        # as que você pediu para digitar de novo (fechou o terminal, por exemplo): a worktree já existe, só abre outro terminal
+        refazer = [i for i in issues if guardados.get(str(i["numero"]), {}).get("refazer")]
+        for issue in refazer:
+            guardados[str(issue["numero"])]["refazer"] = False   # uma tentativa por pedido: se falhar, é só pedir de novo
+            _digitar(ctx, pid, projeto, issue, f"path:{guardados[str(issue['numero'])]['worktree']}", guardados, feitos, problemas)
         for issue in novas:
             nome = _nome(issue["numero"], issue["titulo"])
             try:
@@ -55,19 +79,10 @@ def rodar(ctx):
                 guardados[str(issue["numero"])] = {"titulo": issue["titulo"], "url": issue["url"], "worktree": wt["path"],
                                                    "digitado": False}
                 projetos.guardar_preparados(ctx.estado, pid, guardados)
-                handle = orca.abrir_agente(cfg, wt["id"], f"#{issue['numero']}")
-                if not orca.esperar_pronto(cfg, handle):
-                    problemas.append(f"#{issue['numero']}: o Claude Code demorou para abrir; digite o prompt à mão")
-                    continue
-                texto = _prompt(projeto, issue)
-                projetos.guardar_texto(cfg, pid, issue["numero"], orca.limpar(texto))
-                orca.digitar(cfg, handle, texto)
-                guardados[str(issue["numero"])]["digitado"] = True
-                projetos.guardar_preparados(ctx.estado, pid, guardados)
-                feitos.append(f"#{issue['numero']} {issue['titulo']}")
-                ctx.log(f"#{issue['numero']}: worktree {nome}, prompt digitado (sem enviar)")
-            except (RuntimeError, OSError, KeyError, IndexError, ValueError) as e:   # inclui `modelo` com chave desconhecida
+            except (RuntimeError, OSError, KeyError, IndexError, ValueError) as e:
                 problemas.append(f"#{issue['numero']}: {e}")
+                continue
+            _digitar(ctx, pid, projeto, issue, f"id:{wt['id']}", guardados, feitos, problemas)
         projetos.guardar_preparados(ctx.estado, pid, guardados)
     ctx.texto = ("Prompts prontos no Orca, esperando o seu Enter: " + "; ".join(feitos)) if feitos else ""
     resumo = f"{len(feitos)} prompt(s) pronto(s)" if feitos else "nada novo para preparar"
