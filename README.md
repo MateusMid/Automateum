@@ -117,7 +117,9 @@ Sem `modo`, vale o padrão `app`, que usa o `SLACK_TOKEN` do `.env`. Use o modo 
 O `config.local.toml` é ignorado pelo git e sobrepõe apenas as configurações específicas da sua máquina. Ajuste preferências gerais e horários em `config.toml`.
 
 Para o Gmail, salve o cliente OAuth do tipo "Desktop" do Google Cloud em `dados/gmail_credentials.json` e rode
-`python -m automateum gmail-login` uma vez.
+`python -m automateum gmail-login`. Para ler mais de uma conta, rode o comando de novo e escolha a outra conta no
+navegador: cada uma ganha o próprio token em `dados/gmail/<endereço>.json`. Uma conta com a autorização vencida deixa o
+Gmail amarelo no painel, sem impedir a coleta das outras. `python -m automateum gmail-sair <endereço>` esquece uma conta.
 
 Sem a credencial de um serviço, ele aparece cinza no painel e as rotinas que dependem dele não rodam.
 
@@ -146,7 +148,8 @@ Outros comandos:
 
 ```bash
 python -m automateum rodar tasks_obsidian   # roda uma rotina uma vez e mostra o resultado
-python -m automateum gmail-login            # autoriza a leitura do Gmail
+python -m automateum gmail-login            # autoriza a leitura de uma conta do Gmail (repita para cada conta)
+python -m automateum gmail-sair <endereço>   # esquece uma conta do Gmail
 python -m pytest -q tests                   # testes
 ```
 

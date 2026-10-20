@@ -1,6 +1,7 @@
 """python -m automateum              sobe o painel e o agendador
 python -m automateum rodar <id>    roda uma rotina uma vez e mostra o resultado
-python -m automateum gmail-login   autoriza a leitura do Gmail (abre o navegador)
+python -m automateum gmail-login   autoriza a leitura de uma conta do Gmail (abre o navegador); repita para cada conta
+python -m automateum gmail-sair <endereço>   esquece uma conta do Gmail
 """
 import argparse
 import sys
@@ -14,6 +15,7 @@ def main() -> int:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="comando")
     sub.add_parser("gmail-login")
+    sub.add_parser("gmail-sair").add_argument("endereco")
     sub.add_parser("rodar").add_argument("rotina")
     args = parser.parse_args()
     config = cfg.carregar()
@@ -21,8 +23,16 @@ def main() -> int:
 
     if args.comando == "gmail-login":
         from .servicos import gmail
-        gmail.login(config)
-        print("Gmail autorizado.")
+        print("\n".join(gmail.login(config)))
+        print("Contas do Gmail: " + ", ".join(c.nome for c in gmail.contas(config)))
+        return 0
+
+    if args.comando == "gmail-sair":
+        from .servicos import gmail
+        if not gmail.sair(config, args.endereco):
+            print("conta desconhecida. Existem: " + (", ".join(c.nome for c in gmail.contas(config)) or "nenhuma"))
+            return 2
+        print(f"{args.endereco} saiu do Automateum. Para tirar o acesso de vez: https://myaccount.google.com/permissions")
         return 0
 
     from .web.api import criar_app
