@@ -210,6 +210,18 @@ def criar_app(config: Config) -> FastAPI:
             projetos.aceitar(config, estado, pid, int(numero))
             exec_id = agendador.disparar("preparar_prompts")   # prepara já, sem esperar os 15 minutos
             return {"id": exec_id if exec_id is not None else 0}
+        if tipo in ("projeto-dispensar", "projeto-reativar"):
+            pid, _, numero = alvo.partition(":")
+            if not numero.isdigit():
+                return _erro(400, f"ação desconhecida: {nome}")
+            try:
+                (projetos.dispensar if tipo == "projeto-dispensar" else projetos.reativar)(config, estado, pid, int(numero))
+            except ValueError:
+                return _erro(400, f"ação desconhecida: {nome}")
+            if tipo == "projeto-dispensar":
+                return {"id": 0}
+            exec_id = agendador.disparar("preparar_prompts")   # volta já, sem esperar os 15 minutos
+            return {"id": exec_id if exec_id is not None else 0}
         if tipo in ("projeto-refazer", "revisao-refazer"):
             pid, _, numero = alvo.partition(":")
             revisao = tipo == "revisao-refazer"

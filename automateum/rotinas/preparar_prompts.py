@@ -68,9 +68,12 @@ def rodar(ctx):
         projetos.guardar_abertas(ctx.estado, pid, issues)   # a gaveta lista as que esperam o "Começar"
         abertas = {str(i["numero"]) for i in issues}
         guardados = {n: d for n, d in projetos.preparados(ctx.estado, pid).items() if n in abertas}  # fechada = libera a vaga
+        fora = projetos.dispensadas(ctx.estado, pid)
+        if any(n not in abertas for n in fora):   # dispensada que fechou não precisa mais ficar na lista
+            projetos.guardar_dispensadas(ctx.estado, pid, {n: d for n, d in fora.items() if n in abertas})
         aceitas = set(projetos.aceitas(ctx.estado, pid))
         vagas = max(0, int(projeto.get("max_pendentes", 3)) - len(guardados))
-        livres = [i for i in issues if str(i["numero"]) not in guardados]
+        livres = [i for i in issues if str(i["numero"]) not in guardados and str(i["numero"]) not in fora]
         # as que você aceitou passam na frente e não gastam vaga; as atribuídas a você entram enquanto houver vaga
         novas = [i for i in livres if i["numero"] in aceitas][:_ACEITAS_POR_RODADA]
         novas += [i for i in livres if i["minha"] and i["numero"] not in aceitas][:min(vagas, _POR_RODADA)]

@@ -418,3 +418,113 @@ def test_chave_de_todos_os_prs_muda_a_busca_e_pela_acao_do_mapa(tmp_path, monkey
     assert '"revisar_todos": true' in c.get("/dados/estado.js").text
     assert c.post("/acao", json={"acao": "revisao-todos-desligar:demo"}, headers=cab).json() == {"id": 0}
     assert '"revisar_todos": false' in c.get("/dados/estado.js").text
+
+
+# --- dispensar e reativar
+
+def test_dispensar_libera_a_vaga_e_a_issue_nao_volta(tmp_path, monkeypatch):
+    falso = OrcaFalso(monkeypatch)
+    _issues(monkeypatch, *[(n, f"Task {n}", "") for n in range(1, 5)])
+    ctx = Ctx(tmp_path)
+    for _ in range(2):
+        ROTINAS["preparar_prompts"].func(ctx)
+    assert sorted(projetos.preparados(ctx.estado, "demo")) == ["1", "2", "3"]     # cheio: 3 vagas
+    projetos.dispensar(ctx.config, ctx.estado, "demo", 2)
+    ROTINAS["preparar_prompts"].func(ctx)
+    criar = falso.com("worktree", "create")
+    assert len(criar) == 4 and criar[-1][criar[-1].index("--issue") + 1] == "4"   # a vaga foi para a #4
+    ROTINAS["preparar_prompts"].func(ctx)
+    assert len(falso.com("worktree", "create")) == 4                              # e a #2 não volta
+    sit = projetos.situacao(ctx.config, ctx.estado)[0]
+    assert [q["numero"] for q in sit["prontos"]] == [1, 3, 4]
+    assert [(q["numero"], q["worktree"]) for q in sit["dispensados"]] == [(2, "C:/wt/issue-2-task-2")]
+    assert sit["disponiveis"] == []
+
+
+def test_dispensar_uma_aceita_ainda_sem_prompt(tmp_path, monkeypatch):
+    falso = OrcaFalso(monkeypatch)
+    _issues(monkeypatch, (7, "Alheia", ""), (8, "Outra", ""), de=("outra",))
+    ctx = Ctx(tmp_path)
+    ROTINAS["preparar_prompts"].func(ctx)                    # só lista as abertas
+    projetos.aceitar(ctx.config, ctx.estado, "demo", 7)
+    projetos.dispensar(ctx.config, ctx.estado, "demo", 7)    # mudou de ideia antes da rodada
+    projetos.dispensar(ctx.config, ctx.estado, "demo", 8)
+    ROTINAS["preparar_prompts"].func(ctx)
+    assert falso.com("worktree", "create") == []
+    assert projetos.aceitas(ctx.estado, "demo") == []
+    sit = projetos.situacao(ctx.config, ctx.estado)[0]
+    assert sit["disponiveis"] == [] and [q["numero"] for q in sit["dispensados"]] == [7, 8]
+    with pytest.raises(ValueError):
+        projetos.dispensar(ctx.config, ctx.estado, "demo", 99)
+
+
+def test_rodada_em_andamento_nao_traz_a_dispensada_de_volta(tmp_path, monkeypatch):
+    OrcaFalso(monkeypatch)
+    _issues(monkeypatch, (7, "Corrigir o login", ""))
+    ctx = Ctx(tmp_path)
+    ROTINAS["preparar_prompts"].func(ctx)
+    guardados = projetos.preparados(ctx.estado, "demo")      # o que a rodada leu antes do clique
+    projetos.dispensar(ctx.config, ctx.estado, "demo", 7)
+    projetos.guardar_preparados(ctx.estado, "demo", guardados)
+    assert projetos.preparados(ctx.estado, "demo") == {}
+
+
+def test_reativar_digita_de_novo_na_mesma_worktree(tmp_path, monkeypatch):
+    falso = OrcaFalso(monkeypatch)
+    _issues(monkeypatch, (7, "Corrigir o login", ""))
+    ctx = Ctx(tmp_path)
+    ROTINAS["preparar_prompts"].func(ctx)
+    projetos.dispensar(ctx.config, ctx.estado, "demo", 7)
+    projetos.reativar(ctx.config, ctx.estado, "demo", 7)
+    assert ROTINAS["preparar_prompts"].func(ctx) == "1 prompt(s) pronto(s)"
+    assert len(falso.com("worktree", "create")) == 1         # a worktree continuava lá
+    ultimo = falso.com("terminal", "create")[-1]
+    assert ultimo[ultimo.index("--worktree") + 1] == "path:C:/wt/issue-7-corrigir-o-login"
+    assert all("--enter" not in e for e in falso.com("terminal", "send"))
+    sit = projetos.situacao(ctx.config, ctx.estado)[0]
+    assert [q["numero"] for q in sit["prontos"]] == [7] and sit["dispensados"] == []
+    with pytest.raises(ValueError):
+        projetos.reativar(ctx.config, ctx.estado, "demo", 7)  # já não está dispensada
+
+
+def test_reativar_sem_prompt_volta_como_aceita(tmp_path, monkeypatch):
+    falso = OrcaFalso(monkeypatch)
+    _issues(monkeypatch, (8, "Alheia", ""), de=("outra",))
+    ctx = Ctx(tmp_path)
+    ROTINAS["preparar_prompts"].func(ctx)
+    projetos.dispensar(ctx.config, ctx.estado, "demo", 8)
+    projetos.reativar(ctx.config, ctx.estado, "demo", 8)
+    ROTINAS["preparar_prompts"].func(ctx)
+    criar = falso.com("worktree", "create")
+    assert len(criar) == 1 and criar[0][criar[0].index("--issue") + 1] == "8"
+
+
+def test_dispensada_que_fechou_sai_da_lista(tmp_path, monkeypatch):
+    OrcaFalso(monkeypatch)
+    _issues(monkeypatch, (7, "Corrigir o login", ""), (8, "Outra", ""))
+    ctx = Ctx(tmp_path)
+    ROTINAS["preparar_prompts"].func(ctx)
+    projetos.dispensar(ctx.config, ctx.estado, "demo", 7)
+    _issues(monkeypatch, (8, "Outra", ""))                    # a #7 foi fechada
+    ROTINAS["preparar_prompts"].func(ctx)
+    assert projetos.dispensadas(ctx.estado, "demo") == {}
+
+
+def test_acoes_dispensar_e_reativar_pelo_mapa(tmp_path):
+    from fastapi.testclient import TestClient
+    from automateum.web.api import criar_app
+    cfg = _cfg(tmp_path, projetos={"demo": {"nome": "Demo", "github": "dono/demo", "ativo": True}},
+               obsidian={"cofre": str(tmp_path)})
+    app = criar_app(cfg)
+    projetos.guardar_abertas(app.state.estado, "demo", [{"numero": 7, "titulo": "Alheia", "url": "u"}])
+    c = TestClient(app)
+    c.headers.update({"host": "127.0.0.1:8765"})
+    token = c.get("/dados/acoes.js").text.split('"token": "', 1)[1].split('"', 1)[0]
+    cab = {"X-Mapa-Token": token, "Origin": "http://127.0.0.1:8765"}
+    assert c.post("/acao", json={"acao": "projeto-dispensar:demo:abc"}, headers=cab).status_code == 400
+    assert c.post("/acao", json={"acao": "projeto-dispensar:demo:99"}, headers=cab).status_code == 400
+    assert c.post("/acao", json={"acao": "projeto-dispensar:demo:7"}, headers=cab).json() == {"id": 0}
+    assert '"dispensados": [{"numero": 7, "titulo": "Alheia", "url": "u"}]' in c.get("/dados/estado.js").text
+    assert c.post("/acao", json={"acao": "projeto-reativar:demo:7"}, headers=cab).status_code == 200
+    assert projetos.dispensadas(app.state.estado, "demo") == {}
+    assert projetos.aceitas(app.state.estado, "demo") == [7]

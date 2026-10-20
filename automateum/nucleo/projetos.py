@@ -1,6 +1,7 @@
 """Os projetos em que você está trabalhando: quais estão ativos e que prompts já foram deixados prontos.
 
-Só as issues atribuídas a você viram prompt sozinhas; as outras esperam o "Começar" da gaveta.
+Só as issues atribuídas a você viram prompt sozinhas; as outras esperam o "Começar" da gaveta. Uma issue dispensada
+(cursor `dispensadas:<id>`) sai da lista e libera a vaga, e só volta pelo "Reativar".
 Cada projeto vem do config (`[projetos.<id>]`: nome, github, ativo, rotulo, max_pendentes, modelo). O ativar/desativar
 do mapa fica guardado no estado (cursor `projeto:<id>:ativo`) e vale mais que o `ativo` do config.
 """
@@ -67,7 +68,56 @@ def preparados(estado, pid: str, tipo: str = "issue") -> dict[str, dict]:
 
 
 def guardar_preparados(estado, pid: str, dados: dict[str, dict], tipo: str = "issue") -> None:
+    if tipo == "issue":   # dispensada no meio de uma rodada: a rodada não a traz de volta ao guardar
+        fora = dispensadas(estado, pid)
+        dados = {n: d for n, d in dados.items() if n not in fora}
     estado.definir_cursor(f"{_CURSOR[tipo]}:{pid}", json.dumps(dados, ensure_ascii=False))
+
+
+def dispensadas(estado, pid: str) -> dict[str, dict]:
+    """Issues que você tirou da lista: número -> título, link e a worktree, se o prompt já estava pronto."""
+    try:
+        return json.loads(estado.cursor(f"dispensadas:{pid}") or "{}")
+    except ValueError:
+        return {}
+
+
+def guardar_dispensadas(estado, pid: str, dados: dict[str, dict]) -> None:
+    estado.definir_cursor(f"dispensadas:{pid}", json.dumps(dados, ensure_ascii=False))
+
+
+def dispensar(config: Config, estado, pid: str, numero: int) -> None:
+    """Tira a issue da lista e libera a vaga; ela não volta sozinha. A worktree do Orca fica onde está."""
+    if pid not in lista(config):
+        raise ValueError(f"projeto desconhecido: {pid}")
+    chave = str(numero)
+    prontos = preparados(estado, pid)
+    aberta = next((i for i in abertas(estado, pid) if i["numero"] == numero), None)
+    if chave not in prontos and aberta is None:
+        raise ValueError(f"issue desconhecida: {pid} #{numero}")
+    registro = prontos.pop(chave, None) or {"titulo": aberta["titulo"], "url": aberta["url"]}
+    registro.pop("refazer", None)
+    fora = dispensadas(estado, pid)
+    fora[chave] = registro
+    guardar_dispensadas(estado, pid, fora)
+    guardar_preparados(estado, pid, prontos)
+    # senão o "Começar" de antes a faria voltar na próxima rodada
+    estado.definir_cursor(f"aceitas:{pid}", json.dumps([n for n in aceitas(estado, pid) if n != numero]))
+
+
+def reativar(config: Config, estado, pid: str, numero: int) -> None:
+    """Devolve a issue: com o prompt já pronto antes, ele é digitado de novo na mesma worktree (ou numa nova)."""
+    fora = dispensadas(estado, pid)
+    if pid not in lista(config) or str(numero) not in fora:
+        raise ValueError(f"issue não dispensada: {pid} #{numero}")
+    registro = fora.pop(str(numero))
+    guardar_dispensadas(estado, pid, fora)
+    if registro.get("worktree"):
+        prontos = preparados(estado, pid)
+        prontos[str(numero)] = {**registro, "refazer": True}
+        guardar_preparados(estado, pid, prontos)
+    else:
+        aceitar(config, estado, pid, numero)
 
 
 def aceitas(estado, pid: str) -> list[int]:
@@ -131,11 +181,13 @@ def situacao(config: Config, estado) -> list[dict]:
     saida = []
     for pid, p in lista(config).items():
         prontos = [{"numero": int(n), **d} for n, d in sorted(preparados(estado, pid).items(), key=lambda kv: int(kv[0]))]
-        feitos = {d["numero"] for d in prontos}
+        fora = [{"numero": int(n), **d} for n, d in sorted(dispensadas(estado, pid).items(), key=lambda kv: int(kv[0]))]
+        feitos = {d["numero"] for d in prontos + fora}
         saida.append({"id": pid, "nome": p.get("nome", pid), "github": p["github"], "ativo": ativo(config, estado, pid),
                       "revisar_todos": revisar_todos(config, estado, pid),
                       "revisoes": [{"numero": int(n), **d} for n, d in sorted(preparados(estado, pid, "pr").items(), key=lambda kv: int(kv[0]))],
-                      "prontos": prontos, "disponiveis": [i for i in abertas(estado, pid) if i["numero"] not in feitos]})
+                      "prontos": prontos, "dispensados": fora,
+                      "disponiveis": [i for i in abertas(estado, pid) if i["numero"] not in feitos]})
     return saida
 
 
