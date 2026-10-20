@@ -12,12 +12,14 @@ O painel de referência que serviu de ponto de partida:
 
 - Fundo escuro com grade sutil e tipografia monoespaçada
 - Cartões com cantos em colchete, indicador visual de status e texto explicativo sucinto
-- Colunas estruturadas:
+- Colunas estruturadas (na organização "Por tipo"):
   - `[01] MÁQUINA`
   - `[02] SERVIÇOS`
   - `[03] FRENTES`
   - `[04] ROTINAS`
   - `[05] COM VOCÊ`
+- Seis organizações, nas abas abaixo do topo ou pelas teclas: Por tipo (`Q`), Por frente (`W`), Por horário (`E`),
+  Por estado (`R`), Por profundidade (`T`) e Em cascata (`Y`). Seis estilos, pelas teclas `1` a `6`.
 - Fios curvos tracejados e animados interligando as colunas, refletindo o fluxo e o estado dos componentes
 - Etiqueta `RAIZ` no cartão onde um problema se inicia, acompanhado da causa
 - Latência em milissegundos reportada junto a cada serviço

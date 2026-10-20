@@ -56,6 +56,13 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 | `tasks_obsidian` | a cada 30 min | Obsidian | Varre o cofre do Obsidian por checkboxes abertos (`- [ ]`) e armazena a lista com referência de nota e linha. |
 | `tasks_github` | a cada 30 min | GitHub | Busca issues e PRs atribuídos e PRs aguardando revisão. |
 
+## Projetos
+
+| Rotina | Quando | Depende de | O que faz |
+|---|---|---|---|
+| `preparar_prompts` (prompts das tasks) | a cada 15 min | GitHub, Orca | Deixa no Orca o prompt de cada issue aberta dos projetos ativos, digitado e nunca enviado. Ver [Projetos e prompts prontos no Orca](#projetos-e-prompts-prontos-no-orca). |
+| `preparar_revisoes` (revisões de PR) | a cada 15 min | GitHub, Orca | Faz o mesmo com os PRs que pedem a sua revisão (ou todos, com a chave ligada). |
+
 ## Notas
 
 | Rotina | Quando | Depende de | O que faz |
@@ -78,7 +85,8 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 ## Ideias e Próximos Passos
 
 - Acesso ao painel pelo celular fora do Wi-Fi (hoje só pela rede local; ver docs/Painel.md)
-- Preparação de pautas automatizadas para reuniões a partir de notas de reuniões recentes
+- Google Agenda no painel e no briefing (issue #23)
+- Resumo das transcrições de reuniões, alimentando a pauta (issue #24)
 - Sinalização visual no cofre para tasks com mais de N dias sem movimentação
 - Resumo executivo semanal
 
