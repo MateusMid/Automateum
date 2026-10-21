@@ -15,10 +15,12 @@ import time
 from pathlib import Path
 
 from ..config import Config
-from ..nucleo.registro import FALHA, OK, Checagem, registrar_servico
+from ..nucleo.registro import FALHA, OK, PARADO, Checagem, registrar_servico
 from .claude import _SEM_JANELA
 
 _LIMITE_PROMPT = 6000
+# Orca fechado não é problema: o resto do Automateum funciona sem ele, e os prompts esperam ele abrir.
+FECHADO = "Orca fechado: os prompts esperam ele abrir"
 _CONTROLE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")  # tudo que é controle, menos \n (0x0a) e \t (0x09)
 
 
@@ -55,15 +57,27 @@ def _rodar(config: Config, *args: str, timeout: int = 60, json_: bool = True) ->
     return saida["result"]
 
 
+def _status(config: Config) -> str:
+    try:
+        return _rodar(config, "status", json_=False, timeout=30)
+    except RuntimeError:
+        return ""   # com o app fechado a CLI sai com erro ("Could not read Orca runtime metadata")
+
+
+def aberto(config: Config) -> bool:
+    """O app do Orca está aberto e respondendo (a CLI só cria worktree e digita com ele aberto)."""
+    return "runtimeReachable: true" in _status(config)
+
+
 def checar(config: Config) -> Checagem:
     inicio = time.perf_counter()
     try:
-        texto = _rodar(config, "status", json_=False, timeout=30)
-    except (RuntimeError, OSError, subprocess.TimeoutExpired) as e:
+        texto = _status(config)
+    except (OSError, subprocess.TimeoutExpired) as e:
         return Checagem(FALHA, f"o Orca não respondeu: {e}")
     ms = round((time.perf_counter() - inicio) * 1000)
     if "runtimeReachable: true" not in texto:
-        return Checagem(FALHA, "o app do Orca não está aberto (abra o Orca)", ms)
+        return Checagem(PARADO, FECHADO, ms)   # cinza no mapa, sem contar como problema
     return Checagem(OK, "Orca aberto e respondendo", ms)
 
 
