@@ -13,7 +13,7 @@ pasta_automateum = "Automateum/Saídas"
 # Pastas que a busca de tasks ignora: nome solto ou caminho a partir da raiz do cofre.
 ignorar = [".obsidian", ".trash", "Automateum/Saídas"]
 # Pastas cujas notas mais recentes entram como contexto no briefing do dia.
-pastas_contexto = ["FH/Meets", "Automateum/Saídas/Reuniões"]
+pastas_contexto = ["FH/Meets"]
 
 [claude]
 # Modelo usado nos resumos ("" = padrão do Claude Code).

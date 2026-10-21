@@ -4,7 +4,7 @@
 [obsidian]
 # Caminho absoluto para a pasta do seu cofre do Obsidian.
 cofre = 'C:\Users\seu_usuario\Documents\SeuCofre'
-# pastas_contexto = ["Meets"]
+# pastas_contexto = ["Meets", "Automateum/Saídas/Reuniões"]   # a última: os resumos das reuniões
 
 # Transcrições do Gutenberg: a pasta fixa para onde elas vão, saindo de Downloads\Gutenberg.
 # [reunioes]
