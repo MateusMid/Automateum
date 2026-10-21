@@ -69,8 +69,8 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 | Rotina | Quando | Depende de | O que faz |
 |---|---|---|---|
 | `meu_dia` | 08:30, seg a sex | Obsidian, Claude | Agrega tarefas abertas, mensagens recentes, notas dos últimos diários e notas de contexto recentes, escrevendo o briefing matinal no diário de hoje. |
-| `dia_fechado` | 19:00, seg a sex | Obsidian, Claude | Lê as anotações do dia, resumos de mensagens e tarefas concluídas/pendentes, registrando o fechamento no diário. Termina com uma linha da máquina (média e pico de CPU e memória, o disco livre de cada disco, desde quando está ligada), calculada pelas medições e não escrita pelo Claude. A temperatura não entra: o Windows não a expõe sem um programa de monitoramento à parte. |
-| `semana_fechada` | 19:30, sex | Obsidian, Claude | Junta o fechamento e as anotações de cada dia da semana (de segunda até hoje), as tasks abertas e os commits desde segunda, e escreve o fechamento da semana no diário de sexta: **Andou**, **Ficou aberto** e **Próxima semana**. Sem nenhum diário na semana, não chama o Claude. |
+| `dia_fechado` | 19:00, seg a sex | Obsidian, Claude | Lê as anotações do dia, as notas do cofre editadas hoje, resumos de mensagens e tarefas concluídas/pendentes, registrando o fechamento no diário. Termina com uma linha da máquina (média e pico de CPU e memória, o disco livre de cada disco, desde quando está ligada), calculada pelas medições e não escrita pelo Claude. A temperatura não entra: o Windows não a expõe sem um programa de monitoramento à parte. |
+| `semana_fechada` | 19:30, sex | Obsidian, Claude | Junta o fechamento e as anotações de cada dia da semana (de segunda até hoje), as notas do cofre editadas na semana, as tasks abertas e os commits desde segunda, e escreve o fechamento da semana no diário de sexta: **Andou**, **Ficou aberto** e **Próxima semana**. Sem nenhum diário na semana, não chama o Claude. |
 
 ## Estrutura dos Briefings
 

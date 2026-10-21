@@ -2,7 +2,7 @@ from datetime import date, timedelta
 
 from ..nucleo.registro import rotina
 from ..servicos import git_local, ia, obsidian
-from ._texto import bloco, formatar_git, listar, secao, sem_blocos
+from ._texto import bloco, formatar_git, listar, notas_editadas, secao, sem_blocos
 
 _PEDIDO = (
     "Escreva o fechamento da minha semana com três partes curtas, cada uma com um título em negrito: "
@@ -36,6 +36,9 @@ def rodar(ctx):
         material.append(secao(f"Anotações de {nome}", sem_blocos(nota), 3000))
     if not com_diario:
         return "nenhum diário nesta semana: nada para fechar"
+    segunda = dias_da_semana(hoje)[0]
+    material.append(secao("Notas do cofre editadas na semana",
+                          notas_editadas(obsidian.notas_editadas(cfg, segunda), total=12000), 14000))
     material.append(secao("Tasks abertas no cofre", listar(ctx.estado.itens(["obsidian"]))))
     # dias = quantos dias desde segunda: os commits da semana toda, não só os de hoje
     material.append(secao("Atividade Git Local / Repositórios",

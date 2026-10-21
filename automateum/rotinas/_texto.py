@@ -44,6 +44,26 @@ def listar(itens: list[dict], limite: int = 150, corte: int = 400) -> str:
     return "\n".join(linhas) or "(nada)"
 
 
+def notas_editadas(notas: list[tuple[str, str]], por_nota: int = 1200, total: int = 8000) -> str:
+    """Nome e começo de cada nota editada; passando de `total`, as que sobram entram só pelo nome."""
+    partes, so_nome, usado = [], [], 0
+    for relativo, texto in notas:
+        trecho = sem_blocos(texto)
+        if not trecho:
+            continue        # só tinha o que o Automateum escreveu
+        if len(trecho) > por_nota:
+            trecho = trecho[:por_nota] + " (...)"
+        if usado + len(trecho) > total:
+            so_nome.append(relativo)
+            continue
+        usado += len(trecho)
+        partes.append(f"#### {relativo}\n{trecho}")
+    if so_nome:
+        partes.append("Também editadas (só o nome): " + ", ".join(so_nome[:40])
+                      + (f" e mais {len(so_nome) - 40}" if len(so_nome) > 40 else ""))
+    return "\n\n".join(partes)
+
+
 def secao(titulo: str, corpo: str, limite: int = 12000) -> str:
     corpo = corpo.strip() or "(vazio)"
     if len(corpo) > limite:
