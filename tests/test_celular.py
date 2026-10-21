@@ -63,6 +63,7 @@ def test_chave_certa_vira_cookie_e_libera_a_leitura(ambiente):
     assert c.get("/api/hoje").status_code == 200                      # o cliente guardou o cookie
     assert c.get("/dados/estado.js").status_code == 200
     assert c.get("/api/maquina/historico").status_code == 200
+    assert c.get("/api/busca", params={"q": "proposta"}).status_code == 403     # a busca é só no computador
 
 
 def test_chave_errada_e_bloqueio_por_tentativas(ambiente):

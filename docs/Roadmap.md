@@ -50,6 +50,7 @@ Planejamento de etapas e guia para configuração de cada serviço.
 - [x] Máquina no fechamento do dia (CPU, memória, discos) e gráfico de 24 horas no mapa
 - [x] Seis estilos e seis organizações do mapa, sininho com os textos do dia e modo painel
 - [x] Leitura pelo celular no mesmo Wi-Fi (opcional, só leitura, com chave)
+- [x] Busca no que já foi coletado, só no computador (#63)
 
 ### Etapa 8 — Projetos no Orca
 - [x] Prompt de cada issue atribuída a você digitado numa worktree do Orca, nunca enviado (#26)
