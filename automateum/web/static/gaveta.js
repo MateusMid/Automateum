@@ -557,7 +557,36 @@
     if (u && u.reserva) h += '<p class="gv-nota">Na última vez o ' + esc(m.ativo_nome) + ' não respondeu e o texto saiu pelo ' + esc(m.reserva_nome) +
       ' (' + hm(new Date(u.quando)) + '): ' + esc(u.motivo) + '</p>';
     h += '<div class="gv-acoes gv-e-bom">' + botaoAcao('motor:' + m.reserva) + '</div>';
-    return secao('Motor dos resumos', h);
+    return secao('Motor dos resumos', h) + usoDaIa(m.uso);
+  }
+  // Uma coluna por dia: as falhas em cima, as respostas da reserva no meio, as do principal embaixo.
+  function usoDaIa(u) {
+    if (!u || !u.dias || !u.dias.length) return '';
+    var dd = u.dias, maior = 1, tot = {principal: 0, reserva: 0, falhas: 0};
+    dd.forEach(function (d) {
+      maior = Math.max(maior, d.principal + d.reserva + d.falhas);
+      tot.principal += d.principal; tot.reserva += d.reserva; tot.falhas += d.falhas;
+    });
+    var h = '<div class="gv-hist"><small>Últimos ' + dd.length + ' dias</small>';
+    if (!(tot.principal + tot.reserva + tot.falhas)) return secao('Uso da IA', h + '<p class="gv-nota">Nenhuma pergunta nesse período.</p></div>');
+    h += '<div class="gv-dias">' + dd.map(function (d) {
+      var t = d.principal + d.reserva;
+      var dica = diaCurto(d.dia) + ': ' + (t || d.falhas ? plural(t, 'resposta', 'respostas') + (d.reserva ? ', ' + d.reserva + ' pela reserva' : '') +
+        (d.falhas ? ', ' + plural(d.falhas, 'falha', 'falhas') : '') : 'nenhuma pergunta');
+      return '<span title="' + esc(dica) + '">' + [['ruim', d.falhas], ['atencao', d.reserva], ['bom', d.principal]].filter(function (s) { return s[1]; }).map(function (s) {
+        return '<b class="gv-e-' + s[0] + '" style="height:' + (s[1] / maior * 100).toFixed(1) + '%"></b>';
+      }).join('') + '</span>';
+    }).join('') + '</div><div class="gv-bat-eixo"><span>' + esc(diaCurto(dd[0].dia)) + '</span><span>hoje</span></div>';
+    var linhas = ['claude', 'copilot'].filter(function (k) { return u.motores && u.motores[k]; }).map(function (k) {
+      var m = u.motores[k];
+      return '<b>' + (k === 'claude' ? 'Claude' : 'Copilot') + ':</b> ' + plural(m.respostas, 'resposta', 'respostas') +
+        (m.ms_medio != null ? ', em média ' + (m.ms_medio / 1000).toFixed(1).replace('.', ',') + ' s' : '') +
+        (m.falhas ? ' · ' + plural(m.falhas, 'falha', 'falhas') : '');
+    });
+    linhas.push((tot.reserva ? tot.reserva + ' pela reserva' : 'nenhuma pela reserva') +
+      (u.reserva_seguidas ? ' · as últimas ' + plural(u.reserva_seguidas, 'resposta', 'respostas') + ' vieram da reserva' : ''));
+    h += '<p class="gv-nota">' + linhas.join('<br>') + '</p>';
+    return secao('Uso da IA', h + '</div>');
   }
   // A chave da rotina (13/10/2026): ligar e desligar no Agendador, com a decisao anotada pelo servidor
   function chave(x) {

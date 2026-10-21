@@ -29,6 +29,10 @@ CREATE TABLE IF NOT EXISTS tasks_vistas (ident TEXT PRIMARY KEY, desde TEXT NOT 
 CREATE TABLE IF NOT EXISTS medidas (
     quando TEXT PRIMARY KEY, cpu INTEGER, memoria INTEGER, disco_livre_gb INTEGER, discos TEXT
 );
+-- uma linha por tentativa de pergunta a uma IA; só os números, nunca o texto da pergunta ou da resposta
+CREATE TABLE IF NOT EXISTS chamadas_ia (
+    quando TEXT NOT NULL, rotina TEXT, motor TEXT NOT NULL, ms INTEGER, ok INTEGER, reserva INTEGER
+);
 CREATE TABLE IF NOT EXISTS avisos (
     id INTEGER PRIMARY KEY AUTOINCREMENT, quando TEXT, rotina TEXT, nivel TEXT, texto TEXT
 );
@@ -116,9 +120,41 @@ class Estado:
         corte = (datetime.now() - timedelta(days=dias)).isoformat(timespec="seconds")
         self._exec("DELETE FROM execucoes WHERE inicio < ?", (corte,))
         self._exec("DELETE FROM avisos WHERE quando < ?", (corte,))
+        self._exec("DELETE FROM chamadas_ia WHERE quando < ?", (corte,))
         # as medições da máquina são de 2 em 2 minutos: só os últimos dias interessam
         self._exec("DELETE FROM medidas WHERE quando < ?",
                    ((datetime.now() - timedelta(days=7)).isoformat(timespec="seconds"),))
+
+    # --- uso da IA
+    def registrar_chamada_ia(self, rotina: str, motor: str, ms: int, ok: bool, reserva: bool) -> None:
+        self._exec("INSERT INTO chamadas_ia (quando, rotina, motor, ms, ok, reserva) VALUES (?,?,?,?,?,?)",
+                   (agora(), rotina, motor, ms, int(ok), int(reserva)))
+
+    def reserva_seguidas(self) -> int:
+        """Quantas das últimas respostas seguidas vieram do motor de reserva."""
+        n = 0
+        for l in self._linhas("SELECT reserva FROM chamadas_ia WHERE ok=1 ORDER BY rowid DESC LIMIT 100"):
+            if not l["reserva"]:
+                break
+            n += 1
+        return n
+
+    def uso_da_ia(self, dias: int = 14) -> dict:
+        """Por dia (hoje por último): respostas do principal, da reserva e falhas; por motor: chamadas e tempo médio."""
+        hoje = datetime.now().date()
+        lista = [{"dia": (hoje - timedelta(days=d)).isoformat(), "principal": 0, "reserva": 0, "falhas": 0}
+                 for d in range(dias - 1, -1, -1)]
+        por_dia = {d["dia"]: d for d in lista}
+        for l in self._linhas("SELECT substr(quando, 1, 10) AS dia, ok, reserva, COUNT(*) AS n FROM chamadas_ia "
+                              "WHERE quando >= ? GROUP BY dia, ok, reserva", (lista[0]["dia"],)):
+            if d := por_dia.get(l["dia"]):
+                d["falhas" if not l["ok"] else "reserva" if l["reserva"] else "principal"] += l["n"]
+        motores = {l["motor"]: {"respostas": l["respostas"] or 0, "falhas": l["falhas"] or 0,
+                                "ms_medio": round(l["ms_medio"]) if l["ms_medio"] is not None else None}
+                   for l in self._linhas("SELECT motor, SUM(ok) AS respostas, SUM(1 - ok) AS falhas, "
+                                         "AVG(CASE WHEN ok=1 THEN ms END) AS ms_medio FROM chamadas_ia "
+                                         "WHERE quando >= ? GROUP BY motor", (lista[0]["dia"],))}
+        return {"dias": lista, "motores": motores, "reserva_seguidas": self.reserva_seguidas()}
 
     # --- medições da máquina
     def salvar_medida(self, cpu: int, memoria: int, disco_livre_gb: int, discos: dict[str, int] | None = None) -> None:

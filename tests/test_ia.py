@@ -14,10 +14,14 @@ class Ctx:
     def __init__(self, tmp_path, ia_config=None):
         self.config = Config(dados={"ia": ia_config or {}}, segredos={}, pasta_dados=tmp_path)
         self.estado = Estado(tmp_path / "t.db")
-        self.linhas = []
+        self.rotina = SimpleNamespace(id="meu_dia")
+        self.linhas, self.avisos = [], []
 
     def log(self, texto):
         self.linhas.append(texto)
+
+    def avisar(self, texto):
+        self.avisos.append(texto)
 
 
 @pytest.fixture
@@ -148,3 +152,33 @@ def test_copilot_acha_o_instalador_do_winget_fora_do_path(tmp_path, monkeypatch)
     monkeypatch.setattr("sys.platform", "win32")
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
     assert copilot._executavel() == str(pacote / "copilot.exe")
+
+
+# --- uso
+
+def test_cada_tentativa_fica_registrada_sem_o_texto(ctx, monkeypatch):
+    _falha(monkeypatch, claude, RuntimeError("limite"))
+    _responde(monkeypatch, copilot, "do copilot")
+    ia.perguntar(ctx, "resuma", "segredo do cliente")
+
+    linhas = ctx.estado._linhas("SELECT * FROM chamadas_ia ORDER BY rowid")
+    assert [(l["rotina"], l["motor"], l["ok"], l["reserva"]) for l in linhas] == [
+        ("meu_dia", "claude", 0, 0), ("meu_dia", "copilot", 1, 1)]
+    assert all(isinstance(l["ms"], int) for l in linhas)
+    assert "segredo" not in str(linhas)
+    uso = ia.situacao(ctx.config, ctx.estado)["uso"]
+    assert len(uso["dias"]) == 14 and uso["dias"][-1] | {"dia": ""} == {"dia": "", "principal": 0, "reserva": 1, "falhas": 1}
+    assert uso["motores"]["claude"] == {"respostas": 0, "falhas": 1, "ms_medio": None}
+    assert uso["motores"]["copilot"]["respostas"] == 1 and uso["reserva_seguidas"] == 1
+
+
+def test_avisa_uma_vez_quando_a_reserva_responde_3_vezes_seguidas(ctx, monkeypatch):
+    _falha(monkeypatch, claude, RuntimeError("limite"))
+    _responde(monkeypatch, copilot, "do copilot")
+    for _ in range(4):
+        ia.perguntar(ctx, "resuma")
+    assert len(ctx.avisos) == 1 and "3 vezes seguidas" in ctx.avisos[0] and "limite" in ctx.avisos[0]
+
+    _responde(monkeypatch, claude, "voltou")
+    ia.perguntar(ctx, "resuma")                       # o principal voltou: a sequência zera
+    assert ctx.estado.reserva_seguidas() == 0
