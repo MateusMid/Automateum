@@ -112,7 +112,8 @@ Há dois modos, escolhidos em `[slack] modo` no `config.local.toml`. Os dois só
    ```bash
    python -m automateum gmail-login
    ```
-   e conclua a autorização no navegador.
+   e conclua a autorização no navegador. Para mais de uma conta, rode de novo e escolha a outra conta; para tirar
+   uma, `python -m automateum gmail-sair <endereço>`.
 
 ---
 

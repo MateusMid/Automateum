@@ -45,7 +45,7 @@ automateum/
 config.toml       horários, canais e preferências padrão
 config.local.toml sobreposições locais da máquina (fora do git)
 .env              tokens e credenciais (fora do git)
-dados/            banco SQLite e token do Gmail (fora do git)
+dados/            banco SQLite e tokens do Gmail, um por conta em dados/gmail/ (fora do git)
 ```
 
 ## Como nasce uma rotina
