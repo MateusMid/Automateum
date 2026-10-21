@@ -40,7 +40,7 @@
   var M = null, I = null, aberto = null, raiz = null, opts = {}, rolagem = 0;
   var servidor = {token: null, porta: 8765, vivo: false, visto: false};
   var acoes = {};
-  var armado = {};      // desligar:<id> esperando o segundo clique
+  var armado = {};      // desligar:<id> e projeto-dispensar:<id>:<n> esperando o segundo clique
 
   // ------------------------------------------------------------- apoio --
   function esc(t) {
@@ -447,6 +447,8 @@
     if (p[0] === 'revisao-todos-desligar') return 'Desligar';
     if (p[0] === 'projeto-comecar') return 'Começar';
     if (p[0] === 'projeto-refazer' || p[0] === 'revisao-refazer') return 'Digitar de novo';
+    if (p[0] === 'projeto-dispensar') return armado[a] ? 'Confirmar: dispensar' : 'Dispensar';
+    if (p[0] === 'projeto-reativar') return 'Reativar';
     if (p[0] === 'projeto-ligar') return 'Ativar';
     if (p[0] === 'projeto-desligar') return 'Desativar';
     if (p[0] === 'motor') return 'Usar o ' + (p[1] === 'copilot' ? 'Copilot' : 'Claude') + ' como principal';
@@ -469,7 +471,8 @@
         h += '<ul class="gv-linhas">' + p.prontos.map(function (q) {
           return '<li class="gv-pronto">#' + q.numero + ' ' + esc(q.titulo) + (q.digitado ? '' : ' (abra o Claude Code e digite o prompt à mão)') +
             ' <button type="button" class="gv-ver" data-gv-prompt="' + esc(p.id + '/' + q.numero) + '">Ver prompt</button>' +
-            '<span class="gv-acoes gv-e-bom">' + botaoAcao('projeto-refazer:' + p.id + ':' + q.numero) + '</span><pre class="gv-prompt" hidden></pre></li>';
+            '<span class="gv-acoes gv-e-bom">' + botaoAcao('projeto-refazer:' + p.id + ':' + q.numero) + '</span>' +
+            '<span class="gv-acoes gv-e-desligado">' + botaoAcao('projeto-dispensar:' + p.id + ':' + q.numero) + '</span><pre class="gv-prompt" hidden></pre></li>';
         }).join('') + '</ul>';
       }
       h += '<div class="gv-sw"><span>Procurar <b>todos</b> os PRs abertos para revisar, inclusive os seus: <b>' + (p.revisar_todos ? 'ligado' : 'desligado') +
@@ -485,7 +488,15 @@
       if (p.ativo && p.disponiveis && p.disponiveis.length) {
         h += '<p class="gv-nota">Abertas, ainda sem prompt:</p><ul class="gv-linhas gv-livres">' + p.disponiveis.map(function (q) {
           return '<li>#' + q.numero + ' ' + esc(q.titulo) + (q.minha ? ' <small>(sua)</small>' : '') +
-            '<span class="gv-acoes gv-e-bom">' + botaoAcao('projeto-comecar:' + p.id + ':' + q.numero) + '</span></li>';
+            '<span class="gv-acoes gv-e-bom">' + botaoAcao('projeto-comecar:' + p.id + ':' + q.numero) + '</span>' +
+            '<span class="gv-acoes gv-e-desligado">' + botaoAcao('projeto-dispensar:' + p.id + ':' + q.numero) + '</span></li>';
+        }).join('') + '</ul>';
+      }
+      // dispensada nao volta sozinha; a worktree do Orca fica, e o Reativar digita o prompt nela de novo
+      if (p.dispensados && p.dispensados.length) {
+        h += '<p class="gv-nota">Dispensados (não voltam sozinhos):</p><ul class="gv-linhas gv-livres">' + p.dispensados.map(function (q) {
+          return '<li>#' + q.numero + ' ' + esc(q.titulo) + (q.worktree ? ' <small>(a worktree continua no Orca)</small>' : '') +
+            '<span class="gv-acoes gv-e-bom">' + botaoAcao('projeto-reativar:' + p.id + ':' + q.numero) + '</span></li>';
         }).join('') + '</ul>';
       }
       h += '</div>';
@@ -551,8 +562,8 @@
     if (!servidor.token || !servidor.vivo) return;
     var st = acoes[acao];
     if (st && (st.estado === 'enviando' || st.estado === 'rodando')) return;
-    // desligar pede o segundo clique: o primeiro arma o botao por 6 s
-    if (/^desligar:/.test(acao) && !armado[acao]) {
+    // desligar e dispensar pedem o segundo clique: o primeiro arma o botao por 6 s
+    if (/^(desligar|projeto-dispensar):/.test(acao) && !armado[acao]) {
       armado[acao] = true;
       repintarBotoes(acao);
       setTimeout(function () { if (armado[acao]) { delete armado[acao]; repintarBotoes(acao); } }, 6000);
