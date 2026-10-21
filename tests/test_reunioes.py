@@ -59,6 +59,14 @@ def _rodar(cfg, estado):
                                            estado.iniciar_execucao("resumir_reunioes")))
 
 
+def test_checar_conta_as_reunioes_e_mede_o_tempo(cfg):
+    _baixar(cfg, "meet-a.md", "x")
+    _baixar(cfg, "meet-a (1).md", "x maior")
+    reunioes.trazer(cfg)
+    c = reunioes.checar(cfg)
+    assert c.detalhe.startswith("1 reuniões em") and c.ms is not None
+
+
 def test_configurado_pede_a_pasta():
     assert "reunioes.pasta" in reunioes.configurado(Config(dados={}, segredos={}))
 
