@@ -30,7 +30,7 @@
   };
   var LETRA = {b: 'bom', a: 'atencao', r: 'ruim', d: 'dele', q: 'duvida', o: 'desligado', c: 'construcao'};
   var GL = {'-': -1, o: 0, c: 0, b: 1, d: 2, a: 3, q: 4, r: 5};
-  var PASSO = {desligada: 'pausada no Agendador', rodando: 'rodando agora', propria: 'fez esta leitura', perdeu: 'perdeu a hora',
+  var PASSO = {desligada: 'pausada no Agendador', pausada: 'resumos pausados', rodando: 'rodando agora', propria: 'fez esta leitura', perdeu: 'perdeu a hora',
                nunca: 'ainda não rodou', gatilho: 'gatilho que o mapa não lê', sumiu: 'não está no Agendador'};
   var NO_CODIGO = {bom: 'em dia', atencao: 'rodou com ressalva', ruim: 'falhou', dele: 'parou esperando você',
                    duvida: 'saída que o mapa não conhece'};
@@ -177,7 +177,8 @@
     function f(t, v) { if (v) h += '<dt>' + esc(t) + '</dt><dd>' + v + '</dd>'; }
     if (x.tipo === 'rotina') {
       f('Última rodada', x.rodando ? 'rodando agora' : esc(longo(x.ultima)));
-      if (x.ligada === false) f('Próxima', 'não roda: está desligada');
+      if (x.passo === 'pausada') f('Próxima', 'não roda: ' + esc(x.frase));
+      else if (x.ligada === false) f('Próxima', 'não roda: está desligada');
       else if (x.proxima) f('Próxima', esc(longo(x.proxima)) + ' · <span data-gv-ate="' + esc(x.proxima) + '">' + esc(falta(data(x.proxima).getTime() - Date.now())) + '</span>');
       if (x.repete_min) f('Repete', 'a cada ' + (x.repete_min >= 60 ? String(x.repete_min / 60).replace('.', ',') + ' h' : x.repete_min + ' min'));
       if (x.resultado != null && x.ultima) {
@@ -196,6 +197,7 @@
     var f = x.ficha || {};
     if (x.passo === 'propria') return 'É a própria leitura do mapa: se esta tela está em dia, ela rodou.';
     if (x.passo === 'desligada') return 'Está desligada no Agendador: não há rodada para julgar.';
+    if (x.passo === 'pausada') return 'Os resumos estão pausados: não há rodada para julgar.';
     if (x.rodando && f.janela == null) return 'Fica no ar: enquanto o Agendador diz que está rodando, está de pé.';
     if (!f.sonda) return 'Só pelo código de saída: a rotina terminou sem quebrar. O mapa não confere o que ela escreveu.';
     if (x.codigo_frase) return 'Pelo que a última rodada escreveu (log ou arquivo), além do código de saída.';
@@ -484,6 +486,8 @@
     if (p[0] === 'projeto-reativar') return 'Reativar';
     if (p[0] === 'projeto-ligar') return 'Ativar';
     if (p[0] === 'projeto-desligar') return 'Desativar';
+    if (p[0] === 'pausar') return 'Pausar até ' + diaMes(p[1]);
+    if (a === 'retomar') return 'Retomar agora';
     if (p[0] === 'motor') return 'Usar o ' + (p[1] === 'copilot' ? 'Copilot' : 'Claude') + ' como principal';
     if (p[0] === 'ligar') return 'Ligar esta rotina';
     if (p[0] === 'desligar') return armado[a] ? 'Confirmar: desligar' : 'Desligar esta rotina';
@@ -589,8 +593,27 @@
     return secao('Uso da IA', h + '</div>');
   }
   // A chave da rotina (13/10/2026): ligar e desligar no Agendador, com a decisao anotada pelo servidor
+  // Pausa dos resumos (folga, feriado, férias): vale para o briefing, os fechamentos e o resumo das mensagens juntos
+  function diaMes(iso) { var d = new Date(iso + 'T12:00:00'); return pad(d.getDate()) + '/' + pad(d.getMonth() + 1); }
+  function somaDias(iso, n) { var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function pausa(x) {
+    var p = x.pausa, h;
+    if (!p) return '';
+    if (p.ate) {
+      h = '<p class="gv-oque">Pausados até <b>' + esc(diaMes(p.ate)) + '</b>: o briefing, os fechamentos do dia e da semana e o resumo das mensagens ' +
+        'voltam no dia ' + esc(diaMes(somaDias(p.ate, 1))) + '. As coletas continuam.</p><div class="gv-acoes gv-e-bom">' + botaoAcao('retomar') + '</div>';
+    } else {
+      var amanha = somaDias(p.hoje, 1);
+      h = '<p class="gv-oque">Folga, feriado ou férias: pause o briefing, os fechamentos do dia e da semana e o resumo das mensagens até uma data. ' +
+        'As coletas continuam, e na volta o briefing já tem tudo.</p><div class="gv-acoes gv-e-desligado gv-pausa">' +
+        '<input type="date" data-gv-pausa min="' + esc(p.hoje) + '" max="' + esc(somaDias(p.hoje, p.maximo_dias)) + '" value="' + esc(amanha) + '" aria-label="Último dia da pausa">' +
+        botaoAcao('pausar:' + amanha) + '</div>';
+    }
+    return secao('Pausa dos resumos', h);
+  }
   function chave(x) {
-    if (x.tipo !== 'rotina' || !x.ficha || x.passo === 'sumiu') return '';
+    if (x.tipo !== 'rotina' || !x.ficha || x.passo === 'sumiu') return pausa(x);
+    if (x.passo === 'pausada') return pausa(x);
     var f = x.ficha, h;
     if (x.ligada === false) {
       h = '<p class="gv-oque">Desligada no Agendador: não roda até você ligar.</p><div class="gv-acoes gv-e-bom">' + botaoAcao('ligar:' + x.id) + '</div>';
@@ -600,7 +623,7 @@
       h = '<p class="gv-oque">Ligada: roda na hora dela.</p><div class="gv-acoes gv-e-desligado">' + botaoAcao('desligar:' + x.id) + '</div>' +
         '<p class="gv-nota">Desligar não interrompe a rodada em andamento e fica anotado como decisão sua, com a data. Volta com um clique.</p>';
     }
-    return secao('Chave', h);
+    return secao('Chave', h) + pausa(x);
   }
   function botaoAcao(acao) {
     var st = acoes[acao], pronto = !!(servidor.token && servidor.vivo);
@@ -658,7 +681,7 @@
       if (aberto) desenhar();
     }
     // a chave mudou no Agendador: uma leitura agora, para a tela nao esperar os 5 min
-    if (estado === 'ok' && /^(ligar|desligar):/.test(acao)) agir('medir-agora');
+    if (estado === 'ok' && /^(ligar|desligar|pausar):|^retomar$/.test(acao)) agir('medir-agora');
     if (opts.aoAgir) { try { opts.aoAgir(acao, estado); } catch (e) { /* a pagina que se vire */ } }
     setTimeout(function () { if (acoes[acao] && acoes[acao].texto === texto) marcarAcao(acao, null); }, 20000);
   }
@@ -714,6 +737,13 @@
       if ((b = t.closest('[data-gv-prompt]'))) { verPrompt(b); return; }
       if ((b = t.closest('[data-gv-acao]'))) { if (!b.disabled) agir(b.getAttribute('data-gv-acao')); return; }
       if ((b = t.closest('[data-gv-abrir]'))) abrir(b.getAttribute('data-gv-abrir'));
+    });
+    // a data da pausa vai dentro do nome da ação: trocar a data troca o botão
+    raiz.addEventListener('change', function (ev) {
+      var i = ev.target;
+      if (!i || !i.matches || !i.matches('[data-gv-pausa]') || !/^\d{4}-\d{2}-\d{2}$/.test(i.value)) return;
+      var b = i.parentNode.querySelector('[data-gv-acao]');
+      if (b) b.outerHTML = botaoAcao('pausar:' + i.value);
     });
     raiz.addEventListener('keydown', function (ev) {
       var b = ev.target && ev.target.closest ? ev.target.closest('li[data-gv-abrir]') : null;
@@ -957,6 +987,8 @@
     '.gv-esp .gv-acao { margin: 10px 0 0 16px; }',
     '.gv-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }',
     '.gv-sec .gv-acoes { margin-top: 10px; }',
+    '.gv-pausa { align-items: center; }',
+    '.gv-pausa input { padding: 5px 8px; border-radius: 6px; border: 1px solid var(--gv-linha2); background: transparent; color: inherit; font: inherit; color-scheme: dark; }',
     '.gv-acao { padding: 6px 13px; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--gv-c) 48%, var(--gv-linha2)); background: color-mix(in srgb, var(--gv-c) 13%, transparent);',
     '  color: var(--gv-texto); cursor: pointer; font: 600 12px/1.3 var(--gv-font); transition: background-color .15s; }',
     '.gv-acao:hover:not([disabled]) { background: color-mix(in srgb, var(--gv-c) 26%, transparent); }',
