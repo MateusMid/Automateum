@@ -1,4 +1,6 @@
-# ⚡ Automateum
+<p align="center"><img src="docs/imagens/logo.png" alt="Logo do Automateum" width="200"></p>
+
+# Automateum
 
 O **Automateum** é um assistente de produtividade e automação pessoal que centraliza notificações, pendências e
 comunicações (Slack, Gmail, GitHub e notas do Obsidian) e gera resumos inteligentes com IA (Claude) direto na sua
@@ -6,6 +8,8 @@ rotina diária.
 
 Com uma interface web/painel local construído em FastAPI e agendamento de tarefas via APScheduler, o Automateum
 organiza seu dia e mantém seu cofre do Obsidian atualizado com suas tarefas e resumos diários.
+
+![O mapa do painel, na organização Em cascata, com a gaveta de uma rotina aberta](docs/imagens/painel.png)
 
 ---
 

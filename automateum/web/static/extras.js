@@ -42,18 +42,23 @@
   }
 
   // ------------------------------------------------------- título e ícone vivos --
+  // A logo com uma bolinha na cor do pior estado no canto; com problemas, a bolinha cresce e diz quantos.
+  var logo = new Image();
+  logo.src = '/static/icone-64.png';
   function icone(r) {
+    if (!logo.complete) { logo.onload = logo.onerror = function () { icone(r); }; return; }
     var c = document.createElement('canvas'), x;
     c.width = c.height = 64;
     x = c.getContext('2d');
     if (!x) return;
-    x.fillStyle = '#151514'; x.beginPath();
-    if (x.roundRect) x.roundRect(0, 0, 64, 64, 14); else x.rect(0, 0, 64, 64);
-    x.fill();
-    x.fillStyle = cor(r.pior); x.beginPath(); x.arc(32, 32, 22, 0, Math.PI * 2); x.fill();
+    if (logo.naturalWidth) x.drawImage(logo, 0, 0, 64, 64);
+    else { x.fillStyle = '#151514'; x.fillRect(0, 0, 64, 64); }
+    var raio = r.n > 0 ? 16 : 10, centro = 63 - raio;
+    x.fillStyle = '#151514'; x.beginPath(); x.arc(centro, centro, raio + 3, 0, Math.PI * 2); x.fill();
+    x.fillStyle = cor(r.pior); x.beginPath(); x.arc(centro, centro, raio, 0, Math.PI * 2); x.fill();
     if (r.n > 0) {
-      x.fillStyle = '#0c0c0b'; x.font = '700 28px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
-      x.fillText(r.n > 9 ? '9+' : String(r.n), 32, 34);
+      x.fillStyle = '#0c0c0b'; x.font = '700 20px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillText(r.n > 9 ? '9+' : String(r.n), centro, centro + 1);
     }
     var l = $('link[rel="icon"]');
     if (!l) { l = document.createElement('link'); l.rel = 'icon'; document.head.appendChild(l); }
