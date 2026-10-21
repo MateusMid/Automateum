@@ -35,6 +35,8 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 - **Config (opcional):** `[ia] motor = "copilot"` define o inicial; `[copilot] modelo = "..."` e `timeout_segundos` ajustam a CLI.
 - **Copilot:** precisa da CLI instalada e logada (`copilot`, com o login feito uma vez no terminal). O Automateum não libera nenhuma ferramenta para ele: só manda o texto e lê a resposta.
 - **Privacidade:** o texto vai para o motor que responder. Com o Copilot, vai para o GitHub/Microsoft.
+- **Uso:** cada pergunta fica registrada no banco local, só com os números: rotina, motor, tempo de resposta, se respondeu e se foi pela reserva (o texto da pergunta e da resposta não é guardado; o registro some depois de 30 dias). A gaveta do **Claude** mostra, na seção **Uso da IA**, as respostas de cada dia nos últimos 14 dias (do principal, da reserva e as falhas) e o tempo médio de cada motor.
+- **Aviso:** quando a reserva responde 3 vezes seguidas, a rotina deixa um aviso para você olhar o principal. O número muda em `[ia] aviso_reserva_seguidas`.
 
 ## Sistema
 
