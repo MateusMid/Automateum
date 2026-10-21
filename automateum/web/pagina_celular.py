@@ -46,8 +46,7 @@ details code { display:block; margin:6px 0 0; font:12.5px ui-monospace,Consolas,
 @media (max-width:480px) { body { padding-top:20px; } .cartao { padding:16px; } }
 """
 
-_ICONE = ("<link rel=icon href=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' "
-          "height='64' rx='14' fill='%23151514'/%3E%3Ccircle cx='32' cy='32' r='22' fill='%2374b08f'/%3E%3C/svg%3E\">")
+_ICONE = "<link rel=icon type=image/png href=/static/icone-64.png>"
 
 _JS = """
 document.querySelectorAll('[data-copiar]').forEach(function (b) {

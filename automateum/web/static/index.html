@@ -4,7 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Automateum</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23151514'/%3E%3Ccircle cx='32' cy='32' r='22' fill='%2374b08f'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="/static/icone-64.png">
+<link rel="apple-touch-icon" href="/static/icone-180.png">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#252a30">
 <!--
   O mapa vivo como editor de fluxo: as camadas ficam em colunas na vertical, da causa ao sintoma,
   e o mapa corre largo na horizontal. Cada fio e uma dependencia que esta no dados/estado.js:
@@ -40,7 +43,8 @@ body {
 button { font: inherit; color: inherit; }
 
 .topo { display: flex; align-items: center; gap: 18px; padding: 10px 20px; border-bottom: 1px solid var(--linha); min-width: 0; }
-.marca { flex: none; }
+.marca { flex: none; display: flex; align-items: center; gap: 10px; }
+.marca img { width: 30px; height: 30px; flex: none; }
 .marca b { display: block; font: 600 15px/1.15 var(--font); letter-spacing: -.005em; }
 .marca small { display: block; margin-top: 4px; font: 500 9.5px/1 var(--fontT); letter-spacing: var(--esp); text-transform: uppercase; color: var(--mudo); }
 .abas, .demos, .ritmo { display: flex; gap: 2px; padding: 3px; min-width: 0; background: var(--painel); border: 1px solid var(--linha); border-radius: var(--raio); }
@@ -229,7 +233,7 @@ button.pil:hover { border-color: var(--c); }
 </head>
 <body>
 <header class="topo">
-  <div class="marca"><b>Automateum</b><small>seis estilos, seis organizações</small></div>
+  <div class="marca"><img src="/static/icone-64.png" alt=""><span><b>Automateum</b><small>seis estilos, seis organizações</small></span></div>
   <nav class="abas" id="abas" role="tablist" aria-label="Estilos"></nav>
   <div class="ritmo" id="ritmo" role="group" aria-label="Ritmo dos impulsos"><span class="rk">impulsos</span></div>
   <span class="vivo" id="vivo"><i></i>dados de agora</span>
