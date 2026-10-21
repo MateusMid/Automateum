@@ -255,10 +255,10 @@ def criar_app(config: Config) -> FastAPI:
 
     @app.get("/api/hoje")
     def ver_hoje():
-        """Os últimos textos gerados (briefing, resumo de mensagens, fechamento) para a faixa "Hoje" do mapa."""
+        """Os últimos textos gerados (briefing, resumo de mensagens, fechamentos) para a faixa "Hoje" do mapa."""
         textos = []
         for rid, titulo in (("meu_dia", "Briefing do dia"), ("resumo_mensagens", "Resumo das mensagens"),
-                            ("dia_fechado", "Fechamento do dia")):
+                            ("dia_fechado", "Fechamento do dia"), ("semana_fechada", "Fechamento da semana")):
             if ultimo := saidas.ultimo_texto(estado, rid):
                 textos.append({"id": rid, "titulo": titulo, "quando": ultimo["quando"],
                                "conteudo": ultimo["conteudo"], "nota": saidas.nota(config, rid)})

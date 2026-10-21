@@ -2,7 +2,7 @@ from datetime import date
 
 from ..nucleo.registro import rotina
 from ..servicos import git_local, ia, maquina, obsidian
-from ._texto import listar, secao, sem_blocos
+from ._texto import formatar_git, listar, secao, sem_blocos
 
 _PEDIDO = (
     "Escreva o fechamento do meu dia com três partes curtas, cada uma com um título em negrito: "
@@ -13,23 +13,6 @@ _PEDIDO = (
 )
 
 
-def _formatar_git(auditoria: list[dict]) -> str:
-    linhas = []
-    for r in auditoria:
-        nome = r["projeto"]
-        detalhes = []
-        if r["commits"]:
-            detalhes.append(f"{len(r['commits'])} commit(s) seu(s): " + "; ".join(r["commits"][:5]))
-        if r["sem_subir"]:
-            detalhes.append(f"{len(r['sem_subir'])} commit(s) sem subir (push)")
-        if r["sujo"]:
-            detalhes.append(f"{len(r['sujo'])} arquivo(s) modificado(s) sem commit")
-        if r.get("sem_upstream"):
-            detalhes.append(f"branch '{r['branch']}' local sem upstream remoto")
-        if detalhes:
-            linhas.append(f"- **{nome}** ({r['branch']}): " + " | ".join(detalhes))
-    return "\n".join(linhas) if linhas else "Nenhum commit ou alteração pendente hoje."
-
 
 @rotina(id="dia_fechado", nome="dia fechado", frente="Notas", quando="cron: 0 19 * * mon-fri",
         usa=["obsidian", "claude", "git_local"], entrega=["diario"])
@@ -38,7 +21,7 @@ def rodar(ctx):
     cfg, hoje = ctx.config, date.today().isoformat()
     pasta_diario = cfg.secao("obsidian").get("pasta_diario", "Diário")
     pasta_propria = cfg.secao("obsidian").get("pasta_automateum", "Automateum")
-    git_info = _formatar_git(git_local.auditar_dia(cfg, dias=0))
+    git_info = formatar_git(git_local.auditar_dia(cfg, dias=0))
     material = [
         secao("O que eu anotei hoje no diário", sem_blocos(obsidian.ler_nota(cfg, f"{pasta_diario}/{hoje}.md"))),
         secao("Resumos de mensagens de hoje", obsidian.ler_nota(cfg, f"{pasta_propria}/Mensagens/{hoje}.md")),
