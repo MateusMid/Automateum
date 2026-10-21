@@ -4,7 +4,16 @@
 [obsidian]
 # Caminho absoluto para a pasta do seu cofre do Obsidian.
 cofre = 'C:\Users\seu_usuario\Documents\SeuCofre'
-# pastas_contexto = ["Meets"]
+# pastas_contexto = ["Meets", "Automateum/Saídas/Reuniões"]   # a última: os resumos das reuniões
+
+# Transcrições do Gutenberg: a pasta fixa para onde elas vão, saindo de Downloads\Gutenberg.
+# [reunioes]
+# pasta = 'C:\Transcricoes'
+# [reunioes.grupos.cliente]       # reunião só com gente daqui (ou que cita as palavras) vai também para Cliente/Meets/DD-MM.md
+# pasta = "Cliente/Meets"
+# pessoas = ["Fulano", "Beltrana"]
+# palavras = ["Cliente", "PROJ"]
+# horas_fora = [9]                 # começou às 9h: nunca é deste cliente
 
 # Slack pelo navegador, no lugar do app com token. Precisa do coletor de Slack numa pasta fixa
 # (a que tem o colher.ps1 e o logar.ps1), de Node, de Python e do Chrome. Rode o logar.ps1 uma vez.

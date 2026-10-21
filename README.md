@@ -200,7 +200,7 @@ A documentação detalhada de escopo, arquitetura e rotinas está disponível na
 ## 🔒 O que as Rotinas Podem Escrever
 
 No cofre, só em `Automateum/Saídas/` e em blocos `%% automateum:<nome>:inicio %%` … `%% automateum:<nome>:fim %%`
-na nota do diário do dia. O que estiver fora do bloco nunca é alterado.
+na nota do diário do dia e, para as reuniões de um cliente configurado, na nota do dia da pasta dele. O que estiver fora do bloco nunca é alterado.
 
 Slack, Gmail e GitHub são só leitura.
 
