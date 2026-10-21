@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 
@@ -148,6 +148,23 @@ def test_execucao_registra_resultado_e_avisa_so_na_virada(config, tmp_path):
         assert len(e.avisos()) == 1     # duas falhas seguidas, um aviso só
     finally:
         del ROTINAS["_teste"]
+
+
+def test_rodadas_por_dia_conta_cada_estado_e_preenche_os_dias_vazios(tmp_path):
+    estado = Estado(tmp_path / "e.db")
+    hoje = date.today()
+    for dias_atras, status in [(0, "ok"), (0, "ok"), (0, "falha"), (2, "atencao"), (20, "ok")]:
+        quando = (hoje - timedelta(days=dias_atras)).isoformat() + "T10:00:00"
+        estado._exec("INSERT INTO execucoes (rotina, inicio, status) VALUES (?,?,?)", ("r", quando, status))
+    estado.iniciar_execucao("r")                                   # ainda rodando: não conta
+    estado.iniciar_execucao("outra")
+
+    dias = estado.rodadas_por_dia("r", dias=7)
+
+    assert len(dias) == 7 and dias[-1]["dia"] == hoje.isoformat()
+    assert dias[-1] == {"dia": hoje.isoformat(), "ok": 2, "atencao": 0, "falha": 1}
+    assert dias[-3]["atencao"] == 1
+    assert sum(d["ok"] + d["atencao"] + d["falha"] for d in dias) == 4   # a de 20 dias atrás fica de fora
 
 
 def test_rotina_sem_credencial_nao_roda(config, tmp_path):

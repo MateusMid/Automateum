@@ -17,8 +17,8 @@ python -m automateum
 | Coluna | O que é | Exemplos |
 |---|---|---|
 | Máquina | O computador onde tudo roda | CPU, memória, disco, IP |
-| Serviços | De onde vêm e para onde vão os dados | Slack, Gmail, GitHub, Obsidian, Claude |
-| Frentes | Agrupamento das rotinas por assunto | Sistema, Mensagens, Tasks, Notas |
+| Serviços | De onde vêm e para onde vão os dados | Slack, Gmail, GitHub, Obsidian, Claude, Orca, git local |
+| Frentes | Agrupamento das rotinas por assunto | Sistema, Mensagens, Tasks, Notas, Projetos |
 | Rotinas | O trabalho em si | ver [Rotinas](Rotinas.md) |
 | Com você | Onde o resultado chega | Diário, notas do Automateum, avisos |
 
@@ -34,13 +34,18 @@ automateum/
     estado.py     armazenamento SQLite
     eventos.py    barramento SSE para avisar o painel em tempo real
     grafo.py      monta nós e arestas do mapa do painel
-  servicos/       clientes de integração (slack, gmail, github, obsidian, claude, maquina)
+    mapa_leo.py   monta o estado do mapa que o painel desenha (estado.js)
+    projetos.py   projetos ativos, prompts prontos e issues aceitas
+    saidas.py     notas de resultado e histórico de cada rotina no cofre
+    log.py        log em arquivo (dados/automateum.log) e checagem da porta
+  servicos/       clientes de integração (slack, slack_navegador, gmail, github, git_local, obsidian,
+                  claude, copilot, ia, orca, maquina)
   rotinas/        implementação de cada rotina
-  web/            API FastAPI e estáticos do painel (HTML, CSS, JS)
+  web/            API FastAPI, acesso do celular e estáticos do painel (HTML, CSS, JS)
 config.toml       horários, canais e preferências padrão
 config.local.toml sobreposições locais da máquina (fora do git)
 .env              tokens e credenciais (fora do git)
-dados/            banco SQLite e token do Gmail (fora do git)
+dados/            banco SQLite e tokens do Gmail, um por conta em dados/gmail/ (fora do git)
 ```
 
 ## Como nasce uma rotina

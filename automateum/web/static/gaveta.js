@@ -40,7 +40,7 @@
   var M = null, I = null, aberto = null, raiz = null, opts = {}, rolagem = 0;
   var servidor = {token: null, porta: 8765, vivo: false, visto: false};
   var acoes = {};
-  var armado = {};      // desligar:<id> esperando o segundo clique
+  var armado = {};      // desligar:<id> e projeto-dispensar:<id>:<n> esperando o segundo clique
 
   // ------------------------------------------------------------- apoio --
   function esc(t) {
@@ -270,6 +270,30 @@
   var ESTADO_DA_RODADA = {ok: 'bom', falha: 'ruim', atencao: 'atencao', rodando: 'duvida'};
   // Só o que os textos gerados usam: **negrito** e quebra de linha, sobre texto já escapado.
   function mdSimples(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>'); }
+  // Uma coluna por dia, da altura do número de rodadas: as falhas em cima, as com atenção no meio, as boas embaixo.
+  var DIA_SEM = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  function diaCurto(iso) { var d = new Date(iso + 'T12:00:00'); return DIA_SEM[d.getDay()] + ' ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1); }
+  function historicoDias(dd) {
+    if (!dd || !dd.length) return '';
+    var maior = 1, tot = {ok: 0, atencao: 0, falha: 0};
+    dd.forEach(function (d) {
+      maior = Math.max(maior, d.ok + d.atencao + d.falha);
+      tot.ok += d.ok; tot.atencao += d.atencao; tot.falha += d.falha;
+    });
+    var n = tot.ok + tot.atencao + tot.falha;
+    var h = '<div class="gv-hist"><small>Últimos ' + dd.length + ' dias</small>';
+    if (!n) return h + '<p class="gv-nota">Nenhuma rodada nesse período.</p></div>';
+    h += '<div class="gv-dias">' + dd.map(function (d) {
+      var t = d.ok + d.atencao + d.falha;
+      var dica = diaCurto(d.dia) + ': ' + (t ? plural(t, 'rodada', 'rodadas') + (d.falha ? ', ' + plural(d.falha, 'falha', 'falhas') : '') +
+        (d.atencao ? ', ' + d.atencao + ' com atenção' : '') : 'nenhuma rodada');
+      return '<span title="' + esc(dica) + '">' + [['ruim', d.falha], ['atencao', d.atencao], ['bom', d.ok]].filter(function (s) { return s[1]; }).map(function (s) {
+        return '<b class="gv-e-' + s[0] + '" style="height:' + (s[1] / maior * 100).toFixed(1) + '%"></b>';
+      }).join('') + '</span>';
+    }).join('') + '</div><div class="gv-bat-eixo"><span>' + esc(diaCurto(dd[0].dia)) + '</span><span>hoje</span></div>';
+    return h + '<p class="gv-nota">' + plural(n, 'rodada', 'rodadas') + (tot.falha ? ' · ' + plural(tot.falha, 'falha', 'falhas') : ' · nenhuma falha') +
+      (tot.atencao ? ' · ' + tot.atencao + ' com atenção' : '') + '</p></div>';
+  }
   function htmlResultado(d) {
     var ex = (d.execucoes || [])[0], h = '', itens = d.itens || [];
     var texto = d.texto && d.texto.conteudo
@@ -287,6 +311,7 @@
     } else {
       h += '<p class="gv-nota">Ainda não há resultado guardado desta rotina.</p>' + texto;
     }
+    h += historicoDias(d.historico);
     if (itens.length) {
       h += '<ul class="gv-itens">' + itens.slice(0, 12).map(function (i) {
         var t = esc((i.titulo || '').slice(0, 160));
@@ -295,6 +320,13 @@
         return '<li>' + link + (det ? '<small>' + esc(det) + '</small>' : '') + '</li>';
       }).join('') + '</ul>';
       if (itens.length > 12) h += '<p class="gv-nota">e mais ' + (itens.length - 12) + ' itens guardados.</p>';
+    }
+    var velhas = d.envelhecidas;
+    if (velhas && velhas.lista.length) {
+      h += '<div class="gv-velhas"><small>Abertas há mais de ' + velhas.dias + ' dias (' + velhas.lista.length + ')</small><ul class="gv-itens">' +
+        velhas.lista.slice(0, 8).map(function (i) {
+          return '<li>' + esc((i.titulo || '').slice(0, 160)) + '<small>' + esc(i.origem) + ' · há ' + i.dias + ' dias</small></li>';
+        }).join('') + '</ul>' + (velhas.lista.length > 8 ? '<p class="gv-nota">e mais ' + (velhas.lista.length - 8) + '.</p>' : '') + '</div>';
     }
     if (d.nota && /^obsidian:\/\/open\?/.test(d.nota.obsidian || '')) {
       // com o servidor dos botões no ar ele abre a nota no computador (o navegador do Orca bloqueia obsidian://)
@@ -447,6 +479,8 @@
     if (p[0] === 'revisao-todos-desligar') return 'Desligar';
     if (p[0] === 'projeto-comecar') return 'Começar';
     if (p[0] === 'projeto-refazer' || p[0] === 'revisao-refazer') return 'Digitar de novo';
+    if (p[0] === 'projeto-dispensar') return armado[a] ? 'Confirmar: dispensar' : 'Dispensar';
+    if (p[0] === 'projeto-reativar') return 'Reativar';
     if (p[0] === 'projeto-ligar') return 'Ativar';
     if (p[0] === 'projeto-desligar') return 'Desativar';
     if (p[0] === 'motor') return 'Usar o ' + (p[1] === 'copilot' ? 'Copilot' : 'Claude') + ' como principal';
@@ -469,7 +503,8 @@
         h += '<ul class="gv-linhas">' + p.prontos.map(function (q) {
           return '<li class="gv-pronto">#' + q.numero + ' ' + esc(q.titulo) + (q.digitado ? '' : ' (abra o Claude Code e digite o prompt à mão)') +
             ' <button type="button" class="gv-ver" data-gv-prompt="' + esc(p.id + '/' + q.numero) + '">Ver prompt</button>' +
-            '<span class="gv-acoes gv-e-bom">' + botaoAcao('projeto-refazer:' + p.id + ':' + q.numero) + '</span><pre class="gv-prompt" hidden></pre></li>';
+            '<span class="gv-acoes gv-e-bom">' + botaoAcao('projeto-refazer:' + p.id + ':' + q.numero) + '</span>' +
+            '<span class="gv-acoes gv-e-desligado">' + botaoAcao('projeto-dispensar:' + p.id + ':' + q.numero) + '</span><pre class="gv-prompt" hidden></pre></li>';
         }).join('') + '</ul>';
       }
       h += '<div class="gv-sw"><span>Procurar <b>todos</b> os PRs abertos para revisar, inclusive os seus: <b>' + (p.revisar_todos ? 'ligado' : 'desligado') +
@@ -485,7 +520,15 @@
       if (p.ativo && p.disponiveis && p.disponiveis.length) {
         h += '<p class="gv-nota">Abertas, ainda sem prompt:</p><ul class="gv-linhas gv-livres">' + p.disponiveis.map(function (q) {
           return '<li>#' + q.numero + ' ' + esc(q.titulo) + (q.minha ? ' <small>(sua)</small>' : '') +
-            '<span class="gv-acoes gv-e-bom">' + botaoAcao('projeto-comecar:' + p.id + ':' + q.numero) + '</span></li>';
+            '<span class="gv-acoes gv-e-bom">' + botaoAcao('projeto-comecar:' + p.id + ':' + q.numero) + '</span>' +
+            '<span class="gv-acoes gv-e-desligado">' + botaoAcao('projeto-dispensar:' + p.id + ':' + q.numero) + '</span></li>';
+        }).join('') + '</ul>';
+      }
+      // dispensada nao volta sozinha; a worktree do Orca fica, e o Reativar digita o prompt nela de novo
+      if (p.dispensados && p.dispensados.length) {
+        h += '<p class="gv-nota">Dispensados (não voltam sozinhos):</p><ul class="gv-linhas gv-livres">' + p.dispensados.map(function (q) {
+          return '<li>#' + q.numero + ' ' + esc(q.titulo) + (q.worktree ? ' <small>(a worktree continua no Orca)</small>' : '') +
+            '<span class="gv-acoes gv-e-bom">' + botaoAcao('projeto-reativar:' + p.id + ':' + q.numero) + '</span></li>';
         }).join('') + '</ul>';
       }
       h += '</div>';
@@ -551,8 +594,8 @@
     if (!servidor.token || !servidor.vivo) return;
     var st = acoes[acao];
     if (st && (st.estado === 'enviando' || st.estado === 'rodando')) return;
-    // desligar pede o segundo clique: o primeiro arma o botao por 6 s
-    if (/^desligar:/.test(acao) && !armado[acao]) {
+    // desligar e dispensar pedem o segundo clique: o primeiro arma o botao por 6 s
+    if (/^(desligar|projeto-dispensar):/.test(acao) && !armado[acao]) {
       armado[acao] = true;
       repintarBotoes(acao);
       setTimeout(function () { if (armado[acao]) { delete armado[acao]; repintarBotoes(acao); } }, 6000);
@@ -865,8 +908,15 @@
     '.gv-bat b.gv-e-bom { background: color-mix(in srgb, var(--gv-c) 46%, var(--gv-vazio)); }',
     '.gv-bat b.gv-e-desligado, .gv-bat b.gv-e-construcao { background: color-mix(in srgb, var(--gv-mudo) 40%, var(--gv-vazio)); }',
     '.gv-bat b.gv-nada { background: var(--gv-vazio); }',
+    '.gv-hist { margin-top: 12px; } .gv-hist > small { color: var(--gv-mudo); font-size: 11px; }',
+    '.gv-dias { display: flex; gap: 2px; height: 40px; margin-top: 6px; }',
+    '.gv-dias span { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; background: var(--gv-vazio); border-radius: 1px; overflow: hidden; }',
+    '.gv-dias b { display: block; min-height: 2px; background: var(--gv-c); }',
+    '.gv-dias b.gv-e-bom { background: color-mix(in srgb, var(--gv-c) 46%, var(--gv-vazio)); }',
     '.gv-bat-eixo { display: flex; justify-content: space-between; color: var(--gv-mudo); font-size: 10.5px; margin-top: 5px; font-variant-numeric: tabular-nums; }',
     '.gv-oque { margin: 0; color: var(--gv-texto2); line-height: 1.55; }',
+    '.gv-velhas { margin-top: 12px; } .gv-velhas > small { color: var(--gv-mudo); font-size: 11px; }',
+    '.gv-velhas li { border-left: 2px solid var(--atencao, #d9a440); padding-left: 8px; }',
     '.gv-nota { margin: 6px 0 0; color: var(--gv-mudo); font-size: 11.5px; line-height: 1.45; }',
     '.gv-passos { margin: 0; padding-left: 18px; color: var(--gv-texto2); font-size: 12.5px; line-height: 1.5; } .gv-passos li + li { margin-top: 5px; }',
     '.gv-esp { padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--gv-c) 34%, var(--gv-linha)); border-radius: 8px; background: color-mix(in srgb, var(--gv-c) 7%, transparent); }',

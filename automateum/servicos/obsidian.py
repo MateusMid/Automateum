@@ -1,7 +1,7 @@
 """Leitura e escrita no cofre do Obsidian.
 
-A escrita é restrita a dois lugares: a pasta própria do Automateum e blocos delimitados
-dentro das notas do diário. O que estiver fora do bloco nunca é alterado.
+A escrita é restrita à pasta própria do Automateum e a blocos delimitados dentro das notas do diário e das
+notas do dia das pastas de reunião configuradas (`[reunioes.grupos]`). O que estiver fora do bloco nunca é alterado.
 """
 from __future__ import annotations
 
@@ -116,14 +116,19 @@ def com_bloco(original: str, nome: str, conteudo: str) -> str:
     return original + separador + bloco + quebra
 
 
-def escrever_bloco_diario(config: Config, nome: str, conteudo: str, dia: date | None = None) -> Path:
-    """Cria ou atualiza o bloco `nome` na nota do diário de `dia` (hoje, se omitido)."""
-    pasta = config.cofre / _secao(config).get("pasta_diario", "Diário")
-    caminho = _dentro(config.cofre, pasta / f"{(dia or date.today()).isoformat()}.md")
+def escrever_bloco(config: Config, relativo: str, nome: str, conteudo: str) -> Path:
+    """Cria ou atualiza o bloco `nome` na nota `relativo` do cofre (que é criada, se não existir)."""
+    caminho = _dentro(config.cofre, config.cofre / relativo)
     # newline="" preserva as quebras de linha originais na leitura.
     original = caminho.open(encoding="utf-8", newline="").read() if caminho.exists() else ""
     _gravar(caminho, com_bloco(original, nome, conteudo).encode("utf-8"))
     return caminho
+
+
+def escrever_bloco_diario(config: Config, nome: str, conteudo: str, dia: date | None = None) -> Path:
+    """Cria ou atualiza o bloco `nome` na nota do diário de `dia` (hoje, se omitido)."""
+    pasta = _secao(config).get("pasta_diario", "Diário")
+    return escrever_bloco(config, f"{pasta}/{(dia or date.today()).isoformat()}.md", nome, conteudo)
 
 
 def escrever_proprio(config: Config, relativo: str, conteudo: str, acrescentar: bool = False) -> Path:

@@ -19,6 +19,7 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 - **As outras issues:** as que não são suas ficam listadas na gaveta ("Abertas, ainda sem prompt"). O botão **Começar** aceita a issue: a rotina roda na hora e prepara o prompt dela. Aceitas não gastam as vagas de `max_pendentes`.
 - **Um cartão por projeto:** cada projeto aparece no mapa ligado à frente Projetos. A gaveta dele tem o botão Ativar/Desativar, as issues esperando e, em cada prompt pronto, o botão **Ver prompt**, que mostra o texto inteiro (o Claude Code esconde textos longos atrás de um cartão; `Ctrl+G` também abre no editor). O texto fica em `dados/prompts/` só neste computador e não é servido ao celular.
 - **Digitar de novo:** cada prompt pronto tem o botão **Digitar de novo**. Se você fechou o terminal, ele abre outro Claude Code na mesma worktree (sem criar outra) e digita o prompt de novo, ainda sem enviar.
+- **Dispensar:** cada prompt pronto e cada issue que espera o Começar tem o botão **Dispensar** (pede um segundo clique para confirmar). A issue sai da lista e libera a vaga, e as próximas rodadas não a trazem de volta. Ela fica em **Dispensados**, na mesma gaveta, com o botão **Reativar**: se o prompt já estava pronto, ele é digitado de novo na mesma worktree (ou numa nova, se você a removeu no Orca); senão, ela volta como se você tivesse clicado em Começar. A worktree não é removida pelo Automateum; para tirá-la, remova no Orca. Uma dispensada que é fechada no GitHub sai da lista sozinha.
 - **Revisão de PR:** a rotina `revisões de PR` (frente Projetos, 15 min) pega os PRs abertos do projeto ativo que **pedem a sua revisão**, busca o branch do PR (leitura, `git fetch`), cria uma worktree nele no Orca e deixa o prompt de revisão digitado, sem enviar. O prompt pede para ler o diff, apontar bugs, riscos e testes que faltam e propor correções **em texto**, sem alterar arquivo e sem comentar, aprovar ou pedir mudanças no GitHub. Aparecem na gaveta do projeto, com Ver prompt e Digitar de novo. Chaves do projeto: `revisar = false` desliga, `max_revisoes` (padrão 3), `modelo_revisao` (com `{numero}`, `{titulo}`, `{url}`, `{branch}`, `{base}`, `{corpo}`). PR vindo de fork é ignorado. **Chave "todos os PRs":** na gaveta do projeto, uma chave (Ligar/Desligar) faz a rotina procurar todo PR aberto, inclusive os seus (o GitHub não deixa pedir revisão ao próprio autor); desligada, só os que pedem a sua revisão. Também vale `revisar_quais = "todos"` no config como valor inicial.
 - **Ativar e desativar:** no mapa, clique na rotina **prompts das tasks**; a seção **Projetos** da gaveta tem um botão por projeto. Projetos nascem desativados.
 - **Config (`config.toml` ou `config.local.toml`):** `[projetos.<id>]` com `nome`, `github` (dono/repo, que também precisa estar no Orca), `rotulo` (opcional: só issues com essa etiqueta), `max_pendentes` (padrão 3: quantos prompts prontos ficam de uma vez; fechar a issue libera a vaga) e `modelo` (opcional, com `{numero}`, `{titulo}`, `{url}`, `{corpo}`). No máximo 2 worktrees novas por rodada (as aceitas com Começar: até 5).
@@ -53,8 +54,15 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 
 | Rotina | Quando | Depende de | O que faz |
 |---|---|---|---|
-| `tasks_obsidian` | a cada 30 min | Obsidian | Varre o cofre do Obsidian por checkboxes abertos (`- [ ]`) e armazena a lista com referência de nota e linha. |
+| `tasks_obsidian` | a cada 30 min | Obsidian | Varre o cofre do Obsidian por checkboxes abertos (`- [ ]`) e armazena a lista com referência de nota e linha, e desde quando cada task está aberta. Na primeira vez que vê uma task, conta a partir da última edição da nota (ela já existia ali); mudar a task de linha não zera a conta, e a que é feita ou apagada é esquecida. A gaveta mostra as abertas há mais de `dias_envelhecida` dias (`[obsidian]`, padrão 14), e o briefing recebe essa data para a parte **Envelhecendo**. |
 | `tasks_github` | a cada 30 min | GitHub | Busca issues e PRs atribuídos e PRs aguardando revisão. |
+
+## Projetos
+
+| Rotina | Quando | Depende de | O que faz |
+|---|---|---|---|
+| `preparar_prompts` (prompts das tasks) | a cada 15 min | GitHub, Orca | Deixa no Orca o prompt de cada issue aberta dos projetos ativos, digitado e nunca enviado. Ver [Projetos e prompts prontos no Orca](#projetos-e-prompts-prontos-no-orca). |
+| `preparar_revisoes` (revisões de PR) | a cada 15 min | GitHub, Orca | Faz o mesmo com os PRs que pedem a sua revisão (ou todos, com a chave ligada). |
 
 ## Notas
 
@@ -76,10 +84,19 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 - **Ficou aberto:** o que foi previsto mas não pôde ser concluído
 - **Amanhã:** primeiros passos recomendados para o dia seguinte
 
+## Reuniões
+
+| Rotina | Quando | Depende de | O que faz |
+|---|---|---|---|
+| `resumir_reunioes` | a cada 15 min | Reuniões (Gutenberg), Claude, Obsidian | Traz as transcrições que a extensão Gutenberg salva em `Downloads\Gutenberg\AAAA-MM\DD\` para a pasta fixa `[reunioes] pasta` (mesmas subpastas; um arquivo igual ao que já está lá só é apagado de Downloads). Resume cada reunião nova (até 3 por rodada) em `Automateum/Saídas/Reuniões/` e no bloco **Reuniões** do diário do dia da reunião: **Assunto**, **Decisões**, **Próximos passos** e **Em aberto**. Cópias da mesma reunião (`nome (1).md`) contam uma vez só, pela maior. Menos de 3 falas é teste e não vai para o Claude; arquivo mexido no último minuto espera a próxima rodada. |
+
+Uma reunião de cliente vai também para a nota do dia da pasta dele no cofre (`DD-MM.md`; se já existe uma sem o zero, como `5-10.md`, é ela), num bloco **Reuniões** que não mexe no que você escreveu na nota. O cliente vem de `[reunioes.grupos.<id>]` no `config.local.toml`, com `pasta`, `pessoas` e `palavras`. A reunião é dele quando todos que falaram, fora "Eu", estão em `pessoas` (o nome inteiro ou uma palavra dele, sem diferença de maiúsculas): alguém de fora indica outra reunião. Também é dele quando a transcrição cita os termos de `palavras` pelo menos `mencoes` vezes (padrão 2). Nunca é dele quando a primeira fala cai numa das `horas_fora` (ex.: `[9]`, a reunião das 9h).
+
+Para o briefing da manhã ler os resumos mais recentes, ponha `"Automateum/Saídas/Reuniões"` em `[obsidian] pastas_contexto`.
+
 ## Ideias e Próximos Passos
 
 - Acesso ao painel pelo celular fora do Wi-Fi (hoje só pela rede local; ver docs/Painel.md)
-- Preparação de pautas automatizadas para reuniões a partir de notas de reuniões recentes
-- Sinalização visual no cofre para tasks com mais de N dias sem movimentação
-- Resumo executivo semanal
+- Google Agenda no painel e no briefing (issue #23)
+- Pauta antes de cada reunião, a partir da agenda e das reuniões anteriores (issue #66)
 

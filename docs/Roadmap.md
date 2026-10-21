@@ -45,6 +45,21 @@ Planejamento de etapas e guia para configuração de cada serviço.
 ### Etapa 6 — Inicialização do Sistema
 - [x] Agendamento de inicialização automática no logon do Windows
 
+### Etapa 7 — Painel e celular
+- [x] Resultado de cada rotina no cofre e na gaveta, com histórico por dia
+- [x] Máquina no fechamento do dia (CPU, memória, discos) e gráfico de 24 horas no mapa
+- [x] Seis estilos e seis organizações do mapa, sininho com os textos do dia e modo painel
+- [x] Leitura pelo celular no mesmo Wi-Fi (opcional, só leitura, com chave)
+
+### Etapa 8 — Projetos no Orca
+- [x] Prompt de cada issue atribuída a você digitado numa worktree do Orca, nunca enviado (#26)
+- [x] Começar, Ver prompt e Digitar de novo na gaveta do projeto
+- [x] Revisão de PR com o prompt de revisão pronto, e a chave para todos os PRs
+- [ ] Cadastrar outros projetos (`[projetos.<id>]` no `config.local.toml`)
+
+### Etapa 9 — Motor dos resumos
+- [x] Copilot CLI como reserva automática do Claude, com botão para trocar o principal
+
 ---
 
 ## Como Configurar as Credenciais
@@ -79,6 +94,15 @@ Há dois modos, escolhidos em `[slack] modo` no `config.local.toml`. Os dois só
    SLACK_TOKEN=xoxp-...
    ```
 
+### Orca
+1. Instale e abra o app do Orca, e adicione nele o repositório do projeto.
+2. Cadastre o projeto em `[projetos.<id>]` (`nome` e `github = "dono/repo"`) no `config.local.toml`.
+3. No mapa, clique em **prompts das tasks** e use **Ativar** na seção Projetos.
+
+### Copilot (opcional, reserva dos resumos)
+1. Instale a CLI do GitHub Copilot (`copilot`) e faça o login uma vez no terminal.
+2. O serviço Claude, no mapa, ganha a seção **Motor dos resumos** para escolher o principal.
+
 ### Gmail
 1. Crie um projeto no [Google Cloud Console](https://console.cloud.google.com/) e habilite a **Gmail API**.
 2. Configure a tela de consentimento OAuth e cadastre seu e-mail como usuário de teste.
@@ -88,13 +112,13 @@ Há dois modos, escolhidos em `[slack] modo` no `config.local.toml`. Os dois só
    ```bash
    python -m automateum gmail-login
    ```
-   e conclua a autorização no navegador.
+   e conclua a autorização no navegador. Para mais de uma conta, rode de novo e escolha a outra conta; para tirar
+   uma, `python -m automateum gmail-sair <endereço>`.
 
 ---
 
 ## Backlog de Melhorias
-- Temas para o painel com alternância entre modo claro e escuro
-- Animação do fluxo de dados com controle de velocidade
-- Suporte a monitoramento de nós remotos/múltiplas máquinas
-- Integração com Google Agenda
-- Automação de prompts e tarefas
+- Mostrar o outro PC no mapa (#22)
+- Integração com Google Agenda (#23)
+- Resumo das transcrições de reuniões (#24)
+- Várias IAs gratuitas pelas automações, a definir (#27)

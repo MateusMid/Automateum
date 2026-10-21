@@ -229,7 +229,7 @@ button.pil:hover { border-color: var(--c); }
 </head>
 <body>
 <header class="topo">
-  <div class="marca"><b>Automateum</b><small>seis estilos, cinco organizações</small></div>
+  <div class="marca"><b>Automateum</b><small>seis estilos, seis organizações</small></div>
   <nav class="abas" id="abas" role="tablist" aria-label="Estilos"></nav>
   <div class="ritmo" id="ritmo" role="group" aria-label="Ritmo dos impulsos"><span class="rk">impulsos</span></div>
   <span class="vivo" id="vivo"><i></i>dados de agora</span>
@@ -1558,7 +1558,7 @@ button.pil:hover { border-color: var(--c); }
   }
   // a linha de baixo do topo: o que o estilo e, e o que o impulso quer dizer no ritmo escolhido
   function barra() {
-    var dica = !ritmo ? 'clique num cartão para abrir o detalhe e acender o caminho dele · 1 a 6 trocam o estilo · Q a T trocam a organização'
+    var dica = !ritmo ? 'clique num cartão para abrir o detalhe e acender o caminho dele · 1 a 6 trocam o estilo · Q a Y trocam a organização'
       : fila.length ? 'cada impulso é uma rodada da agenda real, acelerada'
       : 'a agenda não veio no dado: o espelho não tem rodada para mostrar';
     var d = $('#desc');
@@ -1748,7 +1748,7 @@ button.pil:hover { border-color: var(--c); }
   // a gaveta e a mesma das quatro paginas; clicar numa linha dela acende o cartao correspondente aqui
   if (window.Gaveta) {
     Gaveta.iniciar({encolher: '#palco', ancora: '#palco',
-      aoAgir: function (acao, est) { if (est === 'ok' && /^(motor|projeto-ligar|projeto-desligar|projeto-comecar|projeto-refazer|revisao-refazer|revisao-todos-ligar|revisao-todos-desligar):/.test(acao)) setTimeout(recarregar, 300); },
+      aoAgir: function (acao, est) { if (est === 'ok' && /^(motor|projeto-ligar|projeto-desligar|projeto-comecar|projeto-refazer|projeto-dispensar|projeto-reativar|revisao-refazer|revisao-todos-ligar|revisao-todos-desligar):/.test(acao)) setTimeout(recarregar, 300); },
       aoAbrir: function (id) { if (id && G && G.por[id] && G.por[id] !== ativo()) selecionar(G.por[id]); },
       aoFechar: function () { selecionar(null); }});
     Gaveta.receber(M);

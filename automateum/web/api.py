@@ -24,6 +24,7 @@ from ..nucleo.agendador import Agendador
 from ..nucleo.estado import Estado, agora
 from ..nucleo.eventos import Barramento
 from ..nucleo.registro import ATENCAO, FALHA, OK, ROTINAS, SERVICOS, quando_texto
+from ..rotinas import tasks_obsidian
 from ..servicos import ia, maquina
 from . import celular as acesso_celular
 from . import pagina_celular as html_celular
@@ -210,6 +211,18 @@ def criar_app(config: Config) -> FastAPI:
             projetos.aceitar(config, estado, pid, int(numero))
             exec_id = agendador.disparar("preparar_prompts")   # prepara já, sem esperar os 15 minutos
             return {"id": exec_id if exec_id is not None else 0}
+        if tipo in ("projeto-dispensar", "projeto-reativar"):
+            pid, _, numero = alvo.partition(":")
+            if not numero.isdigit():
+                return _erro(400, f"ação desconhecida: {nome}")
+            try:
+                (projetos.dispensar if tipo == "projeto-dispensar" else projetos.reativar)(config, estado, pid, int(numero))
+            except ValueError:
+                return _erro(400, f"ação desconhecida: {nome}")
+            if tipo == "projeto-dispensar":
+                return {"id": 0}
+            exec_id = agendador.disparar("preparar_prompts")   # volta já, sem esperar os 15 minutos
+            return {"id": exec_id if exec_id is not None else 0}
         if tipo in ("projeto-refazer", "revisao-refazer"):
             pid, _, numero = alvo.partition(":")
             revisao = tipo == "revisao-refazer"
@@ -311,9 +324,13 @@ def criar_app(config: Config) -> FastAPI:
                            ["usa", ", ".join(SERVICOS[s].nome for s in r.usa) or "só a máquina"]],
                 "rodar": nid, "motivo": agendador.motivo_parada(r), "rodando": agendador.rodando(nid),
                 "execucoes": estado.execucoes(nid),
+                "historico": estado.rodadas_por_dia(nid),
                 "itens": estado.itens([fonte], limite=200) if fonte else [],
                 "nota": saidas.nota(config, nid),
                 "texto": saidas.ultimo_texto(estado, nid),
+                **({"envelhecidas": {"dias": tasks_obsidian.dias_limite(config),
+                                     "lista": tasks_obsidian.envelhecidas(config, estado.itens([fonte], limite=2000))}}
+                   if nid == "tasks_obsidian" else {}),
             }
         if tipo == "servico" and nid in SERVICOS:
             s = SERVICOS[nid]

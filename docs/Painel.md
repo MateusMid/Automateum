@@ -12,12 +12,14 @@ O painel de referência que serviu de ponto de partida:
 
 - Fundo escuro com grade sutil e tipografia monoespaçada
 - Cartões com cantos em colchete, indicador visual de status e texto explicativo sucinto
-- Colunas estruturadas:
+- Colunas estruturadas (na organização "Por tipo"):
   - `[01] MÁQUINA`
   - `[02] SERVIÇOS`
   - `[03] FRENTES`
   - `[04] ROTINAS`
   - `[05] COM VOCÊ`
+- Seis organizações, nas abas abaixo do topo ou pelas teclas: Por tipo (`Q`), Por frente (`W`), Por horário (`E`),
+  Por estado (`R`), Por profundidade (`T`) e Em cascata (`Y`). Seis estilos, pelas teclas `1` a `6`.
 - Fios curvos tracejados e animados interligando as colunas, refletindo o fluxo e o estado dos componentes
 - Etiqueta `RAIZ` no cartão onde um problema se inicia, acompanhado da causa
 - Latência em milissegundos reportada junto a cada serviço
@@ -38,6 +40,7 @@ O fluxo visual propaga-se da esquerda para a direita. Um traço vermelho ou âmb
 - **Topo enxuto:** o estilo do mapa e o ritmo dos impulsos ficam no painel **Estilo**; a legenda das cores, no painel **Legenda**.
 - **Organização "Em cascata" (tecla `Y`):** as mesmas faixas do "Por tipo", empilhadas de cima para baixo (máquina, rede, serviços, frentes, rotinas, você), com os fios descendo de uma faixa para a próxima. Faixa comprida quebra em mais de uma linha.
 - **Gráfico da máquina:** o cartão da máquina mostra CPU (azul) e memória (âmbar) das últimas 24 horas, e a gaveta da máquina mostra o gráfico maior. Os buracos (PC desligado) aparecem como buracos. Dados de `/api/maquina/historico?horas=24` (até 168).
+- **Histórico da rotina:** a gaveta de cada rotina mostra os últimos 14 dias, uma coluna por dia, da altura do número de rodadas: falhas em vermelho, atenção em âmbar e as boas em verde. Passar o mouse numa coluna diz o dia e as contagens. Dados de `/api/no/rotina/<id>` (campo `historico`); as rodadas ficam guardadas 30 dias.
 - **Título e ícone da aba** mudam com o estado: "Automateum (3 problemas)", ícone na cor do pior estado, e "mapa parado" se o estado tem mais de 15 min.
 - **Densidade e texto:** botões na base (ou teclas `D`, `[` e `]`): cartões compacto/normal/espaçado e texto de 90% a 130%. Ficam guardados no navegador.
 - **Modo painel (tecla `P`, botão Painel ou `/?parede=1`):** tela cheia sem controles, só a faixa Hoje com relógio e o mapa, que continua se atualizando. `Esc` sai. A tela do aparelho não apaga enquanto ele está ativo, quando o navegador permite.
