@@ -221,6 +221,36 @@
       .then(function (d) { textos = (d && d.textos) || []; desenharHoje(); })
       .catch(function () { /* a faixa fica só com o contador */ });
   }
+  // ------------------------------------------------------------ a busca --
+  // Procura no que já foi coletado (tasks, issues e PRs, mensagens); só no computador. "/" abre, Esc fecha.
+  var buscaEl = null, buscaT = 0, buscaN = 0;
+  var LUPA_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>';
+  function desenharBusca(d) {
+    var res = buscaEl.querySelector('.busca-res'), grupos = (d && d.grupos) || [];
+    if (!d) { res.innerHTML = '<p class="busca-vazio">Tasks do cofre, issues e PRs, mensagens do Slack e do Gmail. Só o que já foi coletado.</p>'; return; }
+    if (!grupos.length) { res.innerHTML = '<p class="busca-vazio">Nada encontrado para “' + esc(d.q) + '”.</p>'; return; }
+    res.innerHTML = grupos.map(function (g) {
+      return '<h4>' + esc(g.nome) + ' <small>' + g.total + '</small></h4><ul class="busca-lista">' + g.itens.map(function (i) {
+        var t = esc((i.titulo || '(sem título)').slice(0, 200));
+        var link = /^https?:\/\//.test(i.url) ? '<a href="' + esc(i.url) + '" target="_blank" rel="noopener noreferrer">' + t + '</a>' : '<b>' + t + '</b>';
+        return '<li>' + link + '<small>' + esc([i.origem, dia(i.quando)].filter(Boolean).join(' · ')) + '</small></li>';
+      }).join('') + '</ul>' + (g.total > g.itens.length ? '<p class="busca-mais">e mais ' + (g.total - g.itens.length) + '; refine a busca.</p>' : '');
+    }).join('');
+  }
+  function buscar(q) {
+    var n = ++buscaN;
+    if (q.replace(/\s/g, '').length < 2) { desenharBusca(null); return; }
+    fetch('/api/busca?q=' + encodeURIComponent(q), {headers: {'Accept': 'application/json'}})
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (d) { if (n === buscaN) desenharBusca(d); })
+      .catch(function () { if (n === buscaN) buscaEl.querySelector('.busca-res').innerHTML = '<p class="busca-vazio">A busca não respondeu.</p>'; });
+  }
+  function abrirBusca() {
+    if (!buscaEl) return;
+    var bt = buscaEl.querySelector('.pop-bt'), pn = buscaEl.querySelector('.pop-painel');
+    if (pn.hidden) bt.click();
+    buscaEl.querySelector('input').focus();
+  }
   function relogio() {
     var el = $('#relogio'), d = new Date();
     if (el) el.textContent = hm(d) + ' · ' + ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][d.getDay()] + ' ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1);
@@ -329,6 +359,22 @@
     sino.querySelector('.pop-bt').innerHTML = SINO_SVG + '<b class="sino-n" hidden></b>';
     sino.querySelector('.pop-bt').setAttribute('aria-label', 'Notificações');
     sino.querySelector('.pop-painel > div').className = 'sino-corpo-lista';
+    // a busca só existe no computador: de outro aparelho o painel é só leitura e a rota é recusada
+    if (/^(127\.0\.0\.1|localhost)$/.test(location.hostname)) {
+      buscaEl = painel('pop-busca', '', '', [{no: document.createElement('div')}]);
+      var btBusca = buscaEl.querySelector('.pop-bt');
+      btBusca.innerHTML = LUPA_SVG + '<kbd>/</kbd>';
+      btBusca.setAttribute('aria-label', 'Buscar (/)');
+      btBusca.title = 'Buscar no que já foi coletado (/)';
+      buscaEl.querySelector('.pop-painel > div').outerHTML = '<input type="search" class="busca-campo" placeholder="Buscar tasks, PRs, mensagens…" aria-label="Buscar" autocomplete="off"><div class="busca-res"></div>';
+      buscaEl.querySelector('input').addEventListener('input', function (ev) {
+        var q = ev.target.value;
+        clearTimeout(buscaT);
+        buscaT = setTimeout(function () { buscar(q); }, 200);
+      });
+      desenharBusca(null);
+      topo.insertBefore(buscaEl, chip || null);
+    }
     topo.insertBefore(sino, chip || null);
     topo.insertBefore(estilo, chip || null);
     sinoEl = sino.querySelector('.sino-corpo-lista');
@@ -421,6 +467,7 @@
       else if (k === 'd') mudarDens();
       else if (k === '[') mudarTexto(-1);
       else if (k === ']') mudarTexto(1);
+      else if (k === '/' && buscaEl) { ev.preventDefault(); abrirBusca(); }
       else if (k === 'escape' && painelAberto) { painelAberto = ''; desenharHoje(); }
       else if (k === 'escape' && parede) entrarParede(false);
     });

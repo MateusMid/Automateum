@@ -169,3 +169,16 @@ body.parede .pop { display: none !important; }
 body:not(.parede) .hoje { display: none; }
 body:not(.parede) { grid-template-rows: auto auto minmax(0, 1fr); }   /* sem a faixa, o mapa ocupa o resto */
 @media (max-width: 760px) { .pop.pop-sino { display: block !important; } }
+
+/* a busca (só no computador) */
+.pop-busca .pop-bt { gap: 8px; }
+.pop-busca kbd { font: 500 10px/1 var(--fontT, inherit); padding: 2px 5px; border: 1px solid var(--linha); border-radius: 4px; color: var(--mudo); }
+.pop-busca .pop-painel { left: 0; right: auto; width: min(480px, 92vw); max-height: min(72vh, 680px); overflow: auto; }
+.busca-campo { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--linha); border-radius: 6px; background: transparent; color: inherit; font: inherit; }
+.busca-res h4 { display: flex; justify-content: space-between; margin-top: 14px; }
+.busca-vazio, .busca-mais { margin: 10px 0 0; color: var(--mudo); font-size: 12.5px; }
+.busca-lista { margin: 0; padding: 0; list-style: none; }
+.busca-lista li { padding: 6px 0; border-bottom: 1px solid var(--linha); display: grid; gap: 2px; }
+.busca-lista li:last-child { border-bottom: 0; }
+.busca-lista a, .busca-lista b { font-weight: 500; color: inherit; overflow-wrap: anywhere; }
+.busca-lista small { color: var(--mudo); font-size: 11.5px; overflow-wrap: anywhere; }
