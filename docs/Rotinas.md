@@ -9,7 +9,7 @@ Parte da [Documentação](README.md). Os horários e frequências podem ser pers
 - **Todos os dias:** os horários padrão de algumas rotinas são só de segunda a sexta. Para rodar também no fim de semana, troque `mon-fri` por `*` em `[horarios]` do `config.local.toml`, por exemplo `resumo_mensagens = "cron: 0 9-18 * * *"`.
 - **No cofre:** cada rotina mantém uma nota com o último resultado em `Automateum/Saídas/Rotinas/<rotina>.md` (a pasta vem de `[obsidian] pasta_automateum`). A nota traz estado, resumo, o texto gerado (briefing, fechamento, resumo de mensagens), os itens (tasks) e o log. Coletas de Slack e Gmail só registram quantas mensagens guardaram: o conteúdo delas não vai para o cofre.
 - **Histórico dos dias:** todo texto novo que uma rotina gera (briefing, resumo de mensagens, fechamento) também é guardado, com a hora, em `Automateum/Saídas/Rotinas/<rotina>/AAAA-MM-DD.md`, um arquivo por dia, e a nota da rotina lista os últimos dias com link. Rodada sem nada novo não entra.
-- A nota só é reescrita quando o resultado muda, ou no máximo de hora em hora, para não agitar a sincronização do cofre. O `meu_dia` e o `dia_fechado` continuam escrevendo também o bloco na nota do dia.
+- A nota só é reescrita quando o resultado muda, ou no máximo de hora em hora, para não agitar a sincronização do cofre. O `meu_dia`, o `dia_fechado` e o `semana_fechada` continuam escrevendo também o bloco na nota do dia.
 
 ## Projetos e prompts prontos no Orca
 
@@ -29,7 +29,7 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 
 ## Qual IA escreve os resumos
 
-`meu_dia`, `dia_fechado` e `resumo_mensagens` usam o **Claude** (`claude -p`) e, se ele falhar ou não estiver instalado, o **Copilot** (`copilot`, a CLI do GitHub Copilot). Quando o texto sai pelo motor de reserva, o log da rodada diz por quê.
+`meu_dia`, `dia_fechado`, `semana_fechada` e `resumo_mensagens` usam o **Claude** (`claude -p`) e, se ele falhar ou não estiver instalado, o **Copilot** (`copilot`, a CLI do GitHub Copilot). Quando o texto sai pelo motor de reserva, o log da rodada diz por quê.
 
 - **Botão:** no mapa, clique no serviço **Claude** e, na seção **Motor dos resumos**, use **Usar o Copilot como principal** (ou o contrário). O motor escolhido passa a ser o principal e o outro vira a reserva. A escolha fica guardada.
 - **Config (opcional):** `[ia] motor = "copilot"` define o inicial; `[copilot] modelo = "..."` e `timeout_segundos` ajustam a CLI.
@@ -70,6 +70,7 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 |---|---|---|---|
 | `meu_dia` | 08:30, seg a sex | Obsidian, Claude | Agrega tarefas abertas, mensagens recentes, notas dos últimos diários e notas de contexto recentes, escrevendo o briefing matinal no diário de hoje. |
 | `dia_fechado` | 19:00, seg a sex | Obsidian, Claude | Lê as anotações do dia, resumos de mensagens e tarefas concluídas/pendentes, registrando o fechamento no diário. Termina com uma linha da máquina (média e pico de CPU e memória, o disco livre de cada disco, desde quando está ligada), calculada pelas medições e não escrita pelo Claude. A temperatura não entra: o Windows não a expõe sem um programa de monitoramento à parte. |
+| `semana_fechada` | 19:30, sex | Obsidian, Claude | Junta o fechamento e as anotações de cada dia da semana (de segunda até hoje), as tasks abertas e os commits desde segunda, e escreve o fechamento da semana no diário de sexta: **Andou**, **Ficou aberto** e **Próxima semana**. Sem nenhum diário na semana, não chama o Claude. |
 
 ## Estrutura dos Briefings
 
@@ -97,7 +98,5 @@ Para o briefing da manhã ler os resumos mais recentes, ponha `"Automateum/Saíd
 
 - Acesso ao painel pelo celular fora do Wi-Fi (hoje só pela rede local; ver docs/Painel.md)
 - Google Agenda no painel e no briefing (issue #23)
-- Resumo das transcrições de reuniões, alimentando a pauta (issue #24)
-- Sinalização visual no cofre para tasks com mais de N dias sem movimentação
-- Resumo executivo semanal
+- Pauta antes de cada reunião, a partir da agenda e das reuniões anteriores (issue #66)
 

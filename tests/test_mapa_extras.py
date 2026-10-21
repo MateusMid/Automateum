@@ -52,6 +52,13 @@ def test_hoje_traz_os_textos_na_ordem_do_dia(cliente, app):
     assert textos[0]["nota"] is None                  # a nota da rotina ainda não foi escrita no cofre
 
 
+def test_hoje_traz_o_fechamento_da_semana_depois_do_dia(cliente, app):
+    _texto(app.state.estado, "semana_fechada", "Semana boa.", "2026-10-16T19:30:00")
+    _texto(app.state.estado, "dia_fechado", "Fechei o dia.", "2026-10-16T19:00:00")
+    textos = cliente.get("/api/hoje").json()["textos"]
+    assert [t["titulo"] for t in textos] == ["Fechamento do dia", "Fechamento da semana"]
+
+
 def test_hoje_ignora_rotinas_que_nao_geram_texto(cliente, app):
     _texto(app.state.estado, "tasks_github", "isto não é um dos textos do dia")
     assert cliente.get("/api/hoje").json()["textos"] == []
