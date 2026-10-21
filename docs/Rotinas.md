@@ -55,7 +55,7 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 | Rotina | Quando | Depende de | O que faz |
 |---|---|---|---|
 | `tasks_obsidian` | a cada 30 min | Obsidian | Varre o cofre do Obsidian por checkboxes abertos (`- [ ]`) e armazena a lista com referência de nota e linha, e desde quando cada task está aberta. Na primeira vez que vê uma task, conta a partir da última edição da nota (ela já existia ali); mudar a task de linha não zera a conta, e a que é feita ou apagada é esquecida. A gaveta mostra as abertas há mais de `dias_envelhecida` dias (`[obsidian]`, padrão 14), e o briefing recebe essa data para a parte **Envelhecendo**. |
-| `tasks_github` | a cada 30 min | GitHub | Busca issues e PRs atribuídos e PRs aguardando revisão. |
+| `tasks_github` | a cada 30 min | GitHub | Busca issues e PRs atribuídos, os seus PRs e PRs aguardando revisão. Para cada PR seu (até 20), diz em que pé está: **CI falhou**, **mudanças pedidas**, **conflito**, CI rodando, aprovado, rascunho ou esperando revisão. Os três primeiros deixam a rotina em atenção (mapa âmbar) e entram no briefing, em **Responder**. Só leitura: nada é comentado nem aprovado. Para ver o CI, o token precisa de leitura em **Checks** e **Commit statuses**; sem elas, valem só as revisões e o conflito. |
 
 ## Projetos
 

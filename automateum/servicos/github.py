@@ -1,4 +1,4 @@
-"""GitHub, só leitura: issues e PRs atribuídos a você e revisões pedidas."""
+"""GitHub, só leitura: issues e PRs atribuídos a você, os seus PRs e em que pé estão, e revisões pedidas."""
 from __future__ import annotations
 
 import json
@@ -11,6 +11,14 @@ from ..config import Config
 from ..nucleo.registro import FALHA, OK, Checagem, registrar_servico
 
 _API = "https://api.github.com"
+# Em que pé está um PR seu. Os três primeiros pedem uma ação sua.
+PROBLEMAS = ("CI falhou", "mudanças pedidas", "conflito")
+_CI_RUIM = ("failure", "timed_out", "action_required", "startup_failure")
+_MAX_SITUACOES = 20       # cada PR custa quatro chamadas à API
+_CONSULTAS = {
+    "is:issue": (("assignee:@me", "atribuído"), ("review-requested:@me", "revisão pedida")),
+    "is:pull-request": (("assignee:@me", "atribuído"), ("author:@me", "seu"), ("review-requested:@me", "revisão pedida")),
+}
 
 
 def configurado(config: Config) -> str | None:
@@ -44,14 +52,47 @@ def checar(config: Config) -> Checagem:
     return Checagem(OK, f"logado como {usuario['login']}", round((time.perf_counter() - inicio) * 1000))
 
 
+def situacao_do_pr(config: Config, repo: str, numero: int) -> str:
+    """Em que pé está o PR: CI falhou, mudanças pedidas, conflito, CI rodando, aprovado, rascunho ou esperando revisão."""
+    pr = _get(config, f"/repos/{repo}/pulls/{numero}")
+    if pr.get("draft"):
+        return "rascunho"
+    sha = pr["head"]["sha"]
+    # Ler o CI pede as permissões "Checks" e "Commit statuses" no token; sem elas, segue só com as revisões.
+    try:
+        runs = _get(config, f"/repos/{repo}/commits/{sha}/check-runs", per_page=100).get("check_runs", [])
+    except RuntimeError:
+        runs = []
+    try:
+        combinado = _get(config, f"/repos/{repo}/commits/{sha}/status")
+    except RuntimeError:
+        combinado = {}
+    # sem nenhum status, o GitHub responde "pending" mesmo assim: só vale com total_count
+    status = combinado.get("state", "") if combinado.get("total_count") else ""
+    terminados = [r.get("conclusion") for r in runs if r.get("status") == "completed"]
+    ultima: dict[str, str] = {}
+    for r in _get(config, f"/repos/{repo}/pulls/{numero}/reviews", per_page=100):
+        if r.get("state") in ("APPROVED", "CHANGES_REQUESTED", "DISMISSED"):
+            ultima[(r.get("user") or {}).get("login", "")] = r["state"]   # vale a última de cada revisor
+    if any(c in _CI_RUIM for c in terminados) or status in ("failure", "error"):
+        return "CI falhou"
+    if "CHANGES_REQUESTED" in ultima.values():
+        return "mudanças pedidas"
+    if pr.get("mergeable_state") == "dirty":
+        return "conflito"
+    if len(terminados) < len(runs) or status == "pending":
+        return "CI rodando"
+    return "aprovado" if "APPROVED" in ultima.values() else "esperando revisão"
+
+
 def pendencias(config: Config) -> list[dict]:
-    """Issues e PRs abertos atribuídos a você, mais PRs esperando a sua revisão."""
+    """Issues e PRs abertos atribuídos a você, os seus PRs (com em que pé estão) e PRs esperando a sua revisão."""
     repos = config.secao("github").get("repositorios", [])
     filtro = " ".join(f"repo:{r}" for r in repos)
     itens: dict[str, dict] = {}
     # A busca do GitHub exige is:issue ou is:pull-request e não aceita os dois juntos: uma consulta por tipo.
-    for tipo_busca in ("is:issue", "is:pull-request"):
-        for consulta, papel in (("assignee:@me", "atribuído"), ("review-requested:@me", "revisão pedida")):
+    for tipo_busca, consultas in _CONSULTAS.items():
+        for consulta, papel in consultas:
             dados = _get(config, "/search/issues", q=f"is:open {tipo_busca} {consulta} {filtro}".strip(),
                          per_page=100, sort="updated")
             for i in dados.get("items", []):
@@ -59,13 +100,22 @@ def pendencias(config: Config) -> list[dict]:
                 tipo = "PR" if "pull_request" in i else "issue"
                 item = itens.setdefault(i["html_url"], {
                     "chave": i["html_url"], "titulo": i["title"], "origem": f"{repo} #{i['number']}",
-                    "papeis": [], "tipo": tipo, "url": i["html_url"], "quando": i["updated_at"][:10]})
+                    "papeis": [], "tipo": tipo, "url": i["html_url"], "quando": i["updated_at"][:10],
+                    "repo": repo, "numero": i["number"], "situacao": ""})
                 # Um PR pode ser seu e pedir sua revisão ao mesmo tempo: guarda os dois papéis.
                 if papel not in item["papeis"]:
                     item["papeis"].append(papel)
-    return [{"chave": i["chave"], "titulo": i["titulo"], "origem": i["origem"], "url": i["url"],
-             "quando": i["quando"], "corpo": f"{i['tipo']} · {', '.join(i['papeis'])}"}
+    meus = [i for i in itens.values() if i["tipo"] == "PR" and {"seu", "atribuído"} & set(i["papeis"])]
+    for i in sorted(meus, key=lambda i: i["quando"], reverse=True)[:_MAX_SITUACOES]:
+        i["situacao"] = situacao_do_pr(config, i["repo"], i["numero"])
+    return [{"chave": i["chave"], "titulo": i["titulo"], "origem": i["origem"], "url": i["url"], "quando": i["quando"],
+             "corpo": " · ".join(p for p in (i["tipo"], ", ".join(i["papeis"]), i["situacao"]) if p)}
             for i in itens.values()]
+
+
+def precisa_de_voce(item: dict) -> bool:
+    """O item é um PR seu com CI falhou, mudanças pedidas ou conflito."""
+    return any(item.get("corpo", "").endswith(f" · {p}") for p in PROBLEMAS)
 
 
 def issues_abertas(config: Config, repo: str, rotulo: str = "") -> list[dict]:

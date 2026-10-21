@@ -8,7 +8,7 @@ _PEDIDO = (
     "Monte o meu briefing de hoje com três partes curtas, cada uma com um título em negrito: "
     "**Prioridades** (no máximo 5, pela ordem em que eu deveria atacar, citando a nota ou o repositório "
     "de origem), **Envelhecendo** (pendências antigas que merecem decisão: fazer, delegar ou apagar) e "
-    "**Responder** (mensagens que esperam resposta minha). Omita a parte que não tiver nada. "
+    "**Responder** (mensagens que esperam resposta minha e PRs meus com CI falhou, mudanças pedidas ou conflito). Omita a parte que não tiver nada. "
     "No máximo 5 itens por parte, uma linha cada, e 20 linhas no total: escolha o que mais pesa em vez "
     "de listar tudo. Baseie-se só no material; não invente tarefa."
 )
