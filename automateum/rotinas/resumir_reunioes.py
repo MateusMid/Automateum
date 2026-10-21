@@ -68,7 +68,7 @@ def rodar(ctx):
         secao = f"### [[{pasta_propria}/Reuniões/{nome}|{dados['titulo']}]]\n\n{resumo}"
         obsidian.escrever_bloco_diario(cfg, "reunioes", _secoes(ctx, f"reunioes:dia:{t['dia']}", nome, secao),
                                        date.fromisoformat(t["dia"]))
-        if achado := reunioes.grupo(cfg, dados["quem"], dados["texto"]):
+        if achado := reunioes.grupo(cfg, dados["quem"], dados["texto"], dados["inicio"]):
             gid, g = achado
             nota = obsidian.escrever_bloco(cfg, nota_do_grupo(cfg, g["pasta"], t["dia"]), "reunioes",
                                            _secoes(ctx, f"reunioes:{gid}:{t['dia']}", nome, secao))

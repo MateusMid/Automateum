@@ -13,6 +13,7 @@ cofre = 'C:\Users\seu_usuario\Documents\SeuCofre'
 # pasta = "Cliente/Meets"
 # pessoas = ["Fulano", "Beltrana"]
 # palavras = ["Cliente", "PROJ"]
+# horas_fora = [9]                 # começou às 9h: nunca é deste cliente
 
 # Slack pelo navegador, no lugar do app com token. Precisa do coletor de Slack numa pasta fixa
 # (a que tem o colher.ps1 e o logar.ps1), de Node, de Python e do Chrome. Rode o logar.ps1 uma vez.

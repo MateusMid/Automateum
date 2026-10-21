@@ -140,6 +140,13 @@ def test_grupo_pelo_assunto_quando_cita_os_termos(cfg):
     assert reunioes.grupo(cfg, ["Eu", "Carla"], "o NEWT e o awt não contam") is None
 
 
+def test_grupo_nunca_nas_horas_fora(cfg):
+    cfg.dados["reunioes"]["grupos"] = {"cliente": {"pasta": "Cliente/Meets", "pessoas": ["Ana"], "horas_fora": [9]}}
+    assert reunioes.grupo(cfg, ["Eu", "Ana"], inicio="09:05") is None
+    assert reunioes.grupo(cfg, ["Eu", "Ana"], inicio="10:00")[0] == "cliente"
+    assert reunioes.grupo(cfg, ["Eu", "Ana"])[0] == "cliente"                  # sem hora: vale o resto da regra
+
+
 def test_reuniao_do_cliente_vai_tambem_para_a_nota_do_dia_dele(cfg, monkeypatch):
     cfg.dados["reunioes"]["grupos"] = {"cliente": {"pasta": "Cliente/Meets", "pessoas": ["Ana"]}}
     (cfg.cofre / "Cliente/Meets").mkdir(parents=True)

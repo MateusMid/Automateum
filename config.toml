@@ -50,6 +50,7 @@ pasta = ""
 # pasta = "Cliente/Meets"
 # pessoas = ["Fulano", "Beltrana"]
 # palavras = ["Cliente", "PROJ"]
+# horas_fora = [9]            # reunião que começa nessas horas nunca é do grupo
 
 [github]
 # Vazio = tudo que estiver atribuído a você. Ou restrinja: ["org/repo"].
