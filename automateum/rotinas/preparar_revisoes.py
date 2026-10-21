@@ -25,6 +25,8 @@ def rodar(ctx):
               if projetos.ativo(cfg, ctx.estado, pid) and p.get("revisar", True)}
     if not ativos:
         return "nenhum projeto ativo"
+    if not orca.aberto(cfg):
+        return orca.FECHADO
     feitos, problemas = [], []
     for pid, projeto in ativos.items():
         info = orca.repo_info(cfg, projeto["github"])

@@ -8,7 +8,7 @@ from automateum import rotinas, servicos  # noqa: F401  (registram rotinas e ser
 from automateum.config import Config
 from automateum.nucleo import projetos
 from automateum.nucleo.estado import Estado
-from automateum.nucleo.registro import ROTINAS, Atencao
+from automateum.nucleo.registro import FALHA, OK, PARADO, ROTINAS, Atencao
 from automateum.servicos import github, orca
 
 
@@ -35,15 +35,20 @@ def orca_instalado(monkeypatch):
 class OrcaFalso:
     """Registra cada chamada à CLI e responde no formato do Orca."""
 
-    def __init__(self, monkeypatch, esperar=True):
+    def __init__(self, monkeypatch, esperar=True, aberto=True):
         self.chamadas = []
         self.esperar = esperar
+        self.aberto = aberto
         self.worktrees = []
         monkeypatch.setattr(subprocess, "run", self._run)
 
     def _run(self, comando, **k):
         a = comando[1:]
         self.chamadas.append(a)
+        if a == ["status"]:
+            if not self.aberto:
+                return SimpleNamespace(returncode=1, stdout="", stderr="Could not read Orca runtime metadata")
+            return SimpleNamespace(returncode=0, stdout="appRunning: true\nruntimeReachable: true\n", stderr="")
         if a[:2] == ["repo", "list"]:
             r = {"repos": [{"id": "r1", "path": "C:/repo", "gitRemoteIdentity": {"canonicalKey": "github.com/Dono/Demo", "remoteName": "pessoal"}}]}
         elif a[:2] == ["worktree", "create"]:
@@ -253,6 +258,28 @@ def test_repo_id_casa_pelo_remote_sem_diferenciar_maiusculas(tmp_path, monkeypat
     OrcaFalso(monkeypatch)
     assert orca.repo_id(_cfg(tmp_path), "dono/demo") == "r1"
     assert orca.repo_id(_cfg(tmp_path), "dono/outro") is None
+
+
+def test_orca_fechado_nao_e_problema(tmp_path, monkeypatch):
+    falso = OrcaFalso(monkeypatch, aberto=False)
+    ctx = Ctx(tmp_path)
+    _issues(monkeypatch, (5, "Corrigir login", ""))
+    monkeypatch.setattr(github, "prs_para_revisar", lambda cfg, repo, todos=False: [])
+
+    assert ROTINAS["preparar_prompts"].func(ctx) == orca.FECHADO     # termina bem, só com a observação
+    assert ROTINAS["preparar_revisoes"].func(ctx) == orca.FECHADO
+    assert falso.chamadas == [["status"], ["status"]]           # nem tenta criar worktree
+    c = orca.checar(ctx.config)
+    assert c.estado == PARADO and c.detalhe == orca.FECHADO     # cinza no mapa, não vermelho
+    falso.aberto = True
+    assert orca.checar(ctx.config).estado == OK
+
+
+def test_orca_que_nao_responde_continua_falha(tmp_path, monkeypatch):
+    def trava(*a, **k):
+        raise subprocess.TimeoutExpired("orca", 30)
+    monkeypatch.setattr(subprocess, "run", trava)
+    assert orca.checar(_cfg(tmp_path)).estado == FALHA
 
 
 def test_erro_da_cli_vira_runtime_error(tmp_path, monkeypatch):

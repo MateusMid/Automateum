@@ -24,7 +24,7 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 - **Ativar e desativar:** no mapa, clique na rotina **prompts das tasks**; a seção **Projetos** da gaveta tem um botão por projeto. Projetos nascem desativados.
 - **Config (`config.toml` ou `config.local.toml`):** `[projetos.<id>]` com `nome`, `github` (dono/repo, que também precisa estar no Orca), `rotulo` (opcional: só issues com essa etiqueta), `max_pendentes` (padrão 3: quantos prompts prontos ficam de uma vez; fechar a issue libera a vaga) e `modelo` (opcional, com `{numero}`, `{titulo}`, `{url}`, `{corpo}`). No máximo 2 worktrees novas por rodada (as aceitas com Começar: até 5).
 - **Texto padrão:** título, link e corpo da issue, mais "leia o que for preciso e me proponha um plano antes de alterar qualquer arquivo; não faça commit, push nem abra PR sem eu pedir".
-- **Precisa de:** o app do Orca aberto (o serviço **Orca** do mapa mostra isso), o token do GitHub e o `claude` instalado. As worktrees são criadas sem rodar os scripts de setup do repositório.
+- **Precisa de:** o app do Orca aberto (o serviço **Orca** do mapa mostra isso; fechado, ele fica cinza e as duas rotinas terminam bem, só com a observação "Orca fechado: os prompts esperam ele abrir", sem contar como problema), o token do GitHub e o `claude` instalado. As worktrees são criadas sem rodar os scripts de setup do repositório.
 - O corpo das issues não vai para o cofre: a nota da rotina só lista número e título.
 
 ## Qual IA escreve os resumos
