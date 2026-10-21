@@ -323,6 +323,7 @@ def criar_app(config: Config) -> FastAPI:
                            ["usa", ", ".join(SERVICOS[s].nome for s in r.usa) or "só a máquina"]],
                 "rodar": nid, "motivo": agendador.motivo_parada(r), "rodando": agendador.rodando(nid),
                 "execucoes": estado.execucoes(nid),
+                "historico": estado.rodadas_por_dia(nid),
                 "itens": estado.itens([fonte], limite=200) if fonte else [],
                 "nota": saidas.nota(config, nid),
                 "texto": saidas.ultimo_texto(estado, nid),

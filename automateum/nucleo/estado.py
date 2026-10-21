@@ -90,6 +90,18 @@ class Estado:
     def execucoes(self, rotina: str, limite: int = 15) -> list[dict]:
         return self._linhas("SELECT * FROM execucoes WHERE rotina=? ORDER BY id DESC LIMIT ?", (rotina, limite))
 
+    def rodadas_por_dia(self, rotina: str, dias: int = 14) -> list[dict]:
+        """Quantas rodadas terminaram bem, com atenção e em falha em cada um dos últimos `dias` (hoje por último)."""
+        hoje = datetime.now().date()
+        lista = [{"dia": (hoje - timedelta(days=d)).isoformat(), "ok": 0, "atencao": 0, "falha": 0}
+                 for d in range(dias - 1, -1, -1)]
+        por_dia = {d["dia"]: d for d in lista}
+        for l in self._linhas("SELECT substr(inicio, 1, 10) AS dia, status, COUNT(*) AS n FROM execucoes "
+                              "WHERE rotina=? AND inicio >= ? GROUP BY dia, status", (rotina, lista[0]["dia"])):
+            if l["dia"] in por_dia and l["status"] in ("ok", "atencao", "falha"):   # a que ainda roda não conta
+                por_dia[l["dia"]][l["status"]] = l["n"]
+        return lista
+
     def execucao(self, exec_id: int) -> dict | None:
         linhas = self._linhas("SELECT * FROM execucoes WHERE id=?", (exec_id,))
         return linhas[0] if linhas else None
