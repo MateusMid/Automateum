@@ -340,7 +340,8 @@ def criar_app(config: Config) -> FastAPI:
             if motivo := s.configurado(config):
                 campos.insert(0, ["falta", motivo])
             elif c:
-                campos[:0] = [["estado", c["detalhe"]], ["latência", f"{c['ms']} ms"],
+                # nem toda checagem mede o tempo (o Slack pelo navegador só confere o login guardado)
+                campos[:0] = [["estado", c["detalhe"]], *([["latência", f"{c['ms']} ms"]] if c["ms"] is not None else []),
                               ["checado", grafo._hora(c["quando"])]]
             return {"tipo": tipo, "titulo": s.nome, "descricao": s.descricao, "campos": campos}
         if tipo == "frente" and nid in grafo.frentes():

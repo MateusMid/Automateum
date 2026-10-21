@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from automateum.config import Config
+from automateum.nucleo.registro import OK, Checagem
 from automateum.servicos import maquina
 from automateum.web.api import criar_app
 
@@ -29,6 +30,16 @@ def cliente(app):
 
 def _texto(estado, rotina, conteudo, quando="2026-10-17T11:00:00"):
     estado.definir_cursor(f"texto:{rotina}", json.dumps({"quando": quando, "conteudo": conteudo}))
+
+
+# --- /api/no/servico
+
+def test_servico_sem_tempo_medido_nao_mostra_latencia(cliente, app):
+    app.state.estado.salvar_checagem("obsidian", Checagem(OK, "3 notas"))
+    campos = dict(cliente.get("/api/no/servico/obsidian").json()["campos"])
+    assert campos["estado"] == "3 notas" and "latência" not in campos
+    app.state.estado.salvar_checagem("obsidian", Checagem(OK, "3 notas", 12))
+    assert dict(cliente.get("/api/no/servico/obsidian").json()["campos"])["latência"] == "12 ms"
 
 
 # --- /api/hoje

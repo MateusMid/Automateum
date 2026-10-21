@@ -39,12 +39,13 @@ def configurado(config: Config) -> str | None:
 
 
 def checar(config: Config) -> Checagem:
+    inicio = time.perf_counter()
     try:
         pasta(config).mkdir(parents=True, exist_ok=True)
         total = len(transcricoes(config))
     except OSError as e:
         return Checagem(FALHA, f"não consegui usar {pasta(config)}: {e}")
-    return Checagem(OK, f"{total} reuniões em {pasta(config)}")
+    return Checagem(OK, f"{total} reuniões em {pasta(config)}", round((time.perf_counter() - inicio) * 1000))
 
 
 def trazer(config: Config) -> list[Path]:
