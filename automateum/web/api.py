@@ -24,6 +24,7 @@ from ..nucleo.agendador import Agendador
 from ..nucleo.estado import Estado, agora
 from ..nucleo.eventos import Barramento
 from ..nucleo.registro import ATENCAO, FALHA, OK, ROTINAS, SERVICOS, quando_texto
+from ..rotinas import tasks_obsidian
 from ..servicos import ia, maquina
 from . import celular as acesso_celular
 from . import pagina_celular as html_celular
@@ -327,6 +328,9 @@ def criar_app(config: Config) -> FastAPI:
                 "itens": estado.itens([fonte], limite=200) if fonte else [],
                 "nota": saidas.nota(config, nid),
                 "texto": saidas.ultimo_texto(estado, nid),
+                **({"envelhecidas": {"dias": tasks_obsidian.dias_limite(config),
+                                     "lista": tasks_obsidian.envelhecidas(config, estado.itens([fonte], limite=2000))}}
+                   if nid == "tasks_obsidian" else {}),
             }
         if tipo == "servico" and nid in SERVICOS:
             s = SERVICOS[nid]

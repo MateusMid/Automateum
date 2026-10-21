@@ -21,8 +21,8 @@ def rodar(ctx):
     cfg, secao_obsidian = ctx.config, ctx.config.secao("obsidian")
     desde = (datetime.now() - timedelta(hours=16)).isoformat(timespec="seconds")
     material = [
-        secao("Tasks abertas no cofre (origem = nota, data = última edição da nota)",
-              listar([{**t, "corpo": t["quando"]} for t in ctx.estado.itens(["obsidian"])])),
+        secao("Tasks abertas no cofre (origem = nota; depois do traço, desde quando está aberta e a última edição da nota)",
+              listar([{**t, "corpo": f"{t['corpo']}, nota editada em {t['quando']}"} for t in ctx.estado.itens(["obsidian"])])),
         secao("GitHub", listar(ctx.estado.itens(["github"]))),
         secao("Mensagens desde ontem à tarde", listar(ctx.estado.itens(["slack", "gmail"], desde))),
     ]

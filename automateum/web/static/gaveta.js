@@ -321,6 +321,13 @@
       }).join('') + '</ul>';
       if (itens.length > 12) h += '<p class="gv-nota">e mais ' + (itens.length - 12) + ' itens guardados.</p>';
     }
+    var velhas = d.envelhecidas;
+    if (velhas && velhas.lista.length) {
+      h += '<div class="gv-velhas"><small>Abertas há mais de ' + velhas.dias + ' dias (' + velhas.lista.length + ')</small><ul class="gv-itens">' +
+        velhas.lista.slice(0, 8).map(function (i) {
+          return '<li>' + esc((i.titulo || '').slice(0, 160)) + '<small>' + esc(i.origem) + ' · há ' + i.dias + ' dias</small></li>';
+        }).join('') + '</ul>' + (velhas.lista.length > 8 ? '<p class="gv-nota">e mais ' + (velhas.lista.length - 8) + '.</p>' : '') + '</div>';
+    }
     if (d.nota && /^obsidian:\/\/open\?/.test(d.nota.obsidian || '')) {
       // com o servidor dos botões no ar ele abre a nota no computador (o navegador do Orca bloqueia obsidian://)
       h += (servidor.token && servidor.vivo && d.nota.rotina
@@ -908,6 +915,8 @@
     '.gv-dias b.gv-e-bom { background: color-mix(in srgb, var(--gv-c) 46%, var(--gv-vazio)); }',
     '.gv-bat-eixo { display: flex; justify-content: space-between; color: var(--gv-mudo); font-size: 10.5px; margin-top: 5px; font-variant-numeric: tabular-nums; }',
     '.gv-oque { margin: 0; color: var(--gv-texto2); line-height: 1.55; }',
+    '.gv-velhas { margin-top: 12px; } .gv-velhas > small { color: var(--gv-mudo); font-size: 11px; }',
+    '.gv-velhas li { border-left: 2px solid var(--atencao, #d9a440); padding-left: 8px; }',
     '.gv-nota { margin: 6px 0 0; color: var(--gv-mudo); font-size: 11.5px; line-height: 1.45; }',
     '.gv-passos { margin: 0; padding-left: 18px; color: var(--gv-texto2); font-size: 12.5px; line-height: 1.5; } .gv-passos li + li { margin-top: 5px; }',
     '.gv-esp { padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--gv-c) 34%, var(--gv-linha)); border-radius: 8px; background: color-mix(in srgb, var(--gv-c) 7%, transparent); }',

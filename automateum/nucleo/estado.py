@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS itens (
     quando TEXT, coletado TEXT NOT NULL, PRIMARY KEY (fonte, chave)
 );
 CREATE TABLE IF NOT EXISTS cursores (chave TEXT PRIMARY KEY, valor TEXT);
+CREATE TABLE IF NOT EXISTS tasks_vistas (ident TEXT PRIMARY KEY, desde TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS medidas (
     quando TEXT PRIMARY KEY, cpu INTEGER, memoria INTEGER, disco_livre_gb INTEGER, discos TEXT
 );
@@ -198,6 +199,16 @@ class Estado:
     def podar_itens(self, fonte: str, dias: int) -> None:
         corte = (datetime.now() - timedelta(days=dias)).isoformat(timespec="seconds")
         self._exec("DELETE FROM itens WHERE fonte=? AND coletado < ?", (fonte, corte))
+
+    def datas_das_tasks(self, tasks: dict[str, str]) -> dict[str, str]:
+        """Desde quando cada task está aberta. `tasks` leva cada task à data mais antiga em que se sabe que ela já
+        existia; fica guardada a menor data já vista. As que sumiram (feitas ou apagadas) são esquecidas."""
+        with self._transacao():
+            self._db.executemany("INSERT INTO tasks_vistas VALUES (?,?) ON CONFLICT(ident) DO UPDATE SET "
+                                 "desde = MIN(desde, excluded.desde)", list(tasks.items()))
+            guardadas = dict(self._db.execute("SELECT ident, desde FROM tasks_vistas").fetchall())
+            self._db.executemany("DELETE FROM tasks_vistas WHERE ident=?", [(k,) for k in guardadas if k not in tasks])
+        return {k: guardadas[k] for k in tasks}
 
     # --- cursores
     def cursor(self, chave: str, padrao: str = "") -> str:

@@ -54,7 +54,7 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 
 | Rotina | Quando | Depende de | O que faz |
 |---|---|---|---|
-| `tasks_obsidian` | a cada 30 min | Obsidian | Varre o cofre do Obsidian por checkboxes abertos (`- [ ]`) e armazena a lista com referência de nota e linha. |
+| `tasks_obsidian` | a cada 30 min | Obsidian | Varre o cofre do Obsidian por checkboxes abertos (`- [ ]`) e armazena a lista com referência de nota e linha, e desde quando cada task está aberta. Na primeira vez que vê uma task, conta a partir da última edição da nota (ela já existia ali); mudar a task de linha não zera a conta, e a que é feita ou apagada é esquecida. A gaveta mostra as abertas há mais de `dias_envelhecida` dias (`[obsidian]`, padrão 14), e o briefing recebe essa data para a parte **Envelhecendo**. |
 | `tasks_github` | a cada 30 min | GitHub | Busca issues e PRs atribuídos e PRs aguardando revisão. |
 
 ## Projetos

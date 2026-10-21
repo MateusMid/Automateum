@@ -14,6 +14,8 @@ pasta_automateum = "Automateum/Saídas"
 ignorar = [".obsidian", ".trash", "Automateum/Saídas"]
 # Pastas cujas notas mais recentes entram como contexto no briefing do dia.
 pastas_contexto = ["FH/Meets"]
+# Uma task aberta há mais dias que isto aparece em "Abertas há mais de N dias" na gaveta das tasks do cofre.
+dias_envelhecida = 14
 
 [claude]
 # Modelo usado nos resumos ("" = padrão do Claude Code).
