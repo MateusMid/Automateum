@@ -81,6 +81,8 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 |---|---|---|---|
 | `resumir_reunioes` | a cada 15 min | Reuniões (Gutenberg), Claude, Obsidian | Traz as transcrições que a extensão Gutenberg salva em `Downloads\Gutenberg\AAAA-MM\DD\` para a pasta fixa `[reunioes] pasta` (mesmas subpastas; um arquivo igual ao que já está lá só é apagado de Downloads). Resume cada reunião nova (até 3 por rodada) em `Automateum/Saídas/Reuniões/` e no bloco **Reuniões** do diário do dia da reunião: **Assunto**, **Decisões**, **Próximos passos** e **Em aberto**. Cópias da mesma reunião (`nome (1).md`) contam uma vez só, pela maior. Menos de 3 falas é teste e não vai para o Claude; arquivo mexido no último minuto espera a próxima rodada. |
 
+Uma reunião de cliente vai também para a nota do dia da pasta dele no cofre (`DD-MM.md`; se já existe uma sem o zero, como `5-10.md`, é ela), num bloco **Reuniões** que não mexe no que você escreveu na nota. O cliente vem de `[reunioes.grupos.<id>]` no `config.local.toml`, com `pasta`, `pessoas` e `palavras`. A reunião é dele quando todos que falaram, fora "Eu", estão em `pessoas` (o nome inteiro ou uma palavra dele, sem diferença de maiúsculas): alguém de fora indica outra reunião. Também é dele quando a transcrição cita os termos de `palavras` pelo menos `mencoes` vezes (padrão 2).
+
 Para o briefing da manhã ler os resumos mais recentes, ponha `"Automateum/Saídas/Reuniões"` em `[obsidian] pastas_contexto`.
 
 ## Ideias e Próximos Passos

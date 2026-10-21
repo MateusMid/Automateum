@@ -1,6 +1,8 @@
 import json
 from datetime import date
 
+from ..config import Config
+
 from ..nucleo.registro import rotina
 from ..servicos import ia, obsidian, reunioes
 
@@ -21,14 +23,21 @@ def _nome(t: dict, dados: dict) -> str:
     return " ".join(p for p in (t["dia"], hora, t["chave"].rsplit("/", 1)[-1]) if p)
 
 
-def _bloco_do_dia(ctx, dia: str, nome: str, conteudo: str) -> None:
-    """O bloco "reunioes" do diário daquele dia tem uma seção por reunião, guardadas no cursor do dia."""
-    chave = f"reunioes:dia:{dia}"
+def _secoes(ctx, chave: str, nome: str, conteudo: str) -> str:
+    """O bloco "reunioes" de uma nota tem uma seção por reunião daquele dia, guardadas no cursor `chave`."""
     secoes = json.loads(ctx.estado.cursor(chave) or "{}")
     secoes[nome] = conteudo
     ctx.estado.definir_cursor(chave, json.dumps(secoes, ensure_ascii=False))
-    texto = "## Reuniões\n\n" + "\n\n".join(secoes[n] for n in sorted(secoes))
-    obsidian.escrever_bloco_diario(ctx.config, "reunioes", texto, date.fromisoformat(dia))
+    return "## Reuniões\n\n" + "\n\n".join(secoes[n] for n in sorted(secoes))
+
+
+def nota_do_grupo(config: Config, pasta: str, dia: str) -> str:
+    """A nota do dia na pasta do grupo, no padrão DD-MM.md; se já existe uma sem o zero do dia (5-10.md), é ela."""
+    d = date.fromisoformat(dia)
+    for nome in (f"{d:%d-%m}.md", f"{d.day}-{d:%m}.md"):
+        if (config.cofre / pasta / nome).is_file():
+            return f"{pasta}/{nome}"
+    return f"{pasta}/{d:%d-%m}.md"
 
 
 @rotina(id="resumir_reunioes", nome="resumo de reuniões", frente="Notas", quando="cada 15m",
@@ -56,7 +65,14 @@ def rodar(ctx):
         cabeca = (f"{dados['falas']} falas · {', '.join(dados['quem'])}"
                   f" · transcrição em `{t['arquivo']}`")
         caminho = obsidian.escrever_proprio(cfg, f"Reuniões/{nome}.md", f"# {dados['titulo']}\n\n{cabeca}\n\n{resumo}")
-        _bloco_do_dia(ctx, t["dia"], nome, f"### [[{pasta_propria}/Reuniões/{nome}|{dados['titulo']}]]\n\n{resumo}")
+        secao = f"### [[{pasta_propria}/Reuniões/{nome}|{dados['titulo']}]]\n\n{resumo}"
+        obsidian.escrever_bloco_diario(cfg, "reunioes", _secoes(ctx, f"reunioes:dia:{t['dia']}", nome, secao),
+                                       date.fromisoformat(t["dia"]))
+        if achado := reunioes.grupo(cfg, dados["quem"], dados["texto"]):
+            gid, g = achado
+            nota = obsidian.escrever_bloco(cfg, nota_do_grupo(cfg, g["pasta"], t["dia"]), "reunioes",
+                                           _secoes(ctx, f"reunioes:{gid}:{t['dia']}", nome, secao))
+            ctx.log(f"reunião de {gid}: também em {nota.name}")
         feitas[t["chave"]] = t["tamanho"]
         ctx.estado.definir_cursor(_CURSOR, json.dumps(feitas, ensure_ascii=False))
         ctx.log(f"resumida: {caminho.name}")

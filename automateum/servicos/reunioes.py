@@ -3,6 +3,7 @@
 O Chrome só deixa a extensão salvar dentro de Downloads (em `Downloads/Gutenberg/AAAA-MM/DD/`). O Automateum
 traz cada arquivo de lá para a pasta fixa `[reunioes] pasta`, com as mesmas subpastas, e lê dali.
 Um arquivo repetido (o "Baixar" no meio da reunião vira "nome (1).md") é a mesma reunião: vale o maior.
+Os grupos (`[reunioes.grupos.<id>]`, com `pessoas` e `pasta`) dizem de quem é a reunião pelos nomes de quem falou.
 """
 from __future__ import annotations
 
@@ -72,6 +73,25 @@ def ler(arquivo: Path) -> dict:
     titulo = next((l[2:].strip() for l in texto.splitlines() if l.startswith("# ")), arquivo.stem)
     return {"texto": texto, "titulo": titulo, "falas": len(falas), "inicio": falas[0][0] if falas else "",
             "quem": sorted({q for _, q in falas})}
+
+
+def _palavra(termo: str) -> re.Pattern:
+    return re.compile(rf"\b{re.escape(termo.casefold())}\b")
+
+
+def grupo(config: Config, quem: list[str], texto: str = "") -> tuple[str, dict] | None:
+    """O primeiro grupo da reunião. É dele quando todos que falaram (fora "Eu") estão em `pessoas`, pelo nome
+    inteiro ou por uma palavra dele; ou quando o texto cita os termos de `palavras` pelo menos `mencoes` vezes."""
+    outros = [q.casefold() for q in quem if q.casefold() != "eu"]
+    texto = texto.casefold()
+    for gid, g in (_secao(config).get("grupos") or {}).items():
+        pessoas = [_palavra(p) for p in g.get("pessoas", [])]
+        if outros and all(any(p.search(f) for p in pessoas) for f in outros):
+            return gid, g
+        citacoes = sum(len(_palavra(t).findall(texto)) for t in g.get("palavras", []))
+        if citacoes and citacoes >= int(g.get("mencoes", 2)):
+            return gid, g
+    return None
 
 
 def transcricoes(config: Config, parada_ha: float = 0) -> list[dict]:

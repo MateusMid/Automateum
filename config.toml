@@ -43,6 +43,13 @@ max_emails = 40
 # reuniões" traz cada arquivo para a pasta fixa e resume a reunião no cofre e no diário. A pasta fica no
 # config.local.toml (veja o exemplo); `entrada` troca a pasta de onde vêm os arquivos.
 pasta = ""
+# Reunião de um cliente também vai para a nota do dia (DD-MM.md) da pasta dele no cofre, num bloco do Automateum.
+# É do grupo quando todos que falaram (fora "Eu") estão em `pessoas`, ou quando a transcrição cita os termos de
+# `palavras` pelo menos `mencoes` vezes (padrão 2). Os nomes ficam no config.local.toml:
+# [reunioes.grupos.cliente]
+# pasta = "Cliente/Meets"
+# pessoas = ["Fulano", "Beltrana"]
+# palavras = ["Cliente", "PROJ"]
 
 [github]
 # Vazio = tudo que estiver atribuído a você. Ou restrinja: ["org/repo"].

@@ -9,6 +9,10 @@ cofre = 'C:\Users\seu_usuario\Documents\SeuCofre'
 # Transcrições do Gutenberg: a pasta fixa para onde elas vão, saindo de Downloads\Gutenberg.
 # [reunioes]
 # pasta = 'C:\Transcricoes'
+# [reunioes.grupos.cliente]       # reunião só com gente daqui (ou que cita as palavras) vai também para Cliente/Meets/DD-MM.md
+# pasta = "Cliente/Meets"
+# pessoas = ["Fulano", "Beltrana"]
+# palavras = ["Cliente", "PROJ"]
 
 # Slack pelo navegador, no lugar do app com token. Precisa do coletor de Slack numa pasta fixa
 # (a que tem o colher.ps1 e o logar.ps1), de Node, de Python e do Chrome. Rode o logar.ps1 uma vez.

@@ -123,6 +123,48 @@ def test_copia_maior_resume_de_novo_sem_duplicar_no_diario(cfg, monkeypatch):
     assert "versão final" in diario and "primeira versão" not in diario
 
 
+def test_grupo_quando_so_falou_gente_do_grupo(cfg):
+    cfg.dados["reunioes"]["grupos"] = {"cliente": {"pasta": "Cliente/Meets", "pessoas": ["Ana", "Bruno Lima"]}}
+    assert reunioes.grupo(cfg, ["Eu", "ana souza"])[0] == "cliente"
+    assert reunioes.grupo(cfg, ["Bruno Lima", "Ana"])[0] == "cliente"
+    assert reunioes.grupo(cfg, ["Eu", "Ana", "Carla"]) is None              # alguém de fora: provavelmente não é
+    assert reunioes.grupo(cfg, ["Eu", "Bruno Costa"]) is None               # "Bruno" sozinho não basta
+    assert reunioes.grupo(cfg, ["Eu"]) is None                              # só eu: não dá para saber pelas pessoas
+
+
+def test_grupo_pelo_assunto_quando_cita_os_termos(cfg):
+    cfg.dados["reunioes"]["grupos"] = {"cliente": {"pasta": "Cliente/Meets", "pessoas": ["Ana"],
+                                                   "palavras": ["ACME", "WT"]}}
+    assert reunioes.grupo(cfg, ["Eu", "Carla"], "a WT-1836 subiu; a acme pediu revisão")[0] == "cliente"
+    assert reunioes.grupo(cfg, ["Eu", "Carla"], "falamos da acme de passagem") is None   # uma citação só
+    assert reunioes.grupo(cfg, ["Eu", "Carla"], "o NEWT e o awt não contam") is None
+
+
+def test_reuniao_do_cliente_vai_tambem_para_a_nota_do_dia_dele(cfg, monkeypatch):
+    cfg.dados["reunioes"]["grupos"] = {"cliente": {"pasta": "Cliente/Meets", "pessoas": ["Ana"]}}
+    (cfg.cofre / "Cliente/Meets").mkdir(parents=True)
+    (cfg.cofre / "Cliente/Meets/20-10.md").write_text("1. minhas anotações\n", encoding="utf-8")
+    _perguntas(monkeypatch)
+    _baixar(cfg, "meet-abc.md", _transcricao(_REUNIAO))
+    _baixar(cfg, "meet-interna.md", _transcricao([("Eu", "a"), ("Carla", "b"), ("Ana", "c")], "xyz"))
+
+    _rodar(cfg, Estado(cfg.banco))
+
+    nota = (cfg.cofre / "Cliente/Meets/20-10.md").read_text(encoding="utf-8")
+    assert nota.startswith("1. minhas anotações") and "## Reuniões" in nota and "fechar o escopo" in nota
+    assert "xyz" not in nota                                        # a interna fica só no diário
+    diario = (cfg.cofre / "Diário/2026-10-20.md").read_text(encoding="utf-8")
+    assert "abc-defg-hij" in diario and "xyz" in diario
+    assert len(list((cfg.cofre / "Automateum/Saídas/Reuniões").glob("*.md"))) == 2
+
+
+def test_nota_do_grupo_usa_a_que_ja_existe_sem_zero(cfg):
+    (cfg.cofre / "Cliente/Meets").mkdir(parents=True)
+    assert resumir_reunioes.nota_do_grupo(cfg, "Cliente/Meets", "2026-10-05") == "Cliente/Meets/05-10.md"
+    (cfg.cofre / "Cliente/Meets/5-10.md").write_text("x", encoding="utf-8")
+    assert resumir_reunioes.nota_do_grupo(cfg, "Cliente/Meets", "2026-10-05") == "Cliente/Meets/5-10.md"
+
+
 def test_teste_de_microfone_e_arquivo_recente_nao_vao_para_a_ia(cfg, monkeypatch):
     estado = Estado(cfg.banco)
     chamadas = _perguntas(monkeypatch)
