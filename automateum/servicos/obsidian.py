@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 import re
 import time
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 from ..config import Config
@@ -82,6 +82,28 @@ def notas_recentes(config: Config, pasta: str, quantas: int = 3) -> list[tuple[s
         return []
     arquivos = sorted(base.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True)[:quantas]
     return [(a.stem, a.read_text(encoding="utf-8", errors="replace")) for a in arquivos]
+
+
+def notas_editadas(config: Config, desde: date) -> list[tuple[str, str]]:
+    """As notas modificadas a partir de `desde`, mais recentes primeiro, como (caminho no cofre, texto).
+
+    Fica de fora o diário, que as rotinas de fechamento já leem, e a pasta em que o Automateum escreve."""
+    s = _secao(config)
+    fora = (s.get("pasta_diario", "Diário"), s.get("pasta_automateum", "Automateum/Saídas"))
+    inicio = datetime.combine(desde, datetime.min.time()).timestamp()
+    achadas = []
+    for nota in notas(config):
+        relativo = nota.relative_to(config.cofre).as_posix()
+        if any(relativo.startswith(f"{p}/") for p in fora):
+            continue
+        try:
+            quando = nota.stat().st_mtime
+        except OSError:     # apagada no meio da varredura
+            continue
+        if quando >= inicio:
+            achadas.append((quando, relativo, nota))
+    achadas.sort(reverse=True)
+    return [(relativo, nota.read_text(encoding="utf-8", errors="replace")) for _, relativo, nota in achadas]
 
 
 # --- escrita

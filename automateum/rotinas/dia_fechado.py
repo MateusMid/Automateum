@@ -2,7 +2,7 @@ from datetime import date
 
 from ..nucleo.registro import rotina
 from ..servicos import git_local, ia, maquina, obsidian
-from ._texto import formatar_git, listar, secao, sem_blocos
+from ._texto import formatar_git, listar, notas_editadas, secao, sem_blocos
 
 _PEDIDO = (
     "Escreva o fechamento do meu dia com três partes curtas, cada uma com um título em negrito: "
@@ -17,13 +17,15 @@ _PEDIDO = (
 @rotina(id="dia_fechado", nome="dia fechado", frente="Notas", quando="cron: 0 19 * * mon-fri",
         usa=["obsidian", "claude", "git_local"], entrega=["diario"])
 def rodar(ctx):
-    """Lê o que você anotou hoje, os resumos de mensagens, tasks e repositórios git locais, e escreve o fechamento no diário."""
-    cfg, hoje = ctx.config, date.today().isoformat()
+    """Lê o que você anotou hoje, as notas editadas, os resumos de mensagens, tasks e repositórios git locais, e escreve o fechamento no diário."""
+    cfg, dia = ctx.config, date.today()
+    hoje = dia.isoformat()
     pasta_diario = cfg.secao("obsidian").get("pasta_diario", "Diário")
     pasta_propria = cfg.secao("obsidian").get("pasta_automateum", "Automateum")
     git_info = formatar_git(git_local.auditar_dia(cfg, dias=0))
     material = [
         secao("O que eu anotei hoje no diário", sem_blocos(obsidian.ler_nota(cfg, f"{pasta_diario}/{hoje}.md"))),
+        secao("Notas do cofre editadas hoje", notas_editadas(obsidian.notas_editadas(cfg, dia))),
         secao("Resumos de mensagens de hoje", obsidian.ler_nota(cfg, f"{pasta_propria}/Mensagens/{hoje}.md")),
         secao("Tasks abertas no cofre", listar(ctx.estado.itens(["obsidian"]))),
         secao("GitHub remoto", listar(ctx.estado.itens(["github"]))),

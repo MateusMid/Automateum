@@ -1,4 +1,5 @@
-from datetime import date
+import os
+from datetime import date, datetime
 
 import pytest
 
@@ -94,3 +95,20 @@ def test_semana_sem_diario_nao_chama_a_ia(ambiente, monkeypatch):
     chamadas = _perguntas(monkeypatch)
     assert "nenhum diário" in semana_fechada.rodar(ctx)
     assert chamadas == []
+
+
+def test_manda_as_notas_editadas_desde_segunda(ambiente, monkeypatch):
+    cfg, ctx, _ = ambiente
+    chamadas = _perguntas(monkeypatch)
+    _diario(cfg, "2026-10-16", "sexta")
+    for nome, dia in (("Plano da semana", 13), ("Da semana passada", 9)):
+        nota = cfg.cofre / "Projetos" / f"{nome}.md"
+        nota.parent.mkdir(exist_ok=True)
+        nota.write_text(f"conteúdo de {nome}", encoding="utf-8")
+        quando = datetime(2026, 10, dia, 10).timestamp()
+        os.utime(nota, (quando, quando))
+
+    semana_fechada.rodar(ctx)
+
+    assert "### Notas do cofre editadas na semana\n#### Projetos/Plano da semana.md" in chamadas[0]
+    assert "Da semana passada" not in chamadas[0]
