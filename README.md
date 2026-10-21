@@ -16,13 +16,21 @@ organiza seu dia e mantém seu cofre do Obsidian atualizado com suas tarefas e r
   - **Gmail:** Filtro e captura inteligente de e-mails prioritários e não lidos.
   - **GitHub:** Rastreamento de issues e pull requests atribuídos a você.
 - **🧠 Resumos Inteligentes com Claude:**
-  - Geração de resumos periódicos e digest do seu dia com modelos Claude (Sonnet).
+  - Briefing da manhã, resumo das mensagens de hora em hora e fechamento do dia, pelo Claude Code (`claude -p`).
+    Se ele falhar, o Copilot (CLI `copilot`) responde no lugar; um botão no mapa troca qual é o principal.
 - **📝 Integração Nativa com Obsidian:**
   - Extração de tarefas e escrita direta nas notas diárias do seu cofre (`vault`).
+  - Uma nota por rotina com o último resultado e um arquivo por dia com o histórico dos textos gerados.
+- **🧑‍💻 Projetos no Orca:**
+  - Cada issue atribuída a você ganha uma worktree no Orca com o Claude Code aberto e o prompt **digitado, sem
+    enviar**; as outras esperam o botão Começar. Os PRs que pedem a sua revisão ganham um prompt de revisão do
+    mesmo jeito. Nada sai até você apertar Enter no Orca.
 - **⏰ Rotinas Automatizadas:**
   - Agendamento flexível de rotinas em horários configuráveis (estilo cron) via APScheduler.
 - **🖥️ Painel Local:**
-  - Interface web leve servida via FastAPI/Uvicorn para monitoramento e controle.
+  - Mapa ao vivo da máquina, dos serviços e das rotinas, com seis estilos e seis organizações, gaveta de detalhes,
+    botões de rodar, ligar e desligar, sininho com os textos do dia e gráfico de CPU e memória.
+  - Opcional: leitura pelo celular no mesmo Wi-Fi, com QR code e chave (só leitura).
 
 ---
 
@@ -35,9 +43,10 @@ organiza seu dia e mantém seu cofre do Obsidian atualizado com suas tarefas e r
   - [Slack SDK](https://github.com/slackapi/python-slack-sdk)
   - [Google API Client](https://github.com/googleapis/google-api-python-client)
   - GitHub REST API
-  - Claude (Claude Code CLI, `claude -p`)
+  - Claude (Claude Code CLI, `claude -p`) e GitHub Copilot CLI (`copilot`), de reserva
+  - Orca (CLI `orca`), para as worktrees e os prompts das tasks
 - **Configurações & Armazenamento:** TOML (`tomllib`), SQLite, arquivo `.env`
-- **Painel:** HTML, CSS e JavaScript puros, sem etapa de build
+- **Painel:** HTML, CSS e JavaScript puros, sem etapa de build; [segno](https://github.com/heuer/segno) para o QR do celular
 
 ---
 
@@ -46,6 +55,8 @@ organiza seu dia e mantém seu cofre do Obsidian atualizado com suas tarefas e r
 - Python 3.11 ou superior instalado
 - [Claude Code](https://claude.com/claude-code) instalado e logado, para os resumos
 - Tokens de acesso para as integrações que desejar usar (GitHub, Slack, Google/Gmail)
+- Opcionais: a CLI do GitHub Copilot (`copilot`, motor de reserva dos resumos), o app do Orca aberto (para os
+  prompts das tasks) e Node com Chrome (para o Slack pelo modo `navegador`)
 
 ---
 
