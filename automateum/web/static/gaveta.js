@@ -316,7 +316,8 @@
       h += '<ul class="gv-itens">' + itens.slice(0, 12).map(function (i) {
         var t = esc((i.titulo || '').slice(0, 160));
         var link = /^https?:\/\//.test(i.url || '') ? '<a href="' + esc(i.url) + '" target="_blank" rel="noopener noreferrer">' + t + '</a>' : t;
-        var det = [i.origem, (i.quando || '').slice(0, 10)].filter(Boolean).join(' · ');
+        // no GitHub o corpo diz o tipo, o papel e em que pé está o seu PR (CI falhou, aprovado...)
+        var det = [i.origem, i.fonte === 'github' ? i.corpo : '', (i.quando || '').slice(0, 10)].filter(Boolean).join(' · ');
         return '<li>' + link + (det ? '<small>' + esc(det) + '</small>' : '') + '</li>';
       }).join('') + '</ul>';
       if (itens.length > 12) h += '<p class="gv-nota">e mais ' + (itens.length - 12) + ' itens guardados.</p>';

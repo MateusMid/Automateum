@@ -68,7 +68,7 @@ Enquanto uma credencial não estiver configurada, o respectivo serviço é exibi
 
 ### GitHub
 1. Acesse **GitHub → Settings → Developer settings → Personal access tokens** (Fine-grained ou Classic).
-2. Configure permissões de somente leitura para **Issues** e **Pull requests**.
+2. Configure permissões de somente leitura para **Issues** e **Pull requests**, e também **Checks** e **Commit statuses** para o painel saber se o CI dos seus PRs falhou.
 3. Adicione ao `.env`:
    ```env
    GITHUB_TOKEN=ghp_...
