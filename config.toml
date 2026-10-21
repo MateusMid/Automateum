@@ -13,7 +13,7 @@ pasta_automateum = "Automateum/Saídas"
 # Pastas que a busca de tasks ignora: nome solto ou caminho a partir da raiz do cofre.
 ignorar = [".obsidian", ".trash", "Automateum/Saídas"]
 # Pastas cujas notas mais recentes entram como contexto no briefing do dia.
-pastas_contexto = ["FH/Meets"]
+pastas_contexto = ["FH/Meets", "Automateum/Saídas/Reuniões"]
 
 [claude]
 # Modelo usado nos resumos ("" = padrão do Claude Code).
@@ -37,6 +37,12 @@ max_conversas = 60
 [gmail]
 consulta = "in:inbox is:unread newer_than:2d"
 max_emails = 40
+
+[reunioes]
+# Transcrições do Gutenberg (extensão do Chrome). Ele só salva em Downloads\Gutenberg; a rotina "resumo de
+# reuniões" traz cada arquivo para a pasta fixa e resume a reunião no cofre e no diário. A pasta fica no
+# config.local.toml (veja o exemplo); `entrada` troca a pasta de onde vêm os arquivos.
+pasta = ""
 
 [github]
 # Vazio = tudo que estiver atribuído a você. Ou restrinja: ["org/repo"].

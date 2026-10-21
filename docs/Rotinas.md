@@ -75,6 +75,14 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 - **Ficou aberto:** o que foi previsto mas não pôde ser concluído
 - **Amanhã:** primeiros passos recomendados para o dia seguinte
 
+## Reuniões
+
+| Rotina | Quando | Depende de | O que faz |
+|---|---|---|---|
+| `resumir_reunioes` | a cada 15 min | Reuniões (Gutenberg), Claude, Obsidian | Traz as transcrições que a extensão Gutenberg salva em `Downloads\Gutenberg\AAAA-MM\DD\` para a pasta fixa `[reunioes] pasta` (mesmas subpastas; um arquivo igual ao que já está lá só é apagado de Downloads). Resume cada reunião nova (até 3 por rodada) em `Automateum/Saídas/Reuniões/` e no bloco **Reuniões** do diário do dia da reunião: **Assunto**, **Decisões**, **Próximos passos** e **Em aberto**. Cópias da mesma reunião (`nome (1).md`) contam uma vez só, pela maior. Menos de 3 falas é teste e não vai para o Claude; arquivo mexido no último minuto espera a próxima rodada. |
+
+O briefing da manhã lê os resumos mais recentes, porque `Automateum/Saídas/Reuniões` está em `pastas_contexto`.
+
 ## Ideias e Próximos Passos
 
 - Acesso ao painel pelo celular fora do Wi-Fi (hoje só pela rede local; ver docs/Painel.md)
