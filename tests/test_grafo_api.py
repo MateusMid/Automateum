@@ -165,6 +165,7 @@ def test_api_rotas_principais_e_detalhes_de_nos(ambiente):
         r = client.get("/api/no/rotina/tasks_obsidian")
         assert r.status_code == 200
         assert r.json()["titulo"] == "tasks do cofre"
+        assert len(r.json()["historico"]) == 14
 
         # GET /api/no/frente/Tasks
         r = client.get("/api/no/frente/Tasks")

@@ -270,6 +270,30 @@
   var ESTADO_DA_RODADA = {ok: 'bom', falha: 'ruim', atencao: 'atencao', rodando: 'duvida'};
   // Só o que os textos gerados usam: **negrito** e quebra de linha, sobre texto já escapado.
   function mdSimples(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>'); }
+  // Uma coluna por dia, da altura do número de rodadas: as falhas em cima, as com atenção no meio, as boas embaixo.
+  var DIA_SEM = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  function diaCurto(iso) { var d = new Date(iso + 'T12:00:00'); return DIA_SEM[d.getDay()] + ' ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1); }
+  function historicoDias(dd) {
+    if (!dd || !dd.length) return '';
+    var maior = 1, tot = {ok: 0, atencao: 0, falha: 0};
+    dd.forEach(function (d) {
+      maior = Math.max(maior, d.ok + d.atencao + d.falha);
+      tot.ok += d.ok; tot.atencao += d.atencao; tot.falha += d.falha;
+    });
+    var n = tot.ok + tot.atencao + tot.falha;
+    var h = '<div class="gv-hist"><small>Últimos ' + dd.length + ' dias</small>';
+    if (!n) return h + '<p class="gv-nota">Nenhuma rodada nesse período.</p></div>';
+    h += '<div class="gv-dias">' + dd.map(function (d) {
+      var t = d.ok + d.atencao + d.falha;
+      var dica = diaCurto(d.dia) + ': ' + (t ? plural(t, 'rodada', 'rodadas') + (d.falha ? ', ' + plural(d.falha, 'falha', 'falhas') : '') +
+        (d.atencao ? ', ' + d.atencao + ' com atenção' : '') : 'nenhuma rodada');
+      return '<span title="' + esc(dica) + '">' + [['ruim', d.falha], ['atencao', d.atencao], ['bom', d.ok]].filter(function (s) { return s[1]; }).map(function (s) {
+        return '<b class="gv-e-' + s[0] + '" style="height:' + (s[1] / maior * 100).toFixed(1) + '%"></b>';
+      }).join('') + '</span>';
+    }).join('') + '</div><div class="gv-bat-eixo"><span>' + esc(diaCurto(dd[0].dia)) + '</span><span>hoje</span></div>';
+    return h + '<p class="gv-nota">' + plural(n, 'rodada', 'rodadas') + (tot.falha ? ' · ' + plural(tot.falha, 'falha', 'falhas') : ' · nenhuma falha') +
+      (tot.atencao ? ' · ' + tot.atencao + ' com atenção' : '') + '</p></div>';
+  }
   function htmlResultado(d) {
     var ex = (d.execucoes || [])[0], h = '', itens = d.itens || [];
     var texto = d.texto && d.texto.conteudo
@@ -287,6 +311,7 @@
     } else {
       h += '<p class="gv-nota">Ainda não há resultado guardado desta rotina.</p>' + texto;
     }
+    h += historicoDias(d.historico);
     if (itens.length) {
       h += '<ul class="gv-itens">' + itens.slice(0, 12).map(function (i) {
         var t = esc((i.titulo || '').slice(0, 160));
@@ -865,6 +890,11 @@
     '.gv-bat b.gv-e-bom { background: color-mix(in srgb, var(--gv-c) 46%, var(--gv-vazio)); }',
     '.gv-bat b.gv-e-desligado, .gv-bat b.gv-e-construcao { background: color-mix(in srgb, var(--gv-mudo) 40%, var(--gv-vazio)); }',
     '.gv-bat b.gv-nada { background: var(--gv-vazio); }',
+    '.gv-hist { margin-top: 12px; } .gv-hist > small { color: var(--gv-mudo); font-size: 11px; }',
+    '.gv-dias { display: flex; gap: 2px; height: 40px; margin-top: 6px; }',
+    '.gv-dias span { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; background: var(--gv-vazio); border-radius: 1px; overflow: hidden; }',
+    '.gv-dias b { display: block; min-height: 2px; background: var(--gv-c); }',
+    '.gv-dias b.gv-e-bom { background: color-mix(in srgb, var(--gv-c) 46%, var(--gv-vazio)); }',
     '.gv-bat-eixo { display: flex; justify-content: space-between; color: var(--gv-mudo); font-size: 10.5px; margin-top: 5px; font-variant-numeric: tabular-nums; }',
     '.gv-oque { margin: 0; color: var(--gv-texto2); line-height: 1.55; }',
     '.gv-nota { margin: 6px 0 0; color: var(--gv-mudo); font-size: 11.5px; line-height: 1.45; }',
