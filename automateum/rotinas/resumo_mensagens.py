@@ -20,8 +20,8 @@ _PEDIDO = (
 def rodar(ctx):
     """Resume o que chegou no Slack e no Gmail desde o último resumo e anota no cofre."""
     inicio = agora()
-    itens = ctx.estado.itens(["slack", "gmail"], coletado_apos=ctx.estado.cursor("resumo_mensagens:ate"),
-                             limite=_MAXIMO_LIDO)
+    itens = ctx.estado.itens_nao_vistos(["slack", "gmail"], coletado_apos=ctx.estado.cursor("resumo_mensagens:ate"),
+                                        limite=_MAXIMO_LIDO)
     if not itens:
         return "nada novo para resumir"
     ctx.log(f"{len(itens)} mensagens para resumir")
