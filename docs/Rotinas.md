@@ -78,6 +78,10 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 
 Em folga, feriado ou férias, a gaveta do `meu_dia`, do `dia_fechado`, do `semana_fechada` e do `resumo_mensagens` tem a seção **Pausa dos resumos**: escolha o último dia e clique em **Pausar até**. As quatro param juntas até essa data (inclusive) e voltam sozinhas no dia seguinte; **Retomar agora** acaba antes. No mapa elas ficam cinzas, com a data de volta. As coletas, as tasks e o resto continuam rodando, então na volta o briefing já tem o que chegou. A pausa vai até 90 dias e fica guardada no banco, valendo mesmo depois de reiniciar.
 
+## Worktrees de issues que já saíram
+
+A gaveta de cada projeto lista as worktrees de issues que **fecharam** (a issue sumiu da lista de abertas) ou que você **dispensou**. O botão **Apagar worktree** (com confirmação em dois cliques) as remove pelo Orca. Só apaga se a worktree estiver limpa e com tudo enviado: arquivo modificado ou novo, ou commit que não foi enviado (ou branch sem remoto), e a limpeza recusa e mostra o motivo. Nunca apaga a de uma issue aberta. Não mexe em PRs de revisão.
+
 ## Mensagens já vistas
 
 Cada mensagem do Slack e do Gmail, na gaveta da rotina de coleta, tem o botão **Já vi esta conversa até aqui**. Ele marca a conversa como vista até aquela mensagem (inclusive): ela sai da lista, do briefing `meu_dia` e do resumo das mensagens. O que chegar depois na mesma conversa volta a aparecer, e a marca nunca volta atrás. Só fica no Automateum: nada é alterado no Slack ou no Gmail. Os dados ficam na tabela `conversas_vistas`.

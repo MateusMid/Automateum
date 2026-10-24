@@ -487,6 +487,7 @@
     if (p[0] === 'projeto-comecar') return 'Começar';
     if (p[0] === 'projeto-refazer' || p[0] === 'revisao-refazer') return 'Digitar de novo';
     if (p[0] === 'projeto-dispensar') return armado[a] ? 'Confirmar: dispensar' : 'Dispensar';
+    if (p[0] === 'apagar-worktree') return armado[a] ? 'Confirmar: apagar' : 'Apagar worktree';
     if (p[0] === 'projeto-reativar') return 'Reativar';
     if (p[0] === 'projeto-ligar') return 'Ativar';
     if (p[0] === 'projeto-desligar') return 'Desativar';
@@ -524,6 +525,13 @@
           return '<li class="gv-pronto">PR #' + q.numero + ' ' + esc(q.titulo) + (q.digitado ? '' : ' (use Digitar de novo)') +
             ' <button type="button" class="gv-ver" data-gv-prompt="' + esc(p.id + '/' + q.numero + '/pr') + '">Ver prompt</button>' +
             '<span class="gv-acoes gv-e-bom">' + botaoAcao('revisao-refazer:' + p.id + ':' + q.numero) + '</span><pre class="gv-prompt" hidden></pre></li>';
+        }).join('') + '</ul>';
+      }
+      // worktrees de issues fechadas ou dispensadas: o servidor só apaga se não tiverem alteração nem commit sem enviar
+      if (p.limpar && p.limpar.length) {
+        h += '<p class="gv-nota">Worktrees que podem sair (só apaga se não houver alteração nem commit sem enviar):</p><ul class="gv-linhas">' + p.limpar.map(function (q) {
+          return '<li>#' + q.numero + ' ' + esc(q.titulo) + ' <small>' + esc(q.motivo) + '</small>' +
+            '<span class="gv-acoes gv-e-desligado">' + botaoAcao('apagar-worktree:' + p.id + ':' + q.numero) + '</span></li>';
         }).join('') + '</ul>';
       }
       if (p.ativo && p.disponiveis && p.disponiveis.length) {
@@ -652,7 +660,7 @@
     var st = acoes[acao];
     if (st && (st.estado === 'enviando' || st.estado === 'rodando')) return;
     // desligar e dispensar pedem o segundo clique: o primeiro arma o botao por 6 s
-    if (/^(desligar|projeto-dispensar):/.test(acao) && !armado[acao]) {
+    if (/^(desligar|projeto-dispensar|apagar-worktree):/.test(acao) && !armado[acao]) {
       armado[acao] = true;
       repintarBotoes(acao);
       setTimeout(function () { if (armado[acao]) { delete armado[acao]; repintarBotoes(acao); } }, 6000);
@@ -687,7 +695,7 @@
     // a chave mudou no Agendador: uma leitura agora, para a tela nao esperar os 5 min
     if (estado === 'ok' && /^(ligar|desligar|pausar):|^retomar$/.test(acao)) agir('medir-agora');
     // uma mensagem vista some da lista da rotina: o resultado guardado de cada rotina fica velho
-    if (estado === 'ok' && /^ver:/.test(acao)) { resultados = {}; if (aberto) desenhar(); }
+    if (estado === 'ok' && /^(ver|apagar-worktree):/.test(acao)) { resultados = {}; if (aberto) desenhar(); }
     if (opts.aoAgir) { try { opts.aoAgir(acao, estado); } catch (e) { /* a pagina que se vire */ } }
     setTimeout(function () { if (acoes[acao] && acoes[acao].texto === texto) marcarAcao(acao, null); }, 20000);
   }
