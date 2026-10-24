@@ -182,6 +182,13 @@ def criar_app(config: Config) -> FastAPI:
         if tipo in ("ligar", "desligar") and alvo in ROTINAS:
             agendador.ligar(alvo, ligada=tipo == "ligar")
             return {"id": 0}  # sem rodada para acompanhar: /estado/0 responde como concluído
+        if tipo == "ver" and alvo.partition(":")[0] in ("slack", "gmail"):
+            fonte, _, chave = alvo.partition(":")
+            achada = estado.item(fonte, chave)
+            if not achada:
+                return _erro(404, "essa mensagem não está mais guardada")
+            estado.ver_ate(fonte, achada["origem"], achada["quando"] or achada["coletado"])
+            return {"id": 0}
         if tipo == "pausar":
             try:
                 pausa.pausar(estado, date.fromisoformat(alvo))
@@ -339,7 +346,7 @@ def criar_app(config: Config) -> FastAPI:
                 "rodar": nid, "motivo": agendador.motivo_parada(r), "rodando": agendador.rodando(nid),
                 "execucoes": estado.execucoes(nid),
                 "historico": estado.rodadas_por_dia(nid),
-                "itens": estado.itens([fonte], limite=200) if fonte else [],
+                "itens": estado.itens_nao_vistos([fonte], limite=200) if fonte else [],
                 "nota": saidas.nota(config, nid),
                 "texto": saidas.ultimo_texto(estado, nid),
                 **({"envelhecidas": {"dias": tasks_obsidian.dias_limite(config),

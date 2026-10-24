@@ -320,7 +320,10 @@
         var link = /^https?:\/\//.test(i.url || '') ? '<a href="' + esc(i.url) + '" target="_blank" rel="noopener noreferrer">' + t + '</a>' : t;
         // no GitHub o corpo diz o tipo, o papel e em que pé está o seu PR (CI falhou, aprovado...)
         var det = [i.origem, i.fonte === 'github' ? i.corpo : '', (i.quando || '').slice(0, 10)].filter(Boolean).join(' · ');
-        return '<li>' + link + (det ? '<small>' + esc(det) + '</small>' : '') + '</li>';
+        // Slack e Gmail: "já vi" marca a conversa até esta mensagem; o que chegar depois volta a aparecer
+        var ja = (i.fonte === 'slack' || i.fonte === 'gmail') && i.chave
+          ? '<div class="gv-acoes gv-ver">' + botaoAcao('ver:' + i.fonte + ':' + i.chave) + '</div>' : '';
+        return '<li>' + link + (det ? '<small>' + esc(det) + '</small>' : '') + ja + '</li>';
       }).join('') + '</ul>';
       if (itens.length > 12) h += '<p class="gv-nota">e mais ' + (itens.length - 12) + ' itens guardados.</p>';
     }
@@ -477,6 +480,7 @@
   function rotAcao(a) {
     var p = a.split(':'), d = p[1] && /^\d{4}-\d\d-\d\d$/.test(p[1]) ? p[1].slice(8, 10) + '/' + p[1].slice(5, 7) : '';
     if (p[0] === 'rodar') return 'Rodar agora';
+    if (p[0] === 'ver') return 'Já vi esta conversa até aqui';
     if (p[0] === 'abrir-nota') return 'Abrir no Obsidian';
     if (p[0] === 'revisao-todos-ligar') return 'Ligar';
     if (p[0] === 'revisao-todos-desligar') return 'Desligar';
@@ -682,6 +686,8 @@
     }
     // a chave mudou no Agendador: uma leitura agora, para a tela nao esperar os 5 min
     if (estado === 'ok' && /^(ligar|desligar|pausar):|^retomar$/.test(acao)) agir('medir-agora');
+    // uma mensagem vista some da lista da rotina: o resultado guardado de cada rotina fica velho
+    if (estado === 'ok' && /^ver:/.test(acao)) { resultados = {}; if (aberto) desenhar(); }
     if (opts.aoAgir) { try { opts.aoAgir(acao, estado); } catch (e) { /* a pagina que se vire */ } }
     setTimeout(function () { if (acoes[acao] && acoes[acao].texto === texto) marcarAcao(acao, null); }, 20000);
   }
@@ -943,6 +949,7 @@
     '.gv-itens { list-style: none; margin: 10px 0 0; padding: 0; font-size: 12.5px; } .gv-itens li { padding: 5px 0; } .gv-itens li + li { border-top: 1px solid var(--gv-linha); }',
     '.gv-itens a { color: var(--gv-texto); text-decoration: none; } .gv-itens a:hover { text-decoration: underline; }',
     '.gv-itens small { display: block; color: var(--gv-mudo); font-size: 11.5px; overflow-wrap: anywhere; }',
+    '.gv-itens .gv-ver { margin: 4px 0 0; }',
     '.gv-obs { display: inline-block; margin-top: 12px; padding: 6px 12px; border: 1px solid var(--gv-linha); border-radius: 7px; color: var(--gv-texto); text-decoration: none; font-size: 12.5px; }',
     '.gv-obs:hover, .gv-obs:focus-visible { background: color-mix(in srgb, var(--gv-mudo) 14%, transparent); outline: none; }',
     '.gv-sec { margin-top: 20px; }',

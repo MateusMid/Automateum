@@ -26,6 +26,9 @@ CREATE TABLE IF NOT EXISTS itens (
 );
 CREATE TABLE IF NOT EXISTS cursores (chave TEXT PRIMARY KEY, valor TEXT);
 CREATE TABLE IF NOT EXISTS tasks_vistas (ident TEXT PRIMARY KEY, desde TEXT NOT NULL);
+-- até qual mensagem (inclusive) a conversa já foi vista; o que é mais novo volta a aparecer
+CREATE TABLE IF NOT EXISTS conversas_vistas (fonte TEXT NOT NULL, origem TEXT NOT NULL, ate TEXT NOT NULL,
+    PRIMARY KEY (fonte, origem));
 CREATE TABLE IF NOT EXISTS medidas (
     quando TEXT PRIMARY KEY, cpu INTEGER, memoria INTEGER, disco_livre_gb INTEGER, discos TEXT
 );
@@ -210,6 +213,28 @@ class Estado:
         marcas = ",".join("?" * len(fontes))
         return self._linhas(f"SELECT * FROM itens WHERE fonte IN ({marcas}) AND coletado > ? "
                             "ORDER BY quando DESC, chave LIMIT ?", (*fontes, coletado_apos, limite))
+
+    def item(self, fonte: str, chave: str) -> dict | None:
+        linhas = self._linhas("SELECT * FROM itens WHERE fonte=? AND chave=?", (fonte, chave))
+        return linhas[0] if linhas else None
+
+    def ver_ate(self, fonte: str, origem: str, ate: str) -> None:
+        """Marca a conversa como vista até `ate`. Nunca volta atrás: uma marca mais antiga não desfaz uma mais nova."""
+        self._exec("INSERT INTO conversas_vistas (fonte, origem, ate) VALUES (?,?,?) ON CONFLICT(fonte, origem) "
+                   "DO UPDATE SET ate = MAX(ate, excluded.ate)", (fonte, origem, ate))
+
+    def itens_nao_vistos(self, fontes: list[str], coletado_apos: str = "", limite: int = 500) -> list[dict]:
+        """Como `itens`, sem o que já foi marcado como visto na sua conversa (até a mensagem marcada, inclusive)."""
+        vistas = {(f, o): a for f, o, a in self._exec("SELECT fonte, origem, ate FROM conversas_vistas").fetchall()}
+        saida = []
+        for i in self.itens(fontes, coletado_apos, limite=100_000):
+            ate = vistas.get((i["fonte"], i["origem"]))
+            if ate and (i["quando"] or "") <= ate:
+                continue
+            saida.append(i)
+            if len(saida) == limite:
+                break
+        return saida
 
     def contar_itens(self, fonte: str) -> int:
         return self._exec("SELECT COUNT(*) FROM itens WHERE fonte=?", (fonte,)).fetchone()[0]
