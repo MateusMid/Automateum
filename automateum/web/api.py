@@ -227,6 +227,17 @@ def criar_app(config: Config) -> FastAPI:
             projetos.aceitar(config, estado, pid, int(numero))
             exec_id = agendador.disparar("preparar_prompts")   # prepara já, sem esperar os 15 minutos
             return {"id": exec_id if exec_id is not None else 0}
+        if tipo == "apagar-worktree":
+            pid, _, numero = alvo.partition(":")
+            if not numero.isdigit():
+                return _erro(400, f"ação desconhecida: {nome}")
+            try:
+                projetos.apagar_worktree(config, estado, pid, int(numero))
+            except ValueError as e:
+                return _erro(400, str(e))
+            except RuntimeError as e:
+                return _erro(500, f"o Orca não apagou a worktree: {e}")
+            return {"id": 0}
         if tipo in ("projeto-dispensar", "projeto-reativar"):
             pid, _, numero = alvo.partition(":")
             if not numero.isdigit():

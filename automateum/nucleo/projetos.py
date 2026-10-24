@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 
 from ..config import Config
+from ..servicos import orca
 
 MODELO = (
     "Task #{numero}: {titulo}\n{url}\n\n{corpo}\n\n---\n"
@@ -186,9 +187,43 @@ def situacao(config: Config, estado) -> list[dict]:
         saida.append({"id": pid, "nome": p.get("nome", pid), "github": p["github"], "ativo": ativo(config, estado, pid),
                       "revisar_todos": revisar_todos(config, estado, pid),
                       "revisoes": [{"numero": int(n), **d} for n, d in sorted(preparados(estado, pid, "pr").items(), key=lambda kv: int(kv[0]))],
-                      "prontos": prontos, "dispensados": fora,
+                      "prontos": prontos, "dispensados": fora, "limpar": limpaveis(estado, pid),
                       "disponiveis": [i for i in abertas(estado, pid) if i["numero"] not in feitos]})
     return saida
+
+
+def limpaveis(estado, pid: str) -> list[dict]:
+    """Worktrees de issues que fecharam ou que você dispensou. Só a lista: quem apaga confere se estão limpas."""
+    abertas_ = {i["numero"] for i in abertas(estado, pid)}
+    saida = []
+    for n, d in sorted(preparados(estado, pid).items(), key=lambda kv: int(kv[0])):
+        # sem nenhuma issue aberta na última leitura, não dá para dizer que alguma fechou: não lista nada
+        if d.get("worktree") and abertas_ and int(n) not in abertas_:
+            saida.append({"numero": int(n), "titulo": d.get("titulo", ""), "worktree": d["worktree"], "motivo": "issue fechada"})
+    for n, d in sorted(dispensadas(estado, pid).items(), key=lambda kv: int(kv[0])):
+        if d.get("worktree"):
+            saida.append({"numero": int(n), "titulo": d.get("titulo", ""), "worktree": d["worktree"], "motivo": "dispensada"})
+    return saida
+
+
+def apagar_worktree(config: Config, estado, pid: str, numero: int) -> None:
+    """Apaga a worktree no Orca e tira o registro dela. Recusa se tiver alteração ou commit sem enviar."""
+    if pid not in lista(config):
+        raise ValueError(f"projeto desconhecido: {pid}")
+    alvo = next((c for c in limpaveis(estado, pid) if c["numero"] == numero), None)
+    if alvo is None:
+        raise ValueError(f"a worktree da issue #{numero} não está na lista de limpeza")
+    if motivo := orca.pendencias(alvo["worktree"]):
+        raise ValueError(f"não apaguei a worktree da #{numero}: {motivo}")
+    if orca.worktree_existe(config, alvo["worktree"]):
+        orca.remover_worktree(config, alvo["worktree"])
+    chave = str(numero)
+    prontos = preparados(estado, pid)
+    if prontos.pop(chave, None) is not None:
+        guardar_preparados(estado, pid, prontos)
+    fora = dispensadas(estado, pid)
+    if fora.pop(chave, None) is not None:
+        guardar_dispensadas(estado, pid, fora)
 
 
 def resumo(sit: list[dict]) -> str:

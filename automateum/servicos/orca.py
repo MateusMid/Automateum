@@ -124,6 +124,34 @@ def worktree_existe(config: Config, caminho: str) -> bool:
                for w in _rodar(config, "worktree", "list").get("worktrees", []))
 
 
+def pendencias(caminho: str) -> str | None:
+    """O que impede apagar a worktree: arquivo modificado ou novo, ou commit que não foi enviado. None se pode apagar.
+
+    Sem remoto a branch não tem como provar que foi enviada, então não se apaga."""
+    if not Path(caminho).is_dir():
+        return None
+    try:
+        sujo = subprocess.run(["git", "-C", caminho, "status", "--porcelain"], capture_output=True, text=True,
+                              encoding="utf-8", timeout=60, **_SEM_JANELA)
+        sem_enviar = subprocess.run(["git", "-C", caminho, "rev-list", "--count", "@{u}..HEAD"], capture_output=True,
+                                    text=True, encoding="utf-8", timeout=60, **_SEM_JANELA)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return f"não consegui conferir o git: {e}"
+    if sujo.returncode != 0:
+        return "não consegui conferir o git"
+    if sujo.stdout.strip():
+        return "tem arquivos modificados ou novos sem commit"
+    if sem_enviar.returncode != 0:
+        return "a branch não tem remoto, então não dá para provar que foi enviada"
+    if sem_enviar.stdout.strip() != "0":
+        return f"{sem_enviar.stdout.strip()} commit(s) sem enviar"
+    return None
+
+
+def remover_worktree(config: Config, caminho: str) -> None:
+    _rodar(config, "worktree", "rm", "--worktree", f"path:{caminho}", timeout=120)
+
+
 def criar_worktree(config: Config, repo: str, nome: str, issue: int | None, comentario: str = "", *,
                    pr: int | None = None, base: str = "") -> dict:
     args = ["worktree", "create", "--name", nome, "--repo", f"id:{repo}", "--setup", "skip"]
