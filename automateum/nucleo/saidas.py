@@ -18,7 +18,7 @@ from .estado import Estado
 
 # De qual fonte de itens cada rotina é dona (a lista que o painel mostra e a nota repete).
 FONTES = {"tasks_obsidian": "obsidian", "tasks_github": "github", "coletar_slack": "slack",
-          "coletar_gmail": "gmail"}
+          "coletar_gmail": "gmail", "coletar_agenda": "agenda"}
 # Mensagens de outras pessoas não são despejadas no cofre: a nota só conta quantas há.
 SO_CONTAGEM = {"coletar_slack", "coletar_gmail"}
 _ITENS_NA_NOTA = 60
