@@ -23,6 +23,9 @@ def rodar(ctx):
     material = [
         secao("Tasks abertas no cofre (origem = nota; depois do traço, desde quando está aberta e a última edição da nota)",
               listar([{**t, "corpo": f"{t['corpo']}, nota editada em {t['quando']}"} for t in ctx.estado.itens(["obsidian"])])),
+        secao("Agenda de hoje", listar(sorted(
+            (i for i in ctx.estado.itens(["agenda"], limite=500) if i["quando"][:10] == date.today().isoformat()),
+            key=lambda i: i["quando"]))),
         secao("GitHub", listar(ctx.estado.itens(["github"]))),
         secao("Mensagens desde ontem à tarde", listar(ctx.estado.itens_nao_vistos(["slack", "gmail"], desde))),
     ]

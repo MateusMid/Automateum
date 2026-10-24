@@ -13,7 +13,8 @@ from pathlib import Path
 from ..config import Config
 from ..nucleo.registro import ATENCAO, FALHA, OK, Checagem, registrar_servico
 
-_ESCOPOS = ["https://www.googleapis.com/auth/gmail.readonly"]
+# a agenda (só leitura) entrou na mesma autorização: quem refez o login já a tem; o Gmail segue igual
+_ESCOPOS = ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/calendar.readonly"]
 
 
 @dataclass(frozen=True)
