@@ -8,7 +8,7 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from ..config import Config
-from . import saidas
+from . import pausa, saidas
 from .estado import Estado
 from .eventos import Barramento
 from .registro import ATENCAO, FALHA, OK, ROTINAS, SERVICOS, Atencao, Resultado, Rotina, gatilho
@@ -55,7 +55,7 @@ class Agendador:
         for sid in rotina.usa:
             if motivo := SERVICOS[sid].configurado(self.config):
                 return f"{SERVICOS[sid].nome}: {motivo}"
-        return None
+        return pausa.motivo(self.estado, rotina.id)
 
     def iniciar(self) -> None:
         self.estado.marcar_interrompidas()

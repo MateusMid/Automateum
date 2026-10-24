@@ -74,6 +74,10 @@ A rotina `prompts das tasks` (frente **Projetos**, a cada 15 min) prepara o come
 | `dia_fechado` | 19:00, seg a sex | Obsidian, Claude | Lê as anotações do dia, as notas do cofre editadas hoje, resumos de mensagens e tarefas concluídas/pendentes, registrando o fechamento no diário. Termina com uma linha da máquina (média e pico de CPU e memória, o disco livre de cada disco, desde quando está ligada), calculada pelas medições e não escrita pelo Claude. A temperatura não entra: o Windows não a expõe sem um programa de monitoramento à parte. |
 | `semana_fechada` | 19:30, sex | Obsidian, Claude | Junta o fechamento e as anotações de cada dia da semana (de segunda até hoje), as notas do cofre editadas na semana, as tasks abertas e os commits desde segunda, e escreve o fechamento da semana no diário de sexta: **Andou**, **Ficou aberto** e **Próxima semana**. Sem nenhum diário na semana, não chama o Claude. |
 
+## Pausa dos resumos
+
+Em folga, feriado ou férias, a gaveta do `meu_dia`, do `dia_fechado`, do `semana_fechada` e do `resumo_mensagens` tem a seção **Pausa dos resumos**: escolha o último dia e clique em **Pausar até**. As quatro param juntas até essa data (inclusive) e voltam sozinhas no dia seguinte; **Retomar agora** acaba antes. No mapa elas ficam cinzas, com a data de volta. As coletas, as tasks e o resto continuam rodando, então na volta o briefing já tem o que chegou. A pausa vai até 90 dias e fica guardada no banco, valendo mesmo depois de reiniciar.
+
 ## Estrutura dos Briefings
 
 ### Meu dia

@@ -4,7 +4,7 @@ from __future__ import annotations
 import time
 from datetime import datetime
 
-from . import projetos
+from . import pausa, projetos
 from .agendador import Agendador
 from .estado import Estado, agora
 from ..servicos import ia
@@ -188,7 +188,7 @@ def montar_mapa_leo(config, estado: Estado, ag: Agendador, celulares: list[dict]
             if motivo_p := ag.motivo_parada(r):
                 est_r = "desligado"
                 frase_r = motivo_p
-                passo = "desligada"
+                passo = "pausada" if motivo_p == pausa.motivo(estado, rid) else "desligada"
             elif rodando:
                 est_r = "bom"
                 frase_r = "rodando agora…"
@@ -204,6 +204,8 @@ def montar_mapa_leo(config, estado: Estado, ag: Agendador, celulares: list[dict]
 
             ultima_iso = (u["fim"] or u["inicio"]) if u else None
             extra = {}
+            if rid in pausa.RESUMOS:
+                extra["pausa"] = pausa.situacao(estado)
             if rid == "preparar_prompts":
                 # o cartão mostra quais projetos estão ativos; a gaveta traz as chaves de cada um
                 extra["projetos"] = projetos.situacao(config, estado)

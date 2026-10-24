@@ -9,7 +9,7 @@ import secrets
 import subprocess
 import sys
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .. import rotinas, servicos  # noqa: F401  (registram rotinas e serviços)
 from ..config import Config
-from ..nucleo import busca, grafo, mapa_leo, projetos, saidas
+from ..nucleo import busca, grafo, mapa_leo, pausa, projetos, saidas
 from ..nucleo.agendador import Agendador
 from ..nucleo.estado import Estado, agora
 from ..nucleo.eventos import Barramento
@@ -182,6 +182,15 @@ def criar_app(config: Config) -> FastAPI:
         if tipo in ("ligar", "desligar") and alvo in ROTINAS:
             agendador.ligar(alvo, ligada=tipo == "ligar")
             return {"id": 0}  # sem rodada para acompanhar: /estado/0 responde como concluído
+        if tipo == "pausar":
+            try:
+                pausa.pausar(estado, date.fromisoformat(alvo))
+            except ValueError as e:
+                return _erro(400, f"não pausei: {e}")
+            return {"id": 0}
+        if nome == "retomar":
+            pausa.retomar(estado)
+            return {"id": 0}
         if tipo == "motor" and alvo in ia.MOTORES:
             ia.definir(estado, alvo)
             return {"id": 0}
