@@ -2,4 +2,4 @@
 from . import saude, coletar_slack, resumo_mensagens  # noqa: F401, I001
 from . import resumir_reunioes  # noqa: F401, I001
 from . import tasks_obsidian, tasks_github, meu_dia, dia_fechado, semana_fechada, preparar_prompts, preparar_revisoes  # noqa: F401, I001
-from . import pauta_reuniao  # noqa: F401, I001
+from . import pauta_reuniao, coletar_agenda  # noqa: F401, I001

@@ -1,14 +1,14 @@
-from datetime import date
+from datetime import date, timedelta
 
 from ..nucleo.registro import rotina
 from ..servicos import git_local, ia, maquina, obsidian
-from ._texto import formatar_git, listar, notas_editadas, secao, sem_blocos
+from ._texto import agenda_do_dia, formatar_git, listar, notas_editadas, secao, sem_blocos
 
 _PEDIDO = (
     "Escreva o fechamento do meu dia com três partes curtas, cada uma com um título em negrito: "
     "**Andou** (o que foi feito ou avançou hoje, incluindo commits e trabalho nos projetos), "
     "**Ficou aberto** (o que estava previsto e não fechou, arquivos modificados sem commit ou commits pendentes de envio) "
-    "e **Amanhã** (no máximo 3 primeiros passos). Baseie-se só no material; se o dia tiver pouco "
+    "e **Amanhã** (agenda de amanhã e no máximo 3 primeiros passos). Baseie-se só no material; se o dia tiver pouco "
     "registro, diga isso em vez de preencher."
 )
 
@@ -30,6 +30,7 @@ def rodar(ctx):
         secao("Tasks abertas no cofre", listar(ctx.estado.itens(["obsidian"]))),
         secao("GitHub remoto", listar(ctx.estado.itens(["github"]))),
         secao("Atividade Git Local / Repositórios", git_info),
+        secao("Agenda de amanhã", agenda_do_dia(ctx.estado, dia + timedelta(days=1))),
     ]
     fechamento = ia.perguntar(ctx, _PEDIDO, "\n".join(material))
     # A linha da máquina sai das medições, não do Claude: é um número, e não deve ser reescrito.

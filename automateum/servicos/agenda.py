@@ -4,15 +4,20 @@ Utiliza as credenciais OAuth e tokens salvos da conta Google.
 """
 from __future__ import annotations
 
-import time
 import re
+import time
 import unicodedata
-from datetime import datetime
+from datetime import date, datetime, time as hora, timedelta
 from pathlib import Path
 
 from ..config import Config
 from ..nucleo.registro import ATENCAO, FALHA, OK, Checagem, registrar_servico
 from . import gmail
+
+_SEM_AUTORIZACAO = (
+    "sem autorização para ler a agenda: rode `python -m automateum gmail-login` de novo "
+    "e confira se a Google Calendar API está ativada"
+)
 
 
 def configurado(config: Config) -> str | None:
@@ -38,10 +43,79 @@ def checar(config: Config) -> Checagem:
             meta = cal.calendars().get(calendarId="primary").execute()
             enderecos.append(meta.get("id") or conta.nome)
         except Exception as e:
-            falhas.append(f"{conta.nome}: {gmail.erro(e)}" if len(lista) > 1 else gmail.erro(e))
+            erro = _SEM_AUTORIZACAO if getattr(getattr(e, "resp", None), "status", None) == 403 else gmail.erro(e)
+            falhas.append(f"{conta.nome}: {erro}" if len(lista) > 1 else erro)
     if falhas:
         return Checagem(ATENCAO if enderecos else FALHA, "; ".join(falhas)[:200], meta={"contas": enderecos})
     return Checagem(OK, ", ".join(enderecos), round((time.perf_counter() - inicio) * 1000), {"contas": enderecos})
+
+
+def intervalo_dias(hoje: date | None = None, dias: int = 2) -> tuple[str, str]:
+    """Retorna limites ISO 8601 locais, com fuso, para hoje até o início de `dias` dias depois."""
+    hoje = hoje or datetime.now().date()
+    inicio = datetime.combine(hoje, hora.min).astimezone()
+    fim = datetime.combine(hoje + timedelta(days=dias), hora.min).astimezone()
+    return inicio.isoformat(), fim.isoformat()
+
+
+def _local_iso(valor: str) -> str:
+    """Normaliza início/fim do Calendar para o horário local, mantendo datas de evento integral."""
+    if len(valor) == 10:
+        return f"{valor}T00:00:00"
+    return datetime.fromisoformat(valor.replace("Z", "+00:00")).astimezone().replace(tzinfo=None).isoformat(
+        timespec="seconds")
+
+
+def _evento(conta: gmail.Conta, ev: dict) -> dict | None:
+    if ev.get("status") == "cancelled":
+        return None
+    inicio_info, fim_info = ev.get("start", {}), ev.get("end", {})
+    inicio_str = inicio_info.get("dateTime") or inicio_info.get("date")
+    fim_str = fim_info.get("dateTime") or fim_info.get("date") or inicio_str
+    if not inicio_str:
+        return None
+
+    dia_inteiro = "date" in inicio_info
+    inicio_local, fim_local = _local_iso(inicio_str), _local_iso(fim_str)
+    meet_url = ev.get("hangoutLink")
+    if not meet_url:
+        meet_url = next((ep.get("uri") for ep in ev.get("conferenceData", {}).get("entryPoints", [])
+                         if ep.get("entryPointType") == "video"), None)
+    participantes = [p.get("displayName") or p.get("email") for p in ev.get("attendees", []) if not p.get("resource")]
+    titulo = ev.get("summary") or "(Sem título)"
+    horario = "dia inteiro" if dia_inteiro else f"{inicio_local[11:16]}–{fim_local[11:16]}"
+    if ev.get("location"):
+        horario += f" · {ev['location']}"
+    chave = f"{conta.endereco or conta.nome}:{ev.get('id', '')}"
+    return {
+        "id": ev.get("id"), "chave": chave, "conta": conta.nome, "titulo": titulo,
+        "descricao": ev.get("description", ""), "inicio": inicio_str, "fim": fim_str,
+        "dia_inteiro": dia_inteiro, "meet_url": meet_url, "html_link": ev.get("htmlLink"),
+        "participantes": participantes, "status": ev.get("status"),
+        "corpo": horario, "origem": conta.nome, "url": ev.get("htmlLink"), "quando": inicio_local,
+    }
+
+
+def eventos_conta_periodo(config: Config, conta: gmail.Conta, inicio_iso: str, fim_iso: str) -> list[dict]:
+    """Lista e normaliza todos os eventos de uma conta, incluindo cada instância recorrente."""
+    cal = _servico(conta)
+    resultado, pagina = [], None
+    while True:
+        parametros = {"calendarId": "primary", "timeMin": inicio_iso, "timeMax": fim_iso,
+                      "singleEvents": True, "orderBy": "startTime", "maxResults": 2500}
+        if pagina:
+            parametros["pageToken"] = pagina
+        try:
+            resposta = cal.events().list(**parametros).execute()
+        except Exception as e:
+            if getattr(getattr(e, "resp", None), "status", None) == 403:
+                raise RuntimeError(_SEM_AUTORIZACAO) from None
+            raise
+        resultado.extend(evento for ev in resposta.get("items", []) if (evento := _evento(conta, ev)))
+        pagina = resposta.get("nextPageToken")
+        if not pagina:
+            break
+    return resultado
 
 
 def eventos_periodo(config: Config, inicio_iso: str, fim_iso: str) -> list[dict]:
@@ -49,51 +123,10 @@ def eventos_periodo(config: Config, inicio_iso: str, fim_iso: str) -> list[dict]
     resultado = []
     for conta in contas(config):
         try:
-            cal = _servico(conta)
-            res = cal.events().list(
-                calendarId="primary",
-                timeMin=inicio_iso,
-                timeMax=fim_iso,
-                singleEvents=True,
-                orderBy="startTime",
-            ).execute()
-            for ev in res.get("items", []):
-                inicio_info = ev.get("start", {})
-                fim_info = ev.get("end", {})
-                inicio_str = inicio_info.get("dateTime") or inicio_info.get("date")
-                fim_str = fim_info.get("dateTime") or fim_info.get("date")
-                
-                # Links de videoconferência (Google Meet / Hangouts / Zoom)
-                meet_url = ev.get("hangoutLink")
-                if not meet_url and "conferenceData" in ev:
-                    for ep in ev["conferenceData"].get("entryPoints", []):
-                        if ep.get("entryPointType") == "video":
-                            meet_url = ep.get("uri")
-                            break
-                            
-                participantes = [
-                    p.get("displayName") or p.get("email")
-                    for p in ev.get("attendees", [])
-                    if not p.get("resource")
-                ]
-
-                resultado.append({
-                    "id": ev.get("id"),
-                    "conta": conta.nome,
-                    "titulo": ev.get("summary", "(Sem título)"),
-                    "descricao": ev.get("description", ""),
-                    "inicio": inicio_str,
-                    "fim": fim_str,
-                    "dia_inteiro": "date" in inicio_info,
-                    "meet_url": meet_url,
-                    "html_link": ev.get("htmlLink"),
-                    "participantes": participantes,
-                    "status": ev.get("status"),
-                })
+            resultado.extend(eventos_conta_periodo(config, conta, inicio_iso, fim_iso))
         except Exception:
             continue
-            
-    resultado.sort(key=lambda x: x["inicio"] or "")
+    resultado.sort(key=lambda x: x["quando"] or "")
     return resultado
 
 
