@@ -201,7 +201,7 @@
     var dele = m ? m.nos.filter(function (x) { return x.estado === 'dele'; }).length : 0;
     var h = '<div class="sino-cab"><span class="hoje-estado e-' + r.pior + '"><i></i>' + esc(estado) + '</span>' +
       (dele ? '<span class="hoje-dele">' + dele + ' esperando você</span>' : '') + '</div>';
-    if (!textos.length) h += '<p class="sino-vazio">Nada por enquanto. O briefing, o resumo das mensagens e o fechamento do dia aparecem aqui quando forem gerados.</p>';
+    if (!textos.length) h += '<p class="sino-vazio">Nada por enquanto. Briefings, resumos, pautas de reuniões e fechamentos aparecem aqui quando forem gerados.</p>';
     else h += '<ul class="sino-lista">' + textos.map(function (t) {
       var aberto = !!sinoAberto[t.id];
       return '<li class="sino-item' + (ehNovo(t) && !aberto ? ' novo' : '') + (aberto ? ' aberto' : '') + '">' +

@@ -103,6 +103,7 @@ Cada mensagem do Slack e do Gmail, na gaveta da rotina de coleta, tem o botão *
 | Rotina | Quando | Depende de | O que faz |
 |---|---|---|---|
 | `resumir_reunioes` | a cada 15 min | Reuniões (Gutenberg), Claude, Obsidian | Traz as transcrições que a extensão Gutenberg salva em `Downloads\Gutenberg\AAAA-MM\DD\` para a pasta fixa `[reunioes] pasta` (mesmas subpastas; um arquivo igual ao que já está lá só é apagado de Downloads). Resume cada reunião nova (até 3 por rodada) em `Automateum/Saídas/Reuniões/` e no bloco **Reuniões** do diário do dia da reunião: **Assunto**, **Decisões**, **Próximos passos** e **Em aberto**. Cópias da mesma reunião (`nome (1).md`) contam uma vez só, pela maior. Menos de 3 falas é teste e não vai para o Claude; arquivo mexido no último minuto espera a próxima rodada. |
+| `pauta_reuniao` | a cada 5 min | Agenda, Claude, Obsidian | Nos 30 minutos antes de reuniões, reúne resumos anteriores, tasks abertas relacionadas e mensagens recentes no Slack dos participantes. Gera uma nota em `Automateum/Saídas/Reuniões/Pautas/` e mostra a pauta no sininho até a reunião começar. |
 
 Uma reunião de cliente vai também para a nota do dia da pasta dele no cofre (`DD-MM.md`; se já existe uma sem o zero, como `5-10.md`, é ela), num bloco **Reuniões** que não mexe no que você escreveu na nota. O cliente vem de `[reunioes.grupos.<id>]` no `config.local.toml`, com `pasta`, `pessoas` e `palavras`. A reunião é dele quando todos que falaram, fora "Eu", estão em `pessoas` (o nome inteiro ou uma palavra dele, sem diferença de maiúsculas): alguém de fora indica outra reunião. Também é dele quando a transcrição cita os termos de `palavras` pelo menos `mencoes` vezes (padrão 2). Nunca é dele quando a primeira fala cai numa das `horas_fora` (ex.: `[9]`, a reunião das 9h).
 
@@ -112,5 +113,5 @@ Para o briefing da manhã ler os resumos mais recentes, ponha `"Automateum/Saíd
 
 - Acesso ao painel pelo celular fora do Wi-Fi (hoje só pela rede local; ver docs/Painel.md)
 - Google Agenda no painel e no briefing (issue #23)
-- Pauta antes de cada reunião, a partir da agenda e das reuniões anteriores (issue #66)
+- [x] Pauta automática 30 minutos antes de cada reunião, no sininho e no Obsidian (issue #66)
 
