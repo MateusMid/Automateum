@@ -5,7 +5,9 @@ Utiliza as credenciais OAuth e tokens salvos da conta Google.
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+import re
+import unicodedata
+from datetime import datetime
 from pathlib import Path
 
 from ..config import Config
@@ -92,6 +94,112 @@ def eventos_periodo(config: Config, inicio_iso: str, fim_iso: str) -> list[dict]
             continue
             
     resultado.sort(key=lambda x: x["inicio"] or "")
+    return resultado
+
+
+def _normalizar(texto: str) -> str:
+    texto = unicodedata.normalize("NFKD", texto.casefold())
+    texto = "".join(c for c in texto if not unicodedata.combining(c))
+    return " ".join(re.findall(r"[a-z0-9]+", texto))
+
+
+def _nomes_em_comum(falas: list[str], participantes: list[str]) -> int:
+    pessoas = [_normalizar(p) for p in falas if _normalizar(p) not in ("eu", "")]
+    convidados = [_normalizar(p.split("@", 1)[0]) for p in participantes]
+    return sum(1 for pessoa in pessoas if any(
+        pessoa == convidado or (min(len(pessoa), len(convidado)) >= 4 and
+                                (pessoa in convidado or convidado in pessoa))
+        for convidado in convidados if convidado
+    ))
+
+
+def _similaridade_titulos(a: str, b: str) -> float:
+    ignorar = {"com", "para", "por", "uma", "the", "and", "meeting", "reuniao"}
+    palavras_a = {p for p in _normalizar(a).split() if len(p) > 2 and p not in ignorar}
+    palavras_b = {p for p in _normalizar(b).split() if len(p) > 2 and p not in ignorar}
+    return len(palavras_a & palavras_b) / len(palavras_a | palavras_b) if palavras_a | palavras_b else 0.0
+
+
+def vincular_transcricoes(config: Config, eventos: list[dict], *, incluir_texto: bool = False) -> list[dict]:
+    """Relaciona eventos a transcrições do mesmo dia, início próximo e participantes/título compatíveis."""
+    from . import obsidian, reunioes
+
+    resultado = [dict(evento) for evento in eventos]
+    datas = set()
+    inicios = []
+    for indice, evento in enumerate(resultado):
+        try:
+            inicio = datetime.fromisoformat(evento["inicio"])
+        except (KeyError, TypeError, ValueError):
+            inicios.append(None)
+            continue
+        if evento.get("dia_inteiro") or evento.get("status") == "cancelled":
+            inicios.append(None)
+            continue
+        inicios.append(inicio)
+        datas.add(inicio.astimezone().date().isoformat())
+
+    transcricoes = []
+    for transcricao in reunioes.transcricoes(config):
+        if transcricao["dia"] not in datas:
+            continue
+        dados = reunioes.ler(transcricao["arquivo"])
+        if not dados["inicio"]:
+            continue
+        inicio = datetime.combine(datetime.fromisoformat(transcricao["dia"]).date(),
+                                  datetime.strptime(dados["inicio"], "%H:%M").time())
+        transcricoes.append({**transcricao, "dados": dados, "inicio_local": inicio})
+
+    candidatos_por_evento: dict[int, list[tuple[tuple[int, float, int], int]]] = {}
+    candidatos_por_transcricao: dict[int, list[tuple[tuple[int, float, int], int]]] = {}
+    for i, (evento, inicio) in enumerate(zip(resultado, inicios)):
+        if inicio is None:
+            continue
+        dia = inicio.astimezone().date()
+        for j, transcricao in enumerate(transcricoes):
+            if transcricao["dia"] != dia.isoformat():
+                continue
+            minutos = abs((inicio.astimezone().replace(tzinfo=None) - transcricao["inicio_local"]).total_seconds()) / 60
+            if minutos > 15:
+                continue
+            dados = transcricao["dados"]
+            rank = (_nomes_em_comum(dados["quem"], evento.get("participantes", [])),
+                    _similaridade_titulos(dados["titulo"], evento.get("titulo", "")), -round(minutos * 1000))
+            candidatos_por_evento.setdefault(i, []).append((rank, j))
+            candidatos_por_transcricao.setdefault(j, []).append((rank, i))
+
+    def unico_melhor(opcoes):
+        if not opcoes:
+            return None
+        ordenadas = sorted(opcoes, key=lambda x: x[0], reverse=True)
+        if len(ordenadas) > 1 and ordenadas[0][0] == ordenadas[1][0]:
+            return None
+        return ordenadas[0]
+
+    melhores_evento = {i: unico_melhor(opcoes) for i, opcoes in candidatos_por_evento.items()}
+    melhores_transcricao = {j: unico_melhor(opcoes) for j, opcoes in candidatos_por_transcricao.items()}
+    pasta_propria = config.secao("obsidian").get("pasta_automateum", "Automateum")
+    for i, melhor in melhores_evento.items():
+        if melhor is None:
+            continue
+        rank, j = melhor
+        outro = melhores_transcricao.get(j)
+        if outro is None or outro[1] != i:
+            continue
+        transcricao, dados = transcricoes[j], transcricoes[j]["dados"]
+        hora = dados["inicio"].replace(":", "h")
+        nome = " ".join(p for p in (transcricao["dia"], hora,
+                                      transcricao["chave"].rsplit("/", 1)[-1]) if p)
+        relativa = f"{pasta_propria}/Reuniões/{nome}.md"
+        nota = obsidian.ler_nota(config, relativa)
+        partes = nota.split("\n\n", 2)
+        resumo = partes[2].strip() if len(partes) == 3 else ""
+        vinculada = {"titulo": dados["titulo"], "arquivo": transcricao["arquivo"].name,
+                     "falas": dados["falas"], "nota": relativa if nota else None,
+                     "resumo": resumo}
+        if incluir_texto:
+            vinculada["texto"] = dados["texto"]
+        resultado[i]["transcricao"] = vinculada
     return resultado
 
 

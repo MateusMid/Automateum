@@ -25,7 +25,7 @@ from ..nucleo.estado import Estado, agora
 from ..nucleo.eventos import Barramento
 from ..nucleo.registro import ATENCAO, FALHA, OK, ROTINAS, SERVICOS, quando_texto
 from ..rotinas import tasks_obsidian
-from ..servicos import ia, maquina
+from ..servicos import agenda, ia, maquina
 from . import celular as acesso_celular
 from . import pagina_celular as html_celular
 
@@ -165,6 +165,42 @@ def criar_app(config: Config) -> FastAPI:
     @app.get("/vivo")
     def vivo():
         return {"ok": True}
+
+    def intervalo_agenda(inicio: str, fim: str) -> tuple[datetime, datetime]:
+        if motivo := agenda.configurado(config):
+            raise HTTPException(503, motivo)
+        try:
+            inicio_dt = datetime.fromisoformat(inicio)
+            fim_dt = datetime.fromisoformat(fim)
+            # Datas sem fuso são interpretadas no fuso local do servidor.
+            if inicio_dt.tzinfo is None:
+                inicio_dt = inicio_dt.astimezone()
+            if fim_dt.tzinfo is None:
+                fim_dt = fim_dt.astimezone()
+            if fim_dt <= inicio_dt:
+                raise HTTPException(400, "fim precisa ser depois de inicio")
+        except ValueError:
+            raise HTTPException(400, "informe inicio e fim em formato ISO 8601") from None
+        return inicio_dt, fim_dt
+
+    @app.get("/api/agenda")
+    def eventos_agenda(inicio: str, fim: str):
+        """Eventos da agenda e indicação de transcrições Gutenberg correspondentes."""
+        inicio_dt, fim_dt = intervalo_agenda(inicio, fim)
+        eventos = agenda.eventos_periodo(config, inicio_dt.isoformat(), fim_dt.isoformat())
+        eventos = agenda.vincular_transcricoes(config, eventos)
+        return {"inicio": inicio_dt.isoformat(), "fim": fim_dt.isoformat(), "eventos": eventos}
+
+    @app.get("/api/agenda/detalhe")
+    def detalhe_agenda(evento_id: str, conta: str, inicio: str, fim: str):
+        """Detalhes do evento e resumo/transcrição Gutenberg vinculados, se existirem."""
+        inicio_dt, fim_dt = intervalo_agenda(inicio, fim)
+        eventos = agenda.eventos_periodo(config, inicio_dt.isoformat(), fim_dt.isoformat())
+        eventos = agenda.vincular_transcricoes(config, eventos, incluir_texto=True)
+        evento = next((e for e in eventos if e["id"] == evento_id and e["conta"] == conta), None)
+        if evento is None:
+            raise HTTPException(404, "reunião não encontrada neste período")
+        return evento
 
     @app.post("/acao")
     async def acao(request: Request):
