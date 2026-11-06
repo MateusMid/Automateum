@@ -13,7 +13,10 @@ from pathlib import Path
 from ..config import Config
 from ..nucleo.registro import ATENCAO, FALHA, OK, Checagem, registrar_servico
 
-_ESCOPOS = ["https://www.googleapis.com/auth/gmail.readonly"]
+_ESCOPOS = [
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/calendar.readonly",
+]
 
 
 @dataclass(frozen=True)
@@ -56,6 +59,16 @@ def configurado(config: Config) -> str | None:
 
 def _endereco(credenciais) -> str:
     from googleapiclient.discovery import build
+    # Tenta descobrir o e-mail pelo Calendar (funciona mesmo para contas sem Gmail ativo)
+    try:
+        cal = build("calendar", "v3", credentials=credenciais, cache_discovery=False)
+        meta = cal.calendars().get(calendarId="primary").execute()
+        if cal_id := meta.get("id"):
+            return cal_id
+    except Exception:
+        pass
+
+    # Fallback para o Gmail
     servico = build("gmail", "v1", credentials=credenciais, cache_discovery=False)
     return servico.users().getProfile(userId="me").execute()["emailAddress"]
 
