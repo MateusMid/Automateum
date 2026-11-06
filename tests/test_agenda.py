@@ -89,7 +89,9 @@ def test_eventos_da_conta_paginam_e_normalizam_horarios(monkeypatch):
     resultado = agenda.eventos_conta_periodo(Config(), conta, "inicio", "fim")
 
     assert [e["id"] for e in resultado] == ["reuniao", "dia-inteiro", "recorrente-2"]
-    assert resultado[0]["corpo"] == "10:00–10:30"
+    inicio_local = datetime.fromisoformat("2026-11-06T10:00:00-03:00").astimezone().strftime("%H:%M")
+    fim_local = datetime.fromisoformat("2026-11-06T10:30:00-03:00").astimezone().strftime("%H:%M")
+    assert resultado[0]["corpo"] == f"{inicio_local}–{fim_local}"
     assert resultado[0]["chave"] == "fulano@example.com:reuniao"
     assert resultado[0]["participantes"] == ["Fulano"]
     assert resultado[0]["meet_url"] == "https://meet.google.com/abc"
