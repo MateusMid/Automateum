@@ -9,7 +9,7 @@
   var GRAV = {ruim: 5, duvida: 4, atencao: 3, dele: 2, bom: 1, desligado: 0, construcao: 0};
   var NOME = {ruim: 'quebrado', duvida: 'dúvida', atencao: 'atenção', dele: 'com você', bom: 'em dia', desligado: 'desligado', construcao: 'em construção'};
   var raiz = document.documentElement;
-  var dens = 1, ft = 1, parede = false, hoje = null, painelAberto = '', sinoEl = null, sinoAberto = {};
+  var dens = 1, ft = 1, parede = false, hoje = null, painelAberto = '', sinoEl = null, sinoAberto = {}, abaSino = 'notificacoes';
   var SINO_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>';
 
   function $(s, r) { return (r || document).querySelector(s); }
@@ -164,17 +164,18 @@
   }
   function desenharHoje() {
     if (!hoje) return;
+    var notificacoes = textos.filter(function (t) { return t.tipo !== 'lembrete'; });
     var r = resumo(), m = mapa();
     var estado = r.parado ? 'o mapa parou de atualizar' : r.n ? r.n + (r.n === 1 ? ' pede atenção' : ' pedem atenção') : 'tudo em dia';
     var dele = m ? m.nos.filter(function (x) { return x.estado === 'dele'; }).length : 0;
     var h = '<div class="hoje-cab"><span class="hoje-estado e-' + r.pior + '"><i></i>' + esc(estado) + '</span>';
     if (dele) h += '<span class="hoje-dele">' + dele + ' esperando você</span>';
-    textos.forEach(function (t) {
+    notificacoes.forEach(function (t) {
       h += '<button type="button" class="hoje-chip' + (painelAberto === t.id ? ' on' : '') + '" data-hoje="' + esc(t.id) + '" aria-expanded="' + (painelAberto === t.id) + '">' +
         '<b>' + esc(t.titulo) + ' <small>' + esc(dia(t.quando)) + '</small></b><span>' + esc(primeiraLinha(t.conteudo)) + '</span></button>';
     });
     h += '<span class="hoje-relogio" id="relogio"></span></div>';
-    var aberto = textos.filter(function (t) { return t.id === painelAberto; })[0];
+    var aberto = notificacoes.filter(function (t) { return t.id === painelAberto; })[0];
     h += '<div class="hoje-painel"' + (aberto ? '' : ' hidden') + '>' +
       (aberto ? '<button type="button" class="hoje-x" data-hoje-fechar aria-label="Fechar">×</button><h3>' + esc(aberto.titulo) + ' <small>' + esc(dia(aberto.quando)) + '</small></h3>' + md(aberto.conteudo) : '') + '</div>';
     hoje.innerHTML = h;
@@ -189,7 +190,7 @@
   }
   function ehNovo(t) { return t.tipo === 'lembrete' ? !!t.vencido : vistos()[t.id] !== t.quando; }
   function contarSino() {
-    var n = textos.filter(ehNovo).length, b = document.querySelector('.sino-n');
+    var n = textos.filter(function (t) { return t.tipo !== 'lembrete' && ehNovo(t); }).length, b = document.querySelector('.sino-n');
     if (!b) return;
     b.hidden = !n;
     b.textContent = n > 9 ? '9+' : String(n);
@@ -198,17 +199,28 @@
     if (!sinoEl) return;
     var r = resumo(), m = mapa();
     var podeEditar = /^(127\.0\.0\.1|localhost)$/.test(location.hostname);
+    var notificacoes = textos.filter(function (t) { return t.tipo !== 'lembrete'; });
+    var lembretes = textos.filter(function (t) { return t.tipo === 'lembrete'; });
+    var itens = abaSino === 'lembretes' ? lembretes : notificacoes;
+    var naoLidas = notificacoes.filter(ehNovo).length;
+    var vencidos = lembretes.filter(function (t) { return t.vencido; }).length;
     var estado = r.parado ? 'o mapa parou de atualizar' : r.n ? r.n + (r.n === 1 ? ' pede atenção' : ' pedem atenção') : 'tudo em dia';
     var dele = m ? m.nos.filter(function (x) { return x.estado === 'dele'; }).length : 0;
-    var h = '<div class="sino-cab"><span class="hoje-estado e-' + r.pior + '"><i></i>' + esc(estado) + '</span>' +
-      (dele ? '<span class="hoje-dele">' + dele + ' esperando você</span>' : '') +
-      (podeEditar ? '<button type="button" class="lembrete-novo" data-lembrete-novo>+ Lembrete</button>' : '') + '</div>';
-    if (podeEditar) h += '<form class="lembrete-form" data-lembrete-form hidden>' +
+    var h = '<div class="sino-abas" role="tablist" aria-label="Central do painel">' +
+      '<button type="button" role="tab" data-sino-aba="notificacoes" aria-selected="' + (abaSino === 'notificacoes') + '">Notificações' +
+      (naoLidas ? ' <small>' + naoLidas + '</small>' : '') + '</button>' +
+      '<button type="button" role="tab" data-sino-aba="lembretes" aria-selected="' + (abaSino === 'lembretes') + '">Lembretes' +
+      (vencidos ? ' <small>' + vencidos + '</small>' : '') + '</button></div>';
+    if (abaSino === 'notificacoes') h += '<div class="sino-cab"><span class="hoje-estado e-' + r.pior + '"><i></i>' + esc(estado) + '</span>' +
+      (dele ? '<span class="hoje-dele">' + dele + ' esperando você</span>' : '') + '</div>';
+    if (abaSino === 'lembretes' && podeEditar) h += '<div class="sino-cab"><span class="hoje-estado"><i></i>Seus lembretes</span>' +
+      '<button type="button" class="lembrete-novo" data-lembrete-novo>+ Lembrete</button></div>' +
+      '<form class="lembrete-form" data-lembrete-form hidden>' +
       '<label>O que lembrar<input name="titulo" maxlength="200" required placeholder="Ex.: preparar a pauta da reunião"></label>' +
       '<label>Quando<input name="quando" type="datetime-local" required></label>' +
       '<div class="lembrete-form-fim"><button type="submit">Salvar lembrete</button><span data-lembrete-status aria-live="polite"></span></div></form>';
-    if (!textos.length) h += '<p class="sino-vazio">Nada por enquanto. Briefings, resumos, pautas, lembretes e fechamentos aparecem aqui.</p>';
-    else h += '<ul class="sino-lista">' + textos.map(function (t) {
+    if (!itens.length) h += '<p class="sino-vazio">' + (abaSino === 'lembretes' ? 'Nenhum lembrete agendado.' : 'Nenhuma notificação por enquanto.') + '</p>';
+    else h += '<ul class="sino-lista">' + itens.map(function (t) {
       var aberto = !!sinoAberto[t.id];
       var acoesLembrete = '';
       if (t.tipo === 'lembrete' && podeEditar) {
@@ -392,6 +404,8 @@
     sinoEl = sino.querySelector('.sino-corpo-lista');
     // abrir e fechar um texto não redesenha a lista: redesenhar no meio do clique fecharia o painel
     sinoEl.addEventListener('click', function (ev) {
+      var aba = ev.target.closest('[data-sino-aba]');
+      if (aba) { abaSino = aba.getAttribute('data-sino-aba'); desenharSino(); return; }
       var novo = ev.target.closest('[data-lembrete-novo]');
       if (novo) {
         var form = sinoEl.querySelector('[data-lembrete-form]');
