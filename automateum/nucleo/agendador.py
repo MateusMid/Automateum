@@ -66,7 +66,7 @@ class Agendador:
                                     coalesce=True, misfire_grace_time=600)
         self._sched.start()
         # Primeira leitura logo na subida, para o painel não abrir vazio.
-        for id in ("saude", "tasks_obsidian"):
+        for id in ("saude", "tasks_obsidian", "coletar_agenda"):
             if id in ROTINAS:
                 self.rodar_agora(id, manual=False)
 

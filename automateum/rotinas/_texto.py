@@ -1,5 +1,6 @@
 """Montagem do material que vai para o Claude nas rotinas de resumo."""
 import re
+from datetime import date, datetime
 
 _BLOCO = re.compile(r"%% automateum:(\w+):inicio %%.*?%% automateum:\1:fim %%", re.S)
 
@@ -42,6 +43,22 @@ def listar(itens: list[dict], limite: int = 150, corte: int = 400) -> str:
     if len(itens) > limite:
         linhas.append(f"- (mais {len(itens) - limite} itens não listados)")
     return "\n".join(linhas) or "(nada)"
+
+
+def agenda_do_dia(estado, dia: date) -> str:
+    """Eventos de uma data local, em ordem de início, para incluir nos briefings."""
+    encontrados = []
+    for item in estado.itens(["agenda"], limite=10000):
+        try:
+            quando = datetime.fromisoformat(item["quando"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if quando.tzinfo is not None:
+            quando = quando.astimezone()
+        if quando.date() == dia:
+            encontrados.append((quando, item))
+    encontrados.sort(key=lambda par: (par[0], par[1].get("titulo", "")))
+    return listar([item for _, item in encontrados])
 
 
 def notas_editadas(notas: list[tuple[str, str]], por_nota: int = 1200, total: int = 8000) -> str:

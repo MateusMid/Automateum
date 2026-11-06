@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 from ..nucleo.registro import rotina
 from ..servicos import ia, obsidian
-from ._texto import listar, secao, sem_blocos
+from ._texto import agenda_do_dia, listar, secao, sem_blocos
 
 _PEDIDO = (
     "Monte o meu briefing de hoje com três partes curtas, cada uma com um título em negrito: "
@@ -23,6 +23,7 @@ def rodar(ctx):
     material = [
         secao("Tasks abertas no cofre (origem = nota; depois do traço, desde quando está aberta e a última edição da nota)",
               listar([{**t, "corpo": f"{t['corpo']}, nota editada em {t['quando']}"} for t in ctx.estado.itens(["obsidian"])])),
+        secao("Agenda de hoje", agenda_do_dia(ctx.estado, date.today())),
         secao("GitHub", listar(ctx.estado.itens(["github"]))),
         secao("Mensagens desde ontem à tarde", listar(ctx.estado.itens_nao_vistos(["slack", "gmail"], desde))),
     ]
