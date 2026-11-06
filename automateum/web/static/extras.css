@@ -138,13 +138,14 @@ body.parede .pop { display: none !important; }
 
 /* ---- o sininho: os textos do dia numa lista vertical ---- */
 .pop-sino .pop-bt { position: relative; padding: 6px 9px; }
+.pop-sino .pop-bt, .pop-lembretes .pop-bt { gap: 6px; font-size: 11.5px; }
 .pop-sino .pop-bt svg { display: block; }
 .sino-n { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; display: grid; place-items: center;
   font: 600 10px/1 var(--fontT); color: var(--bg); background: var(--atencao); }
 .sino-n[hidden] { display: none; }
 .topo > .pop-sino { margin-left: auto; }
-.topo > .pop-sino + .pop-estilo { margin-left: 0; }
-.pop-sino .pop-painel { width: min(420px, 92vw); max-height: min(70vh, 640px); overflow: auto; padding: 0; }
+.topo > .pop-sino + .pop-lembretes, .topo > .pop-lembretes + .pop-estilo { margin-left: 0; }
+.pop-sino .pop-painel, .pop-lembretes .pop-painel { width: min(420px, 92vw); max-height: min(70vh, 640px); overflow: auto; padding: 0; }
 .sino-cab { display: flex; gap: 14px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--linha); }
 .sino-vazio { margin: 0; padding: 18px 16px; color: var(--mudo); font-size: 12.5px; }
 .sino-lista { margin: 0; padding: 0; list-style: none; }
@@ -165,10 +166,23 @@ body.parede .pop { display: none !important; }
 .sino-corpo h4 { margin: 10px 0 4px; font: 600 10px/1.2 var(--fontT); letter-spacing: var(--esp); text-transform: var(--caixa); color: var(--mudo); }
 .sino-corpo p { margin: 4px 0; }
 .sino-corpo ul { margin: 4px 0; padding-left: 16px; }
+.sino-cab .lembrete-novo { margin-left: auto; flex: none; padding: 5px 8px; border: 1px solid var(--linha); border-radius: 6px; background: var(--painel2); cursor: pointer; font-size: 11.5px; }
+.sino-cab .lembrete-novo:hover, .lembrete-form button:hover, .lembrete-acoes button:hover { border-color: var(--mudo); }
+.lembrete-form { display: grid; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--linha); }
+.lembrete-form[hidden] { display: none; }
+.lembrete-form label { display: grid; gap: 4px; color: var(--mudo); font-size: 11.5px; }
+.lembrete-form input { width: 100%; padding: 7px 8px; border: 1px solid var(--linha); border-radius: 6px; background: var(--painel); color: var(--texto); font: inherit; }
+.lembrete-form input:focus { outline: 1px solid var(--acc); }
+.lembrete-form-fim { display: flex; align-items: center; gap: 10px; }
+.lembrete-form-fim span { color: var(--mudo); font-size: 11.5px; }
+.lembrete-form button, .lembrete-acoes button { padding: 5px 8px; border: 1px solid var(--linha); border-radius: 6px; background: var(--painel2); cursor: pointer; font: inherit; font-size: 11.5px; }
+.lembrete-form button:disabled, .lembrete-acoes button:disabled { opacity: .6; cursor: wait; }
+.lembrete-vencido .sino-t b { color: var(--atencao); }
+.lembrete-acoes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 /* a faixa Hoje sai do mapa: o sininho a substitui (ela segue valendo no modo painel, que mostra o relógio) */
 body:not(.parede) .hoje { display: none; }
 body:not(.parede) { grid-template-rows: auto auto minmax(0, 1fr); }   /* sem a faixa, o mapa ocupa o resto */
-@media (max-width: 760px) { .pop.pop-sino { display: block !important; } }
+@media (max-width: 760px) { .pop.pop-sino, .pop.pop-lembretes { display: block !important; } }
 
 /* a busca (só no computador) */
 .pop-busca .pop-bt { gap: 8px; }

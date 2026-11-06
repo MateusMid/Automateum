@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+import uuid
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -38,6 +39,10 @@ CREATE TABLE IF NOT EXISTS chamadas_ia (
 );
 CREATE TABLE IF NOT EXISTS avisos (
     id INTEGER PRIMARY KEY AUTOINCREMENT, quando TEXT, rotina TEXT, nivel TEXT, texto TEXT
+);
+CREATE TABLE IF NOT EXISTS lembretes (
+    id TEXT PRIMARY KEY, titulo TEXT NOT NULL, quando TEXT NOT NULL,
+    estado TEXT NOT NULL DEFAULT 'pendente', criado TEXT NOT NULL, atualizado TEXT NOT NULL
 );
 """
 
@@ -278,6 +283,28 @@ class Estado:
 
     def definir_cursor(self, chave: str, valor: str) -> None:
         self._exec("INSERT OR REPLACE INTO cursores VALUES (?,?)", (chave, valor))
+
+    # --- lembretes pessoais
+    def criar_lembrete(self, titulo: str, quando: str) -> dict:
+        ident, criado = uuid.uuid4().hex, agora()
+        self._exec("INSERT INTO lembretes (id, titulo, quando, criado, atualizado) VALUES (?,?,?,?,?)",
+                   (ident, titulo, quando, criado, criado))
+        return {"id": ident, "titulo": titulo, "quando": quando, "estado": "pendente",
+                "criado": criado, "atualizado": criado}
+
+    def lembretes(self) -> list[dict]:
+        return self._linhas("SELECT * FROM lembretes WHERE estado='pendente' ORDER BY quando, criado")
+
+    def concluir_lembrete(self, ident: str) -> bool:
+        resultado = self._exec("UPDATE lembretes SET estado='concluido', atualizado=? "
+                               "WHERE id=? AND estado='pendente'", (agora(), ident))
+        return resultado.rowcount > 0
+
+    def adiar_lembrete(self, ident: str, minutos: int) -> bool:
+        quando = (datetime.now().astimezone() + timedelta(minutes=minutos)).isoformat(timespec="minutes")
+        resultado = self._exec("UPDATE lembretes SET quando=?, atualizado=? "
+                               "WHERE id=? AND estado='pendente'", (quando, agora(), ident))
+        return resultado.rowcount > 0
 
     # --- avisos
     def avisar(self, rotina: str, texto: str, nivel: str = "atencao") -> None:
