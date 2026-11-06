@@ -24,7 +24,7 @@ from ..nucleo.agendador import Agendador
 from ..nucleo.estado import Estado, agora
 from ..nucleo.eventos import Barramento
 from ..nucleo.registro import ATENCAO, FALHA, OK, ROTINAS, SERVICOS, quando_texto
-from ..rotinas import tasks_obsidian
+from ..rotinas import pauta_reuniao, tasks_obsidian
 from ..servicos import agenda, ia, maquina
 from . import celular as acesso_celular
 from . import pagina_celular as html_celular
@@ -343,6 +343,7 @@ def criar_app(config: Config) -> FastAPI:
             if ultimo := saidas.ultimo_texto(estado, rid):
                 textos.append({"id": rid, "titulo": titulo, "quando": ultimo["quando"],
                                "conteudo": ultimo["conteudo"], "nota": saidas.nota(config, rid)})
+        textos.extend(pauta_reuniao.notificacoes(estado))
         return {"gerado": agora(), "textos": textos}
 
     @app.get("/api/maquina/historico")
