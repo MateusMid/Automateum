@@ -9,8 +9,9 @@
   var GRAV = {ruim: 5, duvida: 4, atencao: 3, dele: 2, bom: 1, desligado: 0, construcao: 0};
   var NOME = {ruim: 'quebrado', duvida: 'dúvida', atencao: 'atenção', dele: 'com você', bom: 'em dia', desligado: 'desligado', construcao: 'em construção'};
   var raiz = document.documentElement;
-  var dens = 1, ft = 1, parede = false, hoje = null, painelAberto = '', sinoEl = null, sinoAberto = {}, abaSino = 'notificacoes';
+  var dens = 1, ft = 1, parede = false, hoje = null, painelAberto = '', sinoEl = null, lembretesEl = null, sinoAberto = {};
   var SINO_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>';
+  var LEMBRETE_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M5 3 2.5 5.5M19 3l2.5 2.5"/></svg>';
 
   function $(s, r) { return (r || document).querySelector(s); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
@@ -190,36 +191,33 @@
   }
   function ehNovo(t) { return t.tipo === 'lembrete' ? !!t.vencido : vistos()[t.id] !== t.quando; }
   function contarSino() {
-    var n = textos.filter(function (t) { return t.tipo !== 'lembrete' && ehNovo(t); }).length, b = document.querySelector('.sino-n');
-    if (!b) return;
-    b.hidden = !n;
-    b.textContent = n > 9 ? '9+' : String(n);
+    var n = textos.filter(function (t) { return t.tipo !== 'lembrete' && ehNovo(t); }).length;
+    var vencidos = textos.filter(function (t) { return t.tipo === 'lembrete' && t.vencido; }).length;
+    [[document.querySelector('.sino-n'), n], [document.querySelector('.lembrete-n'), vencidos]].forEach(function (par) {
+      if (!par[0]) return;
+      par[0].hidden = !par[1];
+      par[0].textContent = par[1] > 9 ? '9+' : String(par[1]);
+    });
   }
-  function desenharSino() {
-    if (!sinoEl) return;
+  function desenharSino(tipo) {
+    var elemento = tipo === 'lembrete' ? lembretesEl : sinoEl;
+    if (!elemento) return;
     var r = resumo(), m = mapa();
     var podeEditar = /^(127\.0\.0\.1|localhost)$/.test(location.hostname);
-    var notificacoes = textos.filter(function (t) { return t.tipo !== 'lembrete'; });
-    var lembretes = textos.filter(function (t) { return t.tipo === 'lembrete'; });
-    var itens = abaSino === 'lembretes' ? lembretes : notificacoes;
-    var naoLidas = notificacoes.filter(ehNovo).length;
-    var vencidos = lembretes.filter(function (t) { return t.vencido; }).length;
+    var lembrete = tipo === 'lembrete';
+    var itens = textos.filter(function (t) { return lembrete ? t.tipo === 'lembrete' : t.tipo !== 'lembrete'; });
     var estado = r.parado ? 'o mapa parou de atualizar' : r.n ? r.n + (r.n === 1 ? ' pede atenção' : ' pedem atenção') : 'tudo em dia';
     var dele = m ? m.nos.filter(function (x) { return x.estado === 'dele'; }).length : 0;
-    var h = '<div class="sino-abas" role="tablist" aria-label="Central do painel">' +
-      '<button type="button" role="tab" data-sino-aba="notificacoes" aria-selected="' + (abaSino === 'notificacoes') + '">Notificações' +
-      (naoLidas ? ' <small>' + naoLidas + '</small>' : '') + '</button>' +
-      '<button type="button" role="tab" data-sino-aba="lembretes" aria-selected="' + (abaSino === 'lembretes') + '">Lembretes' +
-      (vencidos ? ' <small>' + vencidos + '</small>' : '') + '</button></div>';
-    if (abaSino === 'notificacoes') h += '<div class="sino-cab"><span class="hoje-estado e-' + r.pior + '"><i></i>' + esc(estado) + '</span>' +
+    var h = '';
+    if (!lembrete) h += '<div class="sino-cab"><span class="hoje-estado e-' + r.pior + '"><i></i>' + esc(estado) + '</span>' +
       (dele ? '<span class="hoje-dele">' + dele + ' esperando você</span>' : '') + '</div>';
-    if (abaSino === 'lembretes' && podeEditar) h += '<div class="sino-cab"><span class="hoje-estado"><i></i>Seus lembretes</span>' +
+    if (lembrete && podeEditar) h += '<div class="sino-cab"><span class="hoje-estado"><i></i>Seus lembretes</span>' +
       '<button type="button" class="lembrete-novo" data-lembrete-novo>+ Lembrete</button></div>' +
       '<form class="lembrete-form" data-lembrete-form hidden>' +
       '<label>O que lembrar<input name="titulo" maxlength="200" required placeholder="Ex.: preparar a pauta da reunião"></label>' +
       '<label>Quando<input name="quando" type="datetime-local" required></label>' +
       '<div class="lembrete-form-fim"><button type="submit">Salvar lembrete</button><span data-lembrete-status aria-live="polite"></span></div></form>';
-    if (!itens.length) h += '<p class="sino-vazio">' + (abaSino === 'lembretes' ? 'Nenhum lembrete agendado.' : 'Nenhuma notificação por enquanto.') + '</p>';
+    if (!itens.length) h += '<p class="sino-vazio">' + (lembrete ? 'Nenhum lembrete agendado.' : 'Nenhuma notificação por enquanto.') + '</p>';
     else h += '<ul class="sino-lista">' + itens.map(function (t) {
       var aberto = !!sinoAberto[t.id];
       var acoesLembrete = '';
@@ -234,7 +232,7 @@
         '<span class="sino-linha">' + esc(primeiraLinha(t.conteudo)) + '</span></button>' +
         '<div class="sino-corpo"' + (aberto ? '' : ' hidden') + '>' + md(t.conteudo) + acoesLembrete + '</div></li>';
     }).join('') + '</ul>';
-    sinoEl.innerHTML = h;
+    elemento.innerHTML = h;
     contarSino();
   }
   function carregarHoje(forca) {
@@ -242,7 +240,7 @@
     hojeT = Date.now();
     fetch('/api/hoje', {headers: {'Accept': 'application/json'}})
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(function (d) { textos = (d && d.textos) || []; desenharHoje(); })
+      .then(function (d) { textos = (d && d.textos) || []; desenharHoje(); desenharSino('lembrete'); })
       .catch(function () { /* a faixa fica só com o contador */ });
   }
   // ------------------------------------------------------------ a busca --
@@ -380,9 +378,15 @@
     var chip = topo.querySelector('.gv-chip');
     // o sininho: os textos do dia (briefing, resumo das mensagens, fechamento) numa lista vertical que abre sob ele
     var sino = painel('pop-sino', '', '', [{no: document.createElement('div')}]);
-    sino.querySelector('.pop-bt').innerHTML = SINO_SVG + '<b class="sino-n" hidden></b>';
+    sino.querySelector('.pop-bt').innerHTML = SINO_SVG + '<span>Notificações</span><b class="sino-n" hidden></b>';
     sino.querySelector('.pop-bt').setAttribute('aria-label', 'Notificações');
+    sino.querySelector('.pop-bt').title = 'Abrir notificações';
     sino.querySelector('.pop-painel > div').className = 'sino-corpo-lista';
+    var popLembretes = painel('pop-lembretes', '', '', [{no: document.createElement('div')}]);
+    popLembretes.querySelector('.pop-bt').innerHTML = LEMBRETE_SVG + '<span>Lembretes</span><b class="sino-n lembrete-n" hidden></b>';
+    popLembretes.querySelector('.pop-bt').setAttribute('aria-label', 'Lembretes');
+    popLembretes.querySelector('.pop-bt').title = 'Abrir lembretes';
+    popLembretes.querySelector('.pop-painel > div').className = 'sino-corpo-lista';
     // a busca só existe no computador: de outro aparelho o painel é só leitura e a rota é recusada
     if (/^(127\.0\.0\.1|localhost)$/.test(location.hostname)) {
       buscaEl = painel('pop-busca', '', '', [{no: document.createElement('div')}]);
@@ -400,15 +404,15 @@
       topo.insertBefore(buscaEl, chip || null);
     }
     topo.insertBefore(sino, chip || null);
+    topo.insertBefore(popLembretes, chip || null);
     topo.insertBefore(estilo, chip || null);
     sinoEl = sino.querySelector('.sino-corpo-lista');
-    // abrir e fechar um texto não redesenha a lista: redesenhar no meio do clique fecharia o painel
-    sinoEl.addEventListener('click', function (ev) {
-      var aba = ev.target.closest('[data-sino-aba]');
-      if (aba) { abaSino = aba.getAttribute('data-sino-aba'); desenharSino(); return; }
+    lembretesEl = popLembretes.querySelector('.sino-corpo-lista');
+    function prepararLista(elemento) {
+      elemento.addEventListener('click', function (ev) {
       var novo = ev.target.closest('[data-lembrete-novo]');
       if (novo) {
-        var form = sinoEl.querySelector('[data-lembrete-form]');
+        var form = elemento.querySelector('[data-lembrete-form]');
         form.hidden = !form.hidden;
         if (!form.hidden) {
           var d = new Date(Date.now() + 30 * 60000);
@@ -444,8 +448,8 @@
       b.setAttribute('aria-expanded', abrir ? 'true' : 'false');
       if (abrir) { sinoAberto[id] = 1; marcarVisto(id); li.classList.remove('novo'); contarSino(); }
       else delete sinoAberto[id];
-    });
-    sinoEl.addEventListener('submit', function (ev) {
+      });
+      elemento.addEventListener('submit', function (ev) {
       var form = ev.target.closest('[data-lembrete-form]');
       if (!form) return;
       ev.preventDefault();
@@ -462,8 +466,12 @@
         }).catch(function (erro) {
           status.textContent = erro.message || 'Não consegui salvar.';
         }).then(function () { botao.disabled = false; });
-    });
-    desenharSino();
+      });
+    }
+    prepararLista(sinoEl);
+    prepararLista(lembretesEl);
+    desenharSino('notificacao');
+    desenharSino('lembrete');
     var legenda = painel('pop-leg', 'Legenda', '', [{no: leg}]);
     barra.appendChild(legenda);
     function fechar(menos) {
