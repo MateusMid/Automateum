@@ -25,7 +25,7 @@ from ..nucleo.estado import Estado, agora
 from ..nucleo.eventos import Barramento
 from ..nucleo.registro import ATENCAO, FALHA, OK, ROTINAS, SERVICOS, quando_texto
 from ..rotinas import pauta_reuniao, tasks_obsidian
-from ..servicos import agenda, ia, maquina
+from ..servicos import agenda, ia, lembretes, maquina
 from . import celular as acesso_celular
 from . import pagina_celular as html_celular
 
@@ -208,11 +208,31 @@ def criar_app(config: Config) -> FastAPI:
         if not (_origem_local(request) and _token_ok(request)):
             return _erro(403, "sem permissão")
         try:
-            nome = str((await request.json()).get("acao", ""))
+            dados = await request.json()
+            nome = str(dados.get("acao", ""))
         except (ValueError, AttributeError):
             return _erro(400, "pedido inválido")
         tipo, _, alvo = nome.partition(":")
         alvo = alvo.removeprefix("rot-")  # o mapa manda o id do nó ("rot-<rotina>"), não o da rotina
+        if tipo == "lembrete-criar":
+            try:
+                lembrete = lembretes.criar(estado, dados.get("titulo"), dados.get("quando"))
+            except ValueError as e:
+                return _erro(400, str(e))
+            return {"id": 0, "lembrete": lembrete}
+        if tipo == "lembrete-concluir":
+            if not estado.concluir_lembrete(alvo):
+                return _erro(404, "lembrete não encontrado")
+            return {"id": 0}
+        if tipo == "lembrete-adiar":
+            ident, _, minutos = alvo.rpartition(":")
+            try:
+                adiados = lembretes.adiar(estado, ident, int(minutos))
+            except ValueError as e:
+                return _erro(400, str(e))
+            if not adiados:
+                return _erro(404, "lembrete não encontrado")
+            return {"id": 0}
         if nome == "medir-agora":
             tipo, alvo = "rodar", "saude"
         if tipo in ("ligar", "desligar") and alvo in ROTINAS:
@@ -344,6 +364,7 @@ def criar_app(config: Config) -> FastAPI:
                 textos.append({"id": rid, "titulo": titulo, "quando": ultimo["quando"],
                                "conteudo": ultimo["conteudo"], "nota": saidas.nota(config, rid)})
         textos.extend(pauta_reuniao.notificacoes(estado))
+        textos.extend(lembretes.notificacoes(estado))
         return {"gerado": agora(), "textos": textos}
 
     @app.get("/api/maquina/historico")

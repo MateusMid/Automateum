@@ -655,6 +655,12 @@
     if (estado) acoes[acao] = {estado: estado, texto: texto}; else delete acoes[acao];
     repintarBotoes(acao);
   }
+  function enviar(acao, dados) {
+    if (!servidor.token || !servidor.vivo) return Promise.reject(new Error('O painel ainda não está conectado.'));
+    var corpo = Object.assign({acao: acao}, dados || {});
+    return fetch(urlServidor('/acao'), {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Mapa-Token': servidor.token}, body: JSON.stringify(corpo)})
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.erro || ('HTTP ' + r.status)); return j; }); });
+  }
   function agir(acao) {
     if (!servidor.token || !servidor.vivo) return;
     var st = acoes[acao];
@@ -668,8 +674,7 @@
     }
     delete armado[acao];
     marcarAcao(acao, 'enviando', 'Enviando…');
-    fetch(urlServidor('/acao'), {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Mapa-Token': servidor.token}, body: JSON.stringify({acao: acao})})
-      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.erro || ('HTTP ' + r.status)); return j; }); })
+    enviar(acao)
       .then(function (j) { marcarAcao(acao, 'rodando', 'Rodando…'); acompanhar(acao, j.id, Date.now()); })
       .catch(function (e) { fimAcao(acao, 'erro', 'Não foi: ' + e.message); });
   }
@@ -1028,5 +1033,6 @@
   }, true);
 
   window.Gaveta = {iniciar: iniciar, receber: receber, abrir: abrir, fechar: fechar, aberto: function () { return aberto; }, chip: chip, MAPA: MAPA_ID,
+    enviar: enviar,
     botao: botaoAcao, agir: agir};
 })();

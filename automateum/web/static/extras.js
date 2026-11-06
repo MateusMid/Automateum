@@ -187,7 +187,7 @@
     var v = vistos(), t = textos.filter(function (x) { return x.id === id; })[0];
     if (t) { v[id] = t.quando; guardar('fluxo.sino', JSON.stringify(v)); }
   }
-  function ehNovo(t) { return vistos()[t.id] !== t.quando; }
+  function ehNovo(t) { return t.tipo === 'lembrete' ? !!t.vencido : vistos()[t.id] !== t.quando; }
   function contarSino() {
     var n = textos.filter(ehNovo).length, b = document.querySelector('.sino-n');
     if (!b) return;
@@ -197,18 +197,30 @@
   function desenharSino() {
     if (!sinoEl) return;
     var r = resumo(), m = mapa();
+    var podeEditar = /^(127\.0\.0\.1|localhost)$/.test(location.hostname);
     var estado = r.parado ? 'o mapa parou de atualizar' : r.n ? r.n + (r.n === 1 ? ' pede atenção' : ' pedem atenção') : 'tudo em dia';
     var dele = m ? m.nos.filter(function (x) { return x.estado === 'dele'; }).length : 0;
     var h = '<div class="sino-cab"><span class="hoje-estado e-' + r.pior + '"><i></i>' + esc(estado) + '</span>' +
-      (dele ? '<span class="hoje-dele">' + dele + ' esperando você</span>' : '') + '</div>';
-    if (!textos.length) h += '<p class="sino-vazio">Nada por enquanto. Briefings, resumos, pautas de reuniões e fechamentos aparecem aqui quando forem gerados.</p>';
+      (dele ? '<span class="hoje-dele">' + dele + ' esperando você</span>' : '') +
+      (podeEditar ? '<button type="button" class="lembrete-novo" data-lembrete-novo>+ Lembrete</button>' : '') + '</div>';
+    if (podeEditar) h += '<form class="lembrete-form" data-lembrete-form hidden>' +
+      '<label>O que lembrar<input name="titulo" maxlength="200" required placeholder="Ex.: preparar a pauta da reunião"></label>' +
+      '<label>Quando<input name="quando" type="datetime-local" required></label>' +
+      '<div class="lembrete-form-fim"><button type="submit">Salvar lembrete</button><span data-lembrete-status aria-live="polite"></span></div></form>';
+    if (!textos.length) h += '<p class="sino-vazio">Nada por enquanto. Briefings, resumos, pautas, lembretes e fechamentos aparecem aqui.</p>';
     else h += '<ul class="sino-lista">' + textos.map(function (t) {
       var aberto = !!sinoAberto[t.id];
-      return '<li class="sino-item' + (ehNovo(t) && !aberto ? ' novo' : '') + (aberto ? ' aberto' : '') + '">' +
+      var acoesLembrete = '';
+      if (t.tipo === 'lembrete' && podeEditar) {
+        acoesLembrete = '<div class="lembrete-acoes"><button type="button" data-lembrete-acao="concluir" data-lembrete-id="' + esc(t.lembrete_id) + '">Concluir</button>' +
+          (t.vencido ? [5, 15, 30].map(function (n) { return '<button type="button" data-lembrete-acao="adiar" data-lembrete-id="' + esc(t.lembrete_id) + '" data-minutos="' + n + '">Adiar ' + n + ' min</button>'; }).join('') : '') + '</div>';
+      }
+      return '<li class="sino-item' + (ehNovo(t) && !aberto ? ' novo' : '') +
+        (t.tipo === 'lembrete' && t.vencido ? ' lembrete-vencido' : '') + (aberto ? ' aberto' : '') + '">' +
         '<button type="button" data-sino="' + esc(t.id) + '" aria-expanded="' + aberto + '"><i class="sino-ponto"></i>' +
         '<span class="sino-t"><b>' + esc(t.titulo) + '</b><small>' + esc(dia(t.quando)) + '</small></span>' +
         '<span class="sino-linha">' + esc(primeiraLinha(t.conteudo)) + '</span></button>' +
-        '<div class="sino-corpo"' + (aberto ? '' : ' hidden') + '>' + md(t.conteudo) + '</div></li>';
+        '<div class="sino-corpo"' + (aberto ? '' : ' hidden') + '>' + md(t.conteudo) + acoesLembrete + '</div></li>';
     }).join('') + '</ul>';
     sinoEl.innerHTML = h;
     contarSino();
@@ -380,6 +392,36 @@
     sinoEl = sino.querySelector('.sino-corpo-lista');
     // abrir e fechar um texto não redesenha a lista: redesenhar no meio do clique fecharia o painel
     sinoEl.addEventListener('click', function (ev) {
+      var novo = ev.target.closest('[data-lembrete-novo]');
+      if (novo) {
+        var form = sinoEl.querySelector('[data-lembrete-form]');
+        form.hidden = !form.hidden;
+        if (!form.hidden) {
+          var d = new Date(Date.now() + 30 * 60000);
+          d.setSeconds(0, 0);
+          form.elements.quando.value = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+            'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+          form.elements.titulo.focus();
+        }
+        return;
+      }
+      var acao = ev.target.closest('[data-lembrete-acao]');
+      if (acao) {
+        if (!window.Gaveta || !Gaveta.enviar) return;
+        acao.disabled = true;
+        var id = acao.getAttribute('data-lembrete-id');
+        var nome = acao.getAttribute('data-lembrete-acao') === 'concluir'
+          ? 'lembrete-concluir:' + id
+          : 'lembrete-adiar:' + id + ':' + acao.getAttribute('data-minutos');
+        Gaveta.enviar(nome).then(function () {
+          delete sinoAberto['lembrete:' + id];
+          carregarHoje(true);
+        }).catch(function (erro) {
+          acao.disabled = false;
+          acao.textContent = erro.message || 'Não consegui atualizar';
+        });
+        return;
+      }
       var b = ev.target.closest('[data-sino]');
       if (!b) return;
       var li = b.closest('.sino-item'), corpo = li.querySelector('.sino-corpo'), abrir = corpo.hidden, id = b.getAttribute('data-sino');
@@ -388,6 +430,24 @@
       b.setAttribute('aria-expanded', abrir ? 'true' : 'false');
       if (abrir) { sinoAberto[id] = 1; marcarVisto(id); li.classList.remove('novo'); contarSino(); }
       else delete sinoAberto[id];
+    });
+    sinoEl.addEventListener('submit', function (ev) {
+      var form = ev.target.closest('[data-lembrete-form]');
+      if (!form) return;
+      ev.preventDefault();
+      if (!window.Gaveta || !Gaveta.enviar) return;
+      var botao = form.querySelector('[type="submit"]'), status = form.querySelector('[data-lembrete-status]');
+      botao.disabled = true;
+      status.textContent = 'Salvando…';
+      Gaveta.enviar('lembrete-criar', {titulo: form.elements.titulo.value, quando: form.elements.quando.value})
+        .then(function (resposta) {
+          form.reset();
+          form.hidden = true;
+          if (resposta.lembrete) sinoAberto['lembrete:' + resposta.lembrete.id] = 1;
+          carregarHoje(true);
+        }).catch(function (erro) {
+          status.textContent = erro.message || 'Não consegui salvar.';
+        }).then(function () { botao.disabled = false; });
     });
     desenharSino();
     var legenda = painel('pop-leg', 'Legenda', '', [{no: leg}]);
