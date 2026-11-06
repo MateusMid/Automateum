@@ -17,7 +17,7 @@ import time
 from pathlib import Path
 
 COOKIE = "mapa_celular"
-_LEITURA_EXATA = {"/", "/vivo", "/dados/estado.js", "/api/hoje", "/api/maquina/historico", "/api/grafo", "/favicon.ico"}
+_LEITURA_EXATA = {"/", "/vivo", "/dados/estado.js", "/api/hoje", "/api/maquina/historico", "/api/grafo", "/api/agenda", "/api/agenda/detalhe", "/favicon.ico"}
 _LEITURA_PREFIXO = ("/static/", "/api/no/")
 _TENTATIVAS, _JANELA_S = 8, 300
 

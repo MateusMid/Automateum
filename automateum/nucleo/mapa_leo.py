@@ -141,7 +141,7 @@ def montar_mapa_leo(config, estado: Estado, ag: Agendador, celulares: list[dict]
             "id": sid,
             "tipo": "externo",
             "zona": "internet",
-            "rotulo": s.nome,
+            "rotulo": "Agenda" if sid == "agenda" else s.nome,
             "sub": None,
             "oque": s.descricao or f"Serviço {s.nome}",
             "estado": est,
@@ -150,6 +150,7 @@ def montar_mapa_leo(config, estado: Estado, ag: Agendador, celulares: list[dict]
             "linhas": [],
             "esperando": [],
             "causa": None,
+            **({"oculto": True} if sid == "gmail" else {}),
             **({"motor": ia.situacao(config, estado)} if sid == "claude" else {}),
         })
 

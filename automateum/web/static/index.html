@@ -184,6 +184,50 @@ button.pil:hover { border-color: var(--c); }
 .mini { position: absolute; left: 16px; bottom: 56px; z-index: 6; border: 1px solid var(--linha); border-radius: var(--raio); background: var(--painel); opacity: 0; pointer-events: none; transition: opacity .25s; cursor: pointer; }
 .mini.on { opacity: .96; pointer-events: auto; }
 
+/* agenda */
+.agenda-modal { width:min(1120px,94vw); height:min(820px,88vh); max-width:none; max-height:none; padding:0; color:var(--texto); font:inherit; background:var(--painel); border:1px solid var(--ficha-borda); border-radius:16px; box-shadow:0 28px 90px #000a; overflow:hidden; }
+.agenda-modal::backdrop { background:#050608b8; backdrop-filter:blur(5px); }
+.agenda-layout { height:100%; display:grid; grid-template-rows:auto minmax(0,1fr); }
+.agenda-head { display:flex; align-items:center; gap:16px; padding:18px 22px; border-bottom:1px solid var(--linha); }
+.agenda-head h2 { margin:0; font-size:20px; font-weight:550; }
+.agenda-date { color:var(--mudo); font-size:13px; text-transform:capitalize; }
+.agenda-controls { display:flex; align-items:center; gap:6px; margin-left:auto; }
+.agenda-controls button,.agenda-close { border:1px solid var(--linha); border-radius:8px; padding:7px 11px; background:var(--painel2); color:var(--texto); cursor:pointer; }
+.agenda-controls button:hover,.agenda-close:hover { border-color:var(--acc); }
+.agenda-close { font-size:20px; line-height:1; padding:4px 9px; }
+.agenda-content { min-height:0; overflow:auto; padding:14px 18px 20px; }
+.agenda-status { padding:12px 4px; color:var(--mudo); }
+.agenda-week { min-width:800px; display:grid; grid-template-columns:52px repeat(5,minmax(0,1fr)); }
+.agenda-canto { border-bottom:1px solid var(--linha); }
+.agenda-dia { text-align:center; padding:5px 2px 10px; border-bottom:1px solid var(--linha); color:var(--mudo); font-size:11px; text-transform:uppercase; }
+.agenda-dia b { display:block; margin-top:4px; color:var(--texto); font-size:19px; font-weight:500; }
+.agenda-dia.agenda-dia-atual b { display:grid; width:30px; height:30px; margin:4px auto 0; place-items:center; border-radius:50%; color:#10130f; background:var(--acc); }
+.agenda-allday-label,.agenda-all-day { min-height:38px; border-bottom:1px solid var(--linha); }
+.agenda-allday-label { padding:8px 3px 0 0; color:var(--mudo); font-size:10px; }
+.agenda-all-day { padding:3px; border-left:1px solid var(--linha); }
+.agenda-all-event { display:block; width:100%; overflow:hidden; margin:2px 0; padding:3px 5px; border:0; border-radius:4px; background:color-mix(in srgb,var(--acc) 22%,var(--painel2)); color:var(--texto); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+.agenda-hora { height:64px; padding:0 7px 0 0; transform:translateY(-7px); color:var(--mudo); font-size:10px; text-align:right; }
+.agenda-slot { position:relative; height:64px; border-left:1px solid var(--linha); border-bottom:1px solid var(--linha); }
+.agenda-event { position:absolute; z-index:1; overflow:hidden; padding:5px 7px; border-left:3px solid var(--acc); border-radius:5px; background:color-mix(in srgb,var(--acc) 17%,var(--painel2)); color:var(--texto); font-size:11px; line-height:1.3; text-decoration:none; }
+.agenda-event.transcrito::after { content:'✎'; position:absolute; right:4px; top:2px; color:var(--acc); font-size:10px; }
+.agenda-event-button,.agenda-all-event { font:inherit; text-align:left; cursor:pointer; }
+.agenda-event-button { width:auto; appearance:none; border-top:0; border-right:0; border-bottom:0; }
+.agenda-detail { position:absolute; z-index:5; inset:0 0 0 auto; width:min(440px,100%); overflow:auto; padding:18px; border-left:1px solid var(--linha); background:var(--painel); box-shadow:-18px 0 50px #0008; }
+.agenda-detail[hidden] { display:none; }
+.agenda-detail-close { padding:5px 9px; border:1px solid var(--linha); border-radius:6px; color:var(--texto); background:var(--painel2); cursor:pointer; }
+.agenda-detail h3 { margin:16px 0 8px; font-size:19px; }
+.agenda-detail p,.agenda-detail-meta { color:var(--mudo); font-size:13px; line-height:1.55; white-space:pre-wrap; }
+.agenda-detail h4 { margin:20px 0 6px; font-size:13px; }
+.agenda-detail pre { max-height:42vh; overflow:auto; padding:10px; border-radius:7px; background:var(--painel2); color:var(--texto); font:12px/1.5 var(--font); white-space:pre-wrap; }
+.agenda-detail a { color:var(--acc); }
+.agenda-event strong,.agenda-event span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.agenda-event span { color:var(--mudo); font-size:10px; }
+.agenda-event.compact { padding:1px 5px; font-size:10px; line-height:14px; }
+.agenda-event.compact span { display:none; }
+.agenda-event.tiny { padding:0; border-left-width:3px; font-size:0; line-height:0; }
+.agenda-event.tiny strong,.agenda-event.tiny span { display:none; }
+@media(max-width:700px) { .agenda-head{gap:8px;padding:12px}.agenda-head h2{font-size:17px}.agenda-date{display:none}.agenda-controls button{padding:6px 8px}.agenda-modal{width:96vw;height:90vh} }
+
 /* Estudio: a borda acende na cor do tipo, como no editor de fluxo */
 .t-estudio .no { --tipo: #38bdf8; border: 1.5px solid color-mix(in srgb, var(--tipo) 68%, transparent); box-shadow: 0 0 16px color-mix(in srgb, var(--tipo) 20%, transparent), inset 0 1px 0 rgba(255,255,255,.04); }
 .t-estudio .no.k-frente, .t-estudio .no.k-rotina { --tipo: #a78bfa; }
@@ -250,6 +294,13 @@ button.pil:hover { border-color: var(--c); }
   <canvas class="mini" id="mini" aria-hidden="true"></canvas>
   <div class="zoom" id="zoom"><span class="dica">arraste para mover · a roda aproxima</span><button type="button" data-z="-" aria-label="Afastar">−</button><button type="button" data-z="fit">Encaixar</button><button type="button" data-z="+" aria-label="Aproximar">+</button></div>
 </main>
+<dialog class="agenda-modal" id="agenda-modal" aria-labelledby="agenda-titulo">
+  <div class="agenda-layout">
+    <header class="agenda-head"><div><h2 id="agenda-titulo">Agenda</h2><div class="agenda-date" id="agenda-periodo"></div></div><div class="agenda-controls"><button type="button" id="agenda-hoje">Hoje</button><button type="button" id="agenda-anterior" aria-label="Semana anterior">‹</button><button type="button" id="agenda-proxima" aria-label="Próxima semana">›</button><button type="button" class="agenda-close" id="agenda-fechar" aria-label="Fechar">×</button></div></header>
+    <div class="agenda-content" id="agenda-conteudo"><div class="agenda-status">Carregando agenda…</div></div>
+    <aside class="agenda-detail" id="agenda-detalhe" hidden aria-live="polite"></aside>
+  </div>
+</dialog>
 <div class="celular" id="celular"></div>
 <button type="button" id="sair-parede">Sair do modo painel</button>
 <script src="/dados/estado.js"></script>
@@ -586,12 +637,30 @@ button.pil:hover { border-color: var(--c); }
       var de = v.esp.de, l = lig[de];
       ar(l ? l.de : de, v.id, v.esp.estado || 'bom', 'esp', 'espera você');
     });
+    // Gmail sai do mapa visual; a Agenda fica ao lado do Git Local e abre o calendário.
+    if (g.por.gmail && g.por.agenda) {
+      g.por.gmail.oculto = true;
+      g.por.agenda.rot = 'Agenda';
+      g.por.agenda.x.rotulo = 'Agenda';
+      if (g.por.agenda.estado === 'bom') g.por.agenda.x.frase = 'abrir para ver as reuniões';
+      g.arestas = g.arestas.filter(function (e) { return e.a.id !== 'gmail' && e.b.id !== 'gmail'; });
+      g.nos.forEach(function (n) { n.sai = []; n.chega = []; });
+      g.arestas.forEach(function (e) { e.a.sai.push(e); e.b.chega.push(e); });
+    }
     g.rotinas = g.nos.filter(function (n) { return n.tipo === 'rotina'; });
     return organizar(g);
   }
 
   // ------------------------------------------------------------ a posicao --
   function cy(n) { return n.y0 + n.h / 2; }
+  function agendaDepoisDoGitLocal(coluna) {
+    var iAgenda = coluna.findIndex(function (n) { return n.id === 'agenda'; });
+    var iGit = coluna.findIndex(function (n) { return n.id === 'git_local'; });
+    if (iAgenda < 0 || iGit < 0) return;
+    var agenda = coluna.splice(iAgenda, 1)[0];
+    iGit = coluna.findIndex(function (n) { return n.id === 'git_local'; });
+    coluna.splice(iGit + 1, 0, agenda);
+  }
   function media(n, lado) {
     var L = lado === 'sai' ? n.sai : n.chega, s = 0, k = 0;
     L.forEach(function (e) { if (e.tipo === 'bus') return; var o = lado === 'sai' ? e.b : e.a; if (o.posto) { s += cy(o); k++; } });
@@ -633,7 +702,7 @@ button.pil:hover { border-color: var(--c); }
     mais.forEach(function (el) { el.classList.add('mais'); });
     G.nos.forEach(function (n) { n.h = Math.max(Math.round(n.hMin * ex.dens), Math.ceil(n.el.offsetHeight)); });
     function colocar(k) {
-      var c = G.cols[k], n = c.length;
+      var c = G.cols[k].filter(function (nd) { return !nd.oculto; }), n = c.length;
       if (!n) return;
       var soma = 0;
       c.forEach(function (nd) { soma += nd.h; });
@@ -650,18 +719,21 @@ button.pil:hover { border-color: var(--c); }
       G.cols[6].sort(function (a, b) { return media(a, 'chega') - media(b, 'chega'); });
       colocar(6);
       G.cols[2].sort(function (a, b) { return media(a, 'sai') - media(b, 'sai'); });
+      agendaDepoisDoGitLocal(G.cols[2]);
       colocar(2); colocar(1); colocar(0);
     } else {
       // primeiro na ordem natural; depois duas passadas de baricentro, cada cartao perto de quem ele liga
-      G.cols.forEach(function (c, k) { colocar(k); });
+      G.cols.forEach(function (c, k) { agendaDepoisDoGitLocal(c); colocar(k); });
       for (var passada = 0; passada < 2; passada++) {
         G.cols.forEach(function (c, k) {
           c.forEach(function (nd) { nd.bari = mediaTodos(nd); });
           c.sort(function (a, b) { return a.bari - b.bari || a.camada - b.camada || a.ordem0 - b.ordem0; });
+          agendaDepoisDoGitLocal(c);
           colocar(k);
         });
       }
     }
+    if (ORGS[org].id === 'tipo') agendaDepoisDoGitLocal(G.cols[2]);
     G.nos.filter(function (n) { return n.tipo === 'servico'; }).sort(function (a, b) { return a.y0 - b.y0 || a.x0 - b.x0; })
       .forEach(function (s, i) { s.ident = IDENT[i % IDENT.length]; });
     HH = Math.max(H, Math.round(alto));
@@ -674,7 +746,7 @@ button.pil:hover { border-color: var(--c); }
     portas();
     if (vertical()) {
       G.colEls.forEach(function (el, k) {
-        el.style.display = G.cols[k].length ? '' : 'none';
+        el.style.display = G.cols[k].some(function (n) { return !n.oculto; }) ? '' : 'none';
         el.style.left = '28px'; el.style.top = Math.max(8, (G.faixaY[k] || 60) - 24) + 'px';
       });
     } else G.colEls.forEach(function (el, k) { el.style.left = colX[k] + 'px'; el.style.top = '22px'; });
@@ -700,7 +772,7 @@ button.pil:hover { border-color: var(--c); }
     var marg = 28, topo = 60, base = 84, entre = 74 * ex.dens, junto = 14 * ex.dens, disp = Math.max(W, MINW) - 2 * marg;
     var larg = 0, y;
     function linhas(k, ordem) {
-      var c = ordem || G.cols[k], w = CO[k].w, max = Math.max(1, Math.floor((disp + junto) / (w + junto))), L = [];
+      var c = (ordem || G.cols[k]).filter(function (n) { return !n.oculto; }), w = CO[k].w, max = Math.max(1, Math.floor((disp + junto) / (w + junto))), L = [];
       var por = Math.max(1, Math.ceil(c.length / Math.ceil(c.length / max)));
       for (var i = 0; i < c.length; i += por) L.push(c.slice(i, i + por));
       return L;
@@ -719,6 +791,7 @@ button.pil:hover { border-color: var(--c); }
       G.cols.forEach(function (c, k) {
         if (!c.length) return;
         if (ordenar) { c.forEach(function (n) { n.bari = mediaX(n); }); c.sort(function (a, b) { return a.bari - b.bari || a.camada - b.camada || a.ordem0 - b.ordem0; }); }
+        agendaDepoisDoGitLocal(c);
         G.faixaY[k] = y;
         colocarFaixa(k);
         y += entre;
@@ -831,6 +904,8 @@ button.pil:hover { border-color: var(--c); }
     el.className = 'no k-' + n.tipo + ' e-' + n.estado + (PROB[n.estado] ? ' prob' : '');
     el.dataset.id = n.id; el.tabIndex = 0; el.setAttribute('role', 'button');
     el.setAttribute('aria-label', n.rot + ', ' + NOME[n.estado]);
+    if (n.id === 'agenda') el.setAttribute('aria-haspopup', 'dialog');
+    if (n.oculto) { el.style.visibility = 'hidden'; el.setAttribute('aria-hidden', 'true'); }
     if (n.tipo === 'rotina') {
       // o nome com a ultima vez a direita; embaixo quando ela roda, ou o problema, se houver um
       var ult = x.rodando ? 'rodando' : x.ultima ? curto(x.ultima) : '';
@@ -876,8 +951,9 @@ button.pil:hover { border-color: var(--c); }
       el.className = 'col'; el.dataset.n = '0' + (k + 1);
       // nas organizacoes em que a esquerda sustenta a direita, as pontas dizem onde a leitura comeca e acaba
       var sentido = ORGS[org].id !== 'estado', ult = k === G.COLS.length - 1;
-      el.innerHTML = (sentido && k === 0 ? '<u>começa aqui</u>' : '') + esc((ORGS[org].id === 'tipo' || ORGS[org].id === 'cascata') && k === 0 && G.cols[0].length > 1 ? 'Máquinas' : c.nome) +
-        ' <i>' + G.cols[k].length + '</i>' + (sentido && ult ? '<u>termina aqui</u>' : '');
+      var quantidade = G.cols[k].filter(function (n) { return !n.oculto; }).length;
+      el.innerHTML = (sentido && k === 0 ? '<u>começa aqui</u>' : '') + esc((ORGS[org].id === 'tipo' || ORGS[org].id === 'cascata') && k === 0 && quantidade > 1 ? 'Máquinas' : c.nome) +
+        ' <i>' + quantidade + '</i>' + (sentido && ult ? '<u>termina aqui</u>' : '');
       mundo.appendChild(el);
       return el;
     });
@@ -1335,6 +1411,7 @@ button.pil:hover { border-color: var(--c); }
     mctx.setTransform(dpr * k, 0, 0, dpr * k, 0, 0);
     mctx.clearRect(0, 0, WW, HH);
     G.nos.forEach(function (n) {
+      if (n.oculto) return;
       mctx.fillStyle = PROB[n.estado] ? T.cor[n.estado] : rgba(T.cor.desligado, .9);
       mctx.fillRect(n.x0, n.y0, n.w, n.h);
     });
@@ -1480,7 +1557,11 @@ button.pil:hover { border-color: var(--c); }
     var a = arr;
     arr = null; palco.classList.remove('arrastando');
     if (a.moveu) return;
-    if (a.no) { var n = G && G.por[a.no.dataset.id]; selecionar(n && n !== ativo() ? n : null); }
+    if (a.no) {
+      var n = G && G.por[a.no.dataset.id];
+      if (n && n.id === 'agenda' && window.AgendaUI) window.AgendaUI.abrir(n.el);
+      else selecionar(n && n !== ativo() ? n : null);
+    }
     else selecionar(null);
   });
   palco.addEventListener('dblclick', function (ev) { if (!ev.target.closest('.no, .ficha, .zoom, .mini, .pil')) encaixar(true); });
@@ -1509,7 +1590,8 @@ button.pil:hover { border-color: var(--c); }
     if (!el || (ev.key !== 'Enter' && ev.key !== ' ')) return;
     ev.preventDefault();
     var n = G.por[el.dataset.id];
-    selecionar(n !== ativo() ? n : null);
+    if (n.id === 'agenda' && window.AgendaUI) window.AgendaUI.abrir(n.el);
+    else selecionar(n !== ativo() ? n : null);
   });
   orb.addEventListener('click', function (ev) { var b = ev.target.closest('button.pil'); if (b && G.por[b.dataset.id]) selecionar(G.por[b.dataset.id]); });
   ficha.addEventListener('click', function (ev) { if (ev.target.closest('.x')) selecionar(null); });
@@ -1776,5 +1858,6 @@ button.pil:hover { border-color: var(--c); }
   }, 600);
 })();
 </script>
+<script src="/static/agenda.js"></script>
 </body>
 </html>
